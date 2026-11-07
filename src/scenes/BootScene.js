@@ -38,44 +38,63 @@ export class BootScene extends Phaser.Scene {
   }
 
   createWorkshopThemes(w, h) {
-    // ТЕМА 1: Сырой подвал мастера (грубый старый дуб, кирпич, керосинка)
+    // ТЕМА 1: Сырой подвал мастера (Грубые дубовые доски, кирпич, свет керосинки)
     const t1 = this.make.graphics({ x: 0, y: 0, add: false });
-    t1.fillStyle(0x13110f, 1); t1.fillRect(0, 0, w, h);
-    t1.fillStyle(0x211a14, 0.45);
-    for (let y = 0; y < h; y += 45) t1.fillRect(0, y, w, 38);
-    t1.fillStyle(0xd35400, 0.12); t1.fillCircle(w / 2, h * 0.42, 220); // тусклое пламя
+    t1.fillStyle(0x110f0d, 1); t1.fillRect(0, 0, w, h);
+    // Кирпичная кладка на стене
+    t1.fillStyle(0x1a1512, 0.7);
+    for (let y = 0; y < h * 0.35; y += 24) {
+      const offset = (y / 24 % 2 === 0) ? 0 : 25;
+      for (let x = -25 + offset; x < w; x += 55) {
+        t1.fillRect(x, y, 50, 20);
+      }
+    }
+    // Столешница верстака
+    t1.fillStyle(0x241c15, 1); t1.fillRect(0, h * 0.32, w, h * 0.68);
+    t1.fillStyle(0x1c1510, 0.6);
+    for (let y = h * 0.32; y < h; y += 42) t1.fillRect(0, y, w, 38);
+    // Теплый янтарный конус света лампы
+    t1.fillStyle(0xe67e22, 0.16); t1.fillCircle(w / 2, h * 0.44, 250);
+    t1.fillStyle(0xf39c12, 0.08); t1.fillCircle(w / 2, h * 0.44, 160);
     t1.generateTexture('bg_workshop_tier_1', w, h); t1.destroy();
 
-    // ТЕМА 2: Лавка антиквара (лакированный ясень, зеленый абажур, бархатный лоток)
+    // ТЕМА 2: Лавка антиквара (Лакированный орех, зеленый суконный мат, латунная лампа)
     const t2 = this.make.graphics({ x: 0, y: 0, add: false });
-    t2.fillStyle(0x181a17, 1); t2.fillRect(0, 0, w, h);
-    t2.fillStyle(0x2d3429, 0.5);
-    for (let y = 0; y < h; y += 50) t2.fillRect(0, y, w, 44);
-    t2.fillStyle(0x27ae60, 0.10); t2.fillCircle(w / 2, h * 0.42, 260); // зеленый свет лампы
-    t2.fillStyle(0x1e272c, 0.85); t2.fillRoundedRect(w * 0.08, h * 0.22, w * 0.84, 380, 16); // сукно стола
+    t2.fillStyle(0x141814, 1); t2.fillRect(0, 0, w, h);
+    // Книжные полки на фоне
+    t2.fillStyle(0x1b221b, 0.8); t2.fillRect(0, 0, w, h * 0.32);
+    // Суконный рабочий стол
+    t2.fillStyle(0x221a14, 1); t2.fillRect(0, h * 0.30, w, h * 0.70);
+    t2.fillStyle(0x1e382b, 0.95); t2.fillRoundedRect(w * 0.06, h * 0.22, w * 0.88, 380, 16);
+    t2.lineStyle(2, 0xd4af37, 0.5); t2.strokeRoundedRect(w * 0.06, h * 0.22, w * 0.88, 380, 16);
+    // Изумрудный свет настольного абажура
+    t2.fillStyle(0x2ecc71, 0.12); t2.fillCircle(w / 2, h * 0.44, 270);
     t2.generateTexture('bg_workshop_tier_2', w, h); t2.destroy();
 
-    // ТЕМА 3: Гильдия реставраторов (темный орех, золотая инкрустация, синее сукно)
+    // ТЕМА 3: Гильдия реставраторов (Темный морёный дуб, королевское синее сукно, золотые молдинги)
     const t3 = this.make.graphics({ x: 0, y: 0, add: false });
-    t3.fillStyle(0x12141a, 1); t3.fillRect(0, 0, w, h);
-    t3.fillStyle(0x1a2130, 0.5);
-    for (let y = 0; y < h; y += 55) t3.fillRect(0, y, w, 50);
-    t3.fillStyle(0x2980b9, 0.12); t3.fillCircle(w / 2, h * 0.42, 280);
-    t3.fillStyle(0x152238, 0.9); t3.fillRoundedRect(w * 0.07, h * 0.20, w * 0.86, 400, 20);
-    t3.lineStyle(2, 0xd4af37, 0.6); t3.strokeRoundedRect(w * 0.07, h * 0.20, w * 0.86, 400, 20);
+    t3.fillStyle(0x0e1118, 1); t3.fillRect(0, 0, w, h);
+    t3.fillStyle(0x1a2130, 0.6); t3.fillRect(0, 0, w, h * 0.30);
+    t3.fillStyle(0x14171f, 1); t3.fillRect(0, h * 0.28, w, h * 0.72);
+    // Синяя замшевая вставка
+    t3.fillStyle(0x12243d, 0.95); t3.fillRoundedRect(w * 0.05, h * 0.20, w * 0.90, 400, 20);
+    t3.lineStyle(3, 0xf1c40f, 0.75); t3.strokeRoundedRect(w * 0.05, h * 0.20, w * 0.90, 400, 20);
+    t3.fillStyle(0x3498db, 0.14); t3.fillCircle(w / 2, h * 0.44, 280);
     t3.generateTexture('bg_workshop_tier_3', w, h); t3.destroy();
 
-    // ТЕМА 4: Императорская лаборатория (каррарский мрамор, споты, латунь)
+    // ТЕМА 4: Императорская лаборатория (Белый каррарский мрамор, софиты, золотая окантовка)
     const t4 = this.make.graphics({ x: 0, y: 0, add: false });
-    t4.fillStyle(0x19191d, 1); t4.fillRect(0, 0, w, h);
-    t4.fillStyle(0x2b2b36, 0.3); t4.fillRect(0, 0, w, h);
-    t4.fillStyle(0xffffff, 0.15); t4.fillCircle(w / 2, h * 0.42, 300); // яркий софит
-    t4.fillStyle(0xd5dbdb, 0.95); t4.fillRoundedRect(w * 0.06, h * 0.19, w * 0.88, 410, 22); // мраморная плита
-    // Прожилки мрамора
-    t4.lineStyle(2, 0x95a5a6, 0.4);
-    t4.strokeLineShape(new Phaser.Geom.Line(w * 0.1, h * 0.25, w * 0.4, h * 0.5));
-    t4.strokeLineShape(new Phaser.Geom.Line(w * 0.5, h * 0.3, w * 0.85, h * 0.45));
-    t4.lineStyle(3, 0xd4af37, 0.8); t4.strokeRoundedRect(w * 0.06, h * 0.19, w * 0.88, 410, 22);
+    t4.fillStyle(0x16171b, 1); t4.fillRect(0, 0, w, h);
+    t4.fillStyle(0x252730, 0.5); t4.fillRect(0, 0, w, h * 0.28);
+    // Мраморная монолитная плита
+    t4.fillStyle(0xecf0f1, 0.98); t4.fillRoundedRect(w * 0.05, h * 0.19, w * 0.90, 415, 24);
+    // Прожилки каррарского мрамора
+    t4.lineStyle(2, 0xbdc3c7, 0.6);
+    t4.strokeLineShape(new Phaser.Geom.Line(w * 0.1, h * 0.24, w * 0.45, h * 0.48));
+    t4.strokeLineShape(new Phaser.Geom.Line(w * 0.4, h * 0.32, w * 0.88, h * 0.42));
+    t4.lineStyle(4, 0xd4af37, 0.9); t4.strokeRoundedRect(w * 0.05, h * 0.19, w * 0.90, 415, 24);
+    // Чистый белый свет студийного софита
+    t4.fillStyle(0xffffff, 0.22); t4.fillCircle(w / 2, h * 0.44, 290);
     t4.generateTexture('bg_workshop_tier_4', w, h); t4.destroy();
   }
 
