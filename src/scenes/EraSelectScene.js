@@ -11,10 +11,8 @@ export class EraSelectScene extends Phaser.Scene {
     this.selectedEraIndex = 0;
     this.renderedElements = [];
 
-    // Фон
     this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
-    // Заголовок
     this.add.text(width / 2, 38, 'ВЫБОР ЭПОХИ', {
       fontSize: '22px',
       fontFamily: 'sans-serif',
@@ -23,11 +21,11 @@ export class EraSelectScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(2);
 
-    // Кнопка сброса сохранений для тестов
     const resetBtn = this.add.text(width - 20, 20, 'Сброс', {
-      fontSize: '11px',
+      fontSize: '13px',
       fontFamily: 'sans-serif',
-      color: '#7f8c8d'
+      color: '#e74c3c',
+      fontStyle: 'bold'
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).setDepth(10);
 
     resetBtn.on('pointerdown', () => {
@@ -35,13 +33,9 @@ export class EraSelectScene extends Phaser.Scene {
       this.scene.restart();
     });
 
-    // Навигация по эпохам (Табы)
     this.createTabs();
-
-    // Отрисовка списка артефактов
     this.renderEraLevels();
 
-    // Кнопка возврата в главное меню
     const backBg = this.add.rectangle(width / 2, height - 42, 220, 44, 0x34495e)
       .setInteractive({ useHandCursor: true })
       .setDepth(10);
@@ -68,38 +62,40 @@ export class EraSelectScene extends Phaser.Scene {
       const tabX = tabWidth * idx + tabWidth / 2;
       const isUnlocked = Storage.isEraUnlocked(era.id);
 
-      const hitZone = this.add.rectangle(tabX, tabY, tabWidth - 6, 32, 0x000000, 0.01)
+      const tabBg = this.add.rectangle(tabX, tabY, tabWidth - 8, 36, idx === this.selectedEraIndex ? 0xd4af37 : 0x221d19)
         .setInteractive({ useHandCursor: true })
         .setDepth(5);
 
       const label = this.add.text(tabX, tabY, era.name.split(' ')[1] || era.name, {
         fontSize: '13px',
         fontFamily: 'sans-serif',
-        color: idx === this.selectedEraIndex ? '#f1c40f' : (isUnlocked ? '#bdc3c7' : '#555555'),
+        color: idx === this.selectedEraIndex ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'),
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(6);
 
-      hitZone.on('pointerdown', () => {
+      tabBg.on('pointerdown', () => {
         this.selectedEraIndex = idx;
         this.updateTabStyles();
         this.renderEraLevels();
       });
 
-      this.tabButtons.push({ hitZone, label, eraId: era.id });
+      this.tabButtons.push({ tabBg, label, eraId: era.id });
     });
   }
 
   updateTabStyles() {
     this.tabButtons.forEach((tab, idx) => {
+      const isSelected = idx === this.selectedEraIndex;
       const isUnlocked = Storage.isEraUnlocked(tab.eraId);
-      tab.label.setColor(idx === this.selectedEraIndex ? '#f1c40f' : (isUnlocked ? '#bdc3c7' : '#555555'));
+
+      tab.tabBg.setFillStyle(isSelected ? 0xd4af37 : 0x221d19);
+      tab.label.setColor(isSelected ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'));
     });
   }
 
   renderEraLevels() {
     const { width, height } = this.scale;
 
-    // Очищаем старые отрисованные объекты
     this.renderedElements.forEach(el => el.destroy());
     this.renderedElements = [];
 
@@ -138,8 +134,6 @@ export class EraSelectScene extends Phaser.Scene {
     eraArtifacts.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
       const isRestored = unlocked.includes(item.id);
-      
-      // Предмет доступен: первый в эпохе доступен всегда; следующий доступен, если предыдущий сдан
       const isPlayable = (idx === 0) || unlocked.includes(eraArtifacts[idx - 1].id) || isRestored;
 
       const bg = this.add.rectangle(width / 2, cardY + 55, width * 0.9, 135, isPlayable ? 0x221d19 : 0x161413, 0.92)
@@ -181,7 +175,7 @@ export class EraSelectScene extends Phaser.Scene {
       let statusLabel = '🔒 ЗАБЛОКИРОВАНО';
       let statusColor = '#555555';
       if (isRestored) {
-        statusLabel = '✓ ОТРЕСТАВРИРОВАНО (ОСМОТРЕТЬ)';
+        statusLabel = '✓ ОТРЕСТАВРИРОВАНО';
         statusColor = '#2ecc71';
       } else if (isPlayable) {
         statusLabel = '▶ НА ВЕРСТАК';
