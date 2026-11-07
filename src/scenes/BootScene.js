@@ -12,17 +12,14 @@ export class BootScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    // 1. АТМОСФЕРНЫЙ ФОН РЕСТАВРАЦИОННОЙ МАСТЕРСКОЙ
+    // Фоновый верстак с теплым светом
     const bgGfx = this.make.graphics({ x: 0, y: 0, add: false });
-    // Глубокий дубовый верстак
     bgGfx.fillStyle(0x161311, 1);
     bgGfx.fillRect(0, 0, width, height);
-    // Дощатая фактура стола
-    bgGfx.fillStyle(0x1b1714, 0.4);
-    for (let y = 0; y < height; y += 45) {
-      bgGfx.fillRect(0, y, width, 40);
+    bgGfx.fillStyle(0x1c1815, 0.45);
+    for (let y = 0; y < height; y += 42) {
+      bgGfx.fillRect(0, y, width, 38);
     }
-    // Теплый конус настольной лампы по центру
     bgGfx.fillStyle(0xe67e22, 0.08);
     bgGfx.fillCircle(width / 2, height * 0.42, 280);
     bgGfx.fillStyle(0xf1c40f, 0.06);
@@ -30,76 +27,20 @@ export class BootScene extends Phaser.Scene {
     bgGfx.generateTexture('bg_workshop', width, height);
     bgGfx.destroy();
 
-    // 2. ИНСТРУМЕНТЫ В ЛОТОК
+    // Лоток инструментов
+    this.createTrayToolIcons();
 
-    // 2.1 Металлический скребок археолога (Scraper)
-    const scraper = this.make.graphics({ x: 0, y: 0, add: false });
-    scraper.fillStyle(0x8e5d34, 1);
-    scraper.fillRoundedRect(28, 55, 24, 60, 4); // деревянная ручка
-    scraper.fillStyle(0xbdc3c7, 1);
-    scraper.fillRect(24, 40, 32, 18);
-    scraper.fillStyle(0x95a5a6, 1);
-    scraper.fillTriangle(20, 40, 60, 40, 40, 10); // клиновидное лезвие
-    scraper.generateTexture('slot_scraper', 80, 120);
-    scraper.destroy();
-
-    // 2.2 Флакон растворителя / губка (Solvent)
-    const solvent = this.make.graphics({ x: 0, y: 0, add: false });
-    solvent.fillStyle(0x27ae60, 1);
-    solvent.fillRoundedRect(18, 30, 44, 75, 8);
-    solvent.fillStyle(0x2ecc71, 1);
-    solvent.fillRect(28, 12, 24, 20); // дозатор
-    solvent.fillStyle(0xffffff, 0.3);
-    solvent.fillRect(24, 40, 8, 55); // блик на стекле
-    solvent.generateTexture('slot_solvent', 80, 120);
-    solvent.destroy();
-
-    // 2.3 Тюбик золотого клея Кинцуги (Glue)
-    const glue = this.make.graphics({ x: 0, y: 0, add: false });
-    glue.fillStyle(0xd4af37, 1);
-    glue.beginPath();
-    glue.moveTo(25, 110);
-    glue.lineTo(55, 110);
-    glue.lineTo(50, 40);
-    glue.lineTo(30, 40);
-    glue.closePath();
-    glue.fillPath();
-    glue.fillStyle(0xc0392b, 1);
-    glue.fillRect(34, 15, 12, 25); // колпачок
-    glue.generateTexture('slot_glue', 80, 120);
-    glue.destroy();
-
-    // 2.4 Тонкая кисть с краской (Paint brush)
-    const brush = this.make.graphics({ x: 0, y: 0, add: false });
-    brush.fillStyle(0x2c3e50, 1);
-    brush.fillRoundedRect(36, 30, 8, 85, 3);
-    brush.fillStyle(0xd4af37, 1);
-    brush.fillRect(34, 24, 12, 8);
-    brush.fillStyle(0xc0392b, 1);
-    brush.fillTriangle(34, 24, 46, 24, 40, 5); // тонкий кончик
-    brush.generateTexture('slot_brush', 80, 120);
-    brush.destroy();
-
-    // 2.5 Мягкая полировальная ткань (Cloth / Polish)
-    const cloth = this.make.graphics({ x: 0, y: 0, add: false });
-    cloth.fillStyle(0x8e44ad, 1);
-    cloth.fillRoundedRect(15, 35, 50, 55, 10);
-    cloth.fillStyle(0x9b59b6, 1);
-    cloth.fillRoundedRect(22, 42, 36, 40, 6);
-    cloth.generateTexture('slot_polish', 80, 120);
-    cloth.destroy();
-
-    // 3. МАСКИ ЛАСТИКОВ
-    this.createCircleMask('mask_scraper', 28);
-    this.createCircleMask('mask_solvent', 48);
-    this.createCircleMask('mask_glue', 20);
+    // Маски ластиков
+    this.createCircleMask('mask_scraper', 24);
+    this.createCircleMask('mask_solvent', 46);
+    this.createCircleMask('mask_glue', 18);
     this.createCircleMask('mask_brush', 22);
-    this.createCircleMask('mask_polish', 56);
+    this.createCircleMask('mask_polish', 54);
 
-    // 4. ТЕКСТУРЫ АРТЕФАКТОВ
+    // Артефакты
     this.createAllArtifactAssets();
 
-    // 5. ИНТЕРФЕЙС
+    // Системные иконки
     const lock = this.make.graphics({ x: 0, y: 0, add: false });
     lock.lineStyle(4, 0xbdc3c7, 1); lock.strokeCircle(20, 14, 10);
     lock.fillStyle(0x7f8c8d, 1); lock.fillRoundedRect(8, 16, 24, 20, 4);
@@ -148,6 +89,42 @@ export class BootScene extends Phaser.Scene {
     mask.destroy();
   }
 
+  createTrayToolIcons() {
+    // Скребок
+    const scraper = this.make.graphics({ x: 0, y: 0, add: false });
+    scraper.fillStyle(0x8e5d34, 1); scraper.fillRoundedRect(28, 55, 24, 60, 4);
+    scraper.fillStyle(0xbdc3c7, 1); scraper.fillRect(24, 40, 32, 18);
+    scraper.fillStyle(0x95a5a6, 1); scraper.fillTriangle(20, 40, 60, 40, 40, 10);
+    scraper.generateTexture('slot_scraper', 80, 120); scraper.destroy();
+
+    // Растворитель
+    const solvent = this.make.graphics({ x: 0, y: 0, add: false });
+    solvent.fillStyle(0x27ae60, 1); solvent.fillRoundedRect(18, 30, 44, 75, 8);
+    solvent.fillStyle(0x2ecc71, 1); solvent.fillRect(28, 12, 24, 20);
+    solvent.fillStyle(0xffffff, 0.3); solvent.fillRect(24, 40, 8, 55);
+    solvent.generateTexture('slot_solvent', 80, 120); solvent.destroy();
+
+    // Клей
+    const glue = this.make.graphics({ x: 0, y: 0, add: false });
+    glue.fillStyle(0xd4af37, 1);
+    glue.beginPath(); glue.moveTo(25, 110); glue.lineTo(55, 110); glue.lineTo(50, 40); glue.lineTo(30, 40); glue.closePath(); glue.fillPath();
+    glue.fillStyle(0xc0392b, 1); glue.fillRect(34, 15, 12, 25);
+    glue.generateTexture('slot_glue', 80, 120); glue.destroy();
+
+    // Кисть
+    const brush = this.make.graphics({ x: 0, y: 0, add: false });
+    brush.fillStyle(0x2c3e50, 1); brush.fillRoundedRect(36, 30, 8, 85, 3);
+    brush.fillStyle(0xd4af37, 1); brush.fillRect(34, 24, 12, 8);
+    brush.fillStyle(0xc0392b, 1); brush.fillTriangle(34, 24, 46, 24, 40, 5);
+    brush.generateTexture('slot_brush', 80, 120); brush.destroy();
+
+    // Замша
+    const cloth = this.make.graphics({ x: 0, y: 0, add: false });
+    cloth.fillStyle(0x8e44ad, 1); cloth.fillRoundedRect(15, 35, 50, 55, 10);
+    cloth.fillStyle(0x9b59b6, 1); cloth.fillRoundedRect(22, 42, 36, 40, 6);
+    cloth.generateTexture('slot_polish', 80, 120); cloth.destroy();
+  }
+
   createAllArtifactAssets() {
     // 1. Египет
     const scarab = this.make.graphics({ x: 0, y: 0, add: false });
@@ -188,10 +165,22 @@ export class BootScene extends Phaser.Scene {
     amphora.beginPath(); amphora.arc(88, 160, 46, Phaser.Math.DegToRad(70), Phaser.Math.DegToRad(270), true); amphora.strokePath();
     amphora.beginPath(); amphora.arc(212, 160, 46, Phaser.Math.DegToRad(270), Phaser.Math.DegToRad(110), false); amphora.strokePath();
     amphora.fillStyle(0x1a1614, 0.9); amphora.fillRect(75, 175, 150, 36);
-    // На амфоре — видимая трещина под склейку
-    amphora.lineStyle(3, 0x111111, 0.7);
-    amphora.strokeLineShape(new Phaser.Geom.Line(120, 130, 175, 230));
     amphora.generateTexture('art_greece_amphora', 300, 400); amphora.destroy();
+
+    // Отколотый черепок амфоры для склейки
+    const shard = this.make.graphics({ x: 0, y: 0, add: false });
+    shard.fillStyle(0xd35400, 1);
+    shard.beginPath();
+    shard.moveTo(10, 10);
+    shard.lineTo(55, 15);
+    shard.lineTo(48, 55);
+    shard.lineTo(15, 45);
+    shard.closePath();
+    shard.fillPath();
+    shard.lineStyle(2, 0x873600, 1);
+    shard.strokePath();
+    shard.generateTexture('shard_amphora', 65, 65);
+    shard.destroy();
 
     const helmet = this.make.graphics({ x: 0, y: 0, add: false });
     helmet.fillStyle(0x7d6608, 1); helmet.fillCircle(150, 170, 110);
