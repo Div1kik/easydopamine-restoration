@@ -18,12 +18,9 @@ export class RestoreScene extends Phaser.Scene {
     this.currentTaskIndex = 0;
     this.activeTool = 'tool_scraper';
     this.lastTouchPos = null;
-
-    // Состояния для интерактивной склейки
     this.glueApplied = false;
-    this.pieceAssembled = false;
 
-    // 1. Фон мастерской
+    // Фон верстака
     this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
     // Домой
@@ -65,7 +62,6 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // Всплывающее предупреждение при неверном инструменте
     this.toolWarning = this.add.text(width / 2, 134, '', {
       fontSize: '12px',
       fontFamily: 'sans-serif',
@@ -73,7 +69,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // Координаты центра верстака
+    // Параметры верстака
     this.artW = 300;
     this.artH = 400;
     this.centerX = width / 2;
@@ -107,14 +103,14 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     }).setDepth(5);
 
-    // Спрайт выбранного инструмента
+    // Инструмент под пальцем
     this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper')
       .setOrigin(0.5, 0.95)
       .setScale(0.7)
       .setAlpha(0)
       .setDepth(15);
 
-    // Контейнер прогресс-бара (скрывается на этапе склейки)
+    // Прогресс-бар
     this.progressContainer = this.add.container(0, 0).setDepth(12);
     const barWidth = width * 0.72;
     const pBg = this.add.rectangle(width / 2, height * 0.69, barWidth, 12, 0x111111);
@@ -127,29 +123,29 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.progressContainer.add([pBg, this.progressBar, this.progressText]);
 
-    // Контейнер интерактивной склейки
+    // Контейнер сборки / склейки
     this.assemblyContainer = this.add.container(0, 0).setDepth(14).setVisible(false);
-    this.createAssemblyElements();
 
     // Лоток инструментов
     this.createToolsTray(height * 0.83);
 
-    // Старт первой задачи
+    // Запуск первой задачи
     this.startTask(0);
 
-    // Обработка логики очистки
-    const processScrubbing = (pointer) => {
+    // Обработка ввода
+    const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
 
-      // Если идет склейка — стирание грязи отключено
-      if (currentTask.requiredTool === 'tool_glue') {
+      // Режим склейки
+      if (currentTask.type === 'assemble') {
         this.processGlueAction(pointer);
         return;
       }
 
+      // Режим очистки
       if (!this.lastTouchPos) {
         this.lastTouchPos = { x: pointer.x, y: pointer.y };
         return;
@@ -162,9 +158,9 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 10);
       this.toolSprite.setAlpha(1);
 
-      // ЖЕСТКАЯ ЛОГИКА: Не тот инструмент = 0 прогресса + предупреждение
+      // Проверка верного инструмента
       if (this.activeTool !== currentTask.requiredTool) {
-        this.showToolWarning(currentTask.requiredTool);
+        this.toolWarning.setText(currentTask.hint || 'Выберите правильный инструмент!');
         return;
       }
 
@@ -188,95 +184,37 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p) => {
       this.lastTouchPos = { x: p.x, y: p.y };
-      processScrubbing(p);
+      processInteraction(p);
     });
-    this.input.on('pointermove', processScrubbing);
+    this.input.on('pointermove', processInteraction);
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
       this.toolSprite.setAlpha(0);
     });
   }
 
-  // Создание интерактивного осколка для склейки
-  createAssemblyElements() {
-    const { width } = this.scale;
-
-    // Подсвеченный шов скола на амфоре
-    this.seamGfx = this.add.graphics();
-    this.seamGfx.lineStyle(6, 0xd4af37, 0.4);
-    this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
-
-    // Интерактивный осколок сбоку верстака
-    this.brokenPiece = this.add.image(width * 0.16, this.centerY + 50, 'slot_glue') // Заглушка формы осколка
-      .setScale(0.55)
-      .setInteractive({ draggable: true });
-
-    // Посадочная целевая зона осколка
-    this.targetZone = { x: this.centerX - 5, y: this.centerY + 25 };
-
-    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
-      if (!this.glueApplied) {
-        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ ПО ШВУ!');
-        return;
-      }
-      this.brokenPiece.setPosition(dragX, dragY);
-    });
-
-    this.brokenPiece.on('dragend', () => {
-      const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, this.targetZone.x, this.targetZone.y);
-      if (d < 35 && this.glueApplied) {
-        // Успешный защелк осколка на место
-        this.brokenPiece.setPosition(this.targetZone.x, this.targetZone.y);
-        this.brokenPiece.disableInteractive();
-        this.seamGfx.clear();
-        this.seamGfx.lineStyle(4, 0x2ecc71, 0.9);
-        this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
-
-        AudioManager.playCoin();
-        if (navigator.vibrate) navigator.vibrate([30, 40]);
-
-        this.time.delayedCall(400, () => {
-          this.assemblyContainer.setVisible(false);
-          this.completeTaskTransition();
-        });
-      }
-    });
-
-    this.assemblyContainer.add([this.seamGfx, this.brokenPiece]);
-  }
-
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
-      this.showToolWarning('tool_glue');
+      const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+      this.toolWarning.setText(currentTask.hint || 'Выберите КЛЕЙ в лотке!');
       return;
     }
 
     this.toolSprite.setPosition(pointer.x, pointer.y - 10);
     this.toolSprite.setAlpha(1);
 
-    // Нанесение клея по шву трещины
-    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.centerX, this.centerY + 25);
-    if (d < 60 && !this.glueApplied) {
+    // Нанесение клея по области шва
+    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.centerX, this.centerY + 15);
+    if (d < 50 && !this.glueApplied) {
       this.glueApplied = true;
       this.seamGfx.clear();
       this.seamGfx.lineStyle(6, 0xf39c12, 1);
-      this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
+      this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
 
       AudioManager.playWash();
-      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ПРИСОЕДИНИТЕ ОСКОЛОК');
+      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ПЕРЕТАЩИТЕ ОСКОЛОК В ПАЗ');
       this.toolWarning.setText('');
     }
-  }
-
-  showToolWarning(neededToolId) {
-    const names = {
-      tool_scraper: 'Нужен СКРЕБОК для грубой корки!',
-      tool_solvent: 'Нужен РАСТВОРИТЕЛЬ для смывки налета!',
-      tool_glue: 'Нужен КЛЕЙ для реставрации трещины!',
-      tool_brush: 'Нужна КИСТЬ с пигментом для узора!',
-      tool_polish: 'Нужна ЗАМША для финишной полировки!'
-    };
-    this.toolWarning.setText(names[neededToolId] || 'Выберите подходящий инструмент в лотке!');
   }
 
   createToolsTray(trayY) {
@@ -339,21 +277,19 @@ export class RestoreScene extends Phaser.Scene {
 
     const task = this.artifactData.tasks[taskIdx];
     this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
-    this.targetSteps = task.target || 200;
 
-    // Если фаза СКЛЕЙКИ — скрываем грязевой слой и ползунок, включаем интерактивный осколок
-    if (task.requiredTool === 'tool_glue') {
+    // Режим склейки осколка
+    if (task.type === 'assemble') {
       this.progressContainer.setVisible(false);
       this.dirtLayer.clear();
-      this.assemblyContainer.setVisible(true);
-      this.glueApplied = false;
-      this.taskNotice.setText('ИНСТРУКЦИЯ: 1. НАНЕСИТЕ КЛЕЙ НА ШОВ. 2. ПРИСОЕДИНИТЕ ДЕТАЛЬ.');
+      this.setupAssembleStage(task);
       return;
     }
 
-    // Обычная фаза очистки
+    // Режим стандартной очистки
     this.progressContainer.setVisible(true);
     this.assemblyContainer.setVisible(false);
+    this.targetSteps = task.target || 200;
 
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -375,11 +311,61 @@ export class RestoreScene extends Phaser.Scene {
     this.updateProgress();
   }
 
+  setupAssembleStage(task) {
+    const { width } = this.scale;
+    this.assemblyContainer.removeAll(true);
+    this.assemblyContainer.setVisible(true);
+    this.glueApplied = false;
+
+    // Шов трещины на верстаке
+    this.seamGfx = this.add.graphics();
+    this.seamGfx.lineStyle(6, 0xd4af37, 0.4);
+    this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
+
+    // Сколотая деталь
+    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'slot_glue';
+    this.brokenPiece = this.add.image(width * 0.18, this.centerY + 60, shardTex)
+      .setInteractive({ draggable: true });
+
+    const targetX = this.topLeftX + (task.targetX || 150);
+    const targetY = this.topLeftY + (task.targetY || 200);
+
+    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
+      if (!this.glueApplied) {
+        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ НА ШОВ!');
+        return;
+      }
+      this.brokenPiece.setPosition(dragX, dragY);
+    });
+
+    this.brokenPiece.on('dragend', () => {
+      const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
+      if (d < 45 && this.glueApplied) {
+        this.brokenPiece.setPosition(targetX, targetY);
+        this.brokenPiece.disableInteractive();
+
+        this.seamGfx.clear();
+        this.seamGfx.lineStyle(4, 0x2ecc71, 0.9);
+        this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
+
+        AudioManager.playCoin();
+        if (navigator.vibrate) navigator.vibrate([30, 40]);
+
+        this.time.delayedCall(450, () => {
+          this.assemblyContainer.setVisible(false);
+          this.completeTaskTransition();
+        });
+      }
+    });
+
+    this.assemblyContainer.add([this.seamGfx, this.brokenPiece]);
+    this.selectTool('tool_glue', 'slot_glue', 'mask_glue');
+  }
+
   updateProgress() {
     const ratio = Math.min(this.cleanedSteps / this.targetSteps, 1);
     const maxWidth = this.scale.width * 0.72;
 
-    // Плавное пропорциональное заполнение
     this.progressBar.width = ratio * maxWidth;
     this.progressText.setText(`${Math.floor(ratio * 100)}%`);
 
