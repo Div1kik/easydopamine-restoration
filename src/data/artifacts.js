@@ -1,491 +1,250 @@
-export const ERAS = [
-  { id: 'egypt', name: 'Древний Египет', order: 0, accentColor: '#d4af37' },
-  { id: 'greece', name: 'Античная Греция', order: 1, accentColor: '#e67e22' },
-  { id: 'europe', name: 'Средневековая Европа', order: 2, accentColor: '#3498db' },
-  { id: 'japan', name: 'Феодальная Япония', order: 3, accentColor: '#c0392b' }
+export const REGIONS = [
+  { id: 'egypt', name: 'Древний Египет', accentColor: '#d4af37', location: 'Нил и Долина Царей' },
+  { id: 'greece', name: 'Античное Средиземноморье', accentColor: '#e67e22', location: 'Эгейский бассейн' },
+  { id: 'europe', name: 'Средневековая Европа', accentColor: '#3498db', location: 'Рейнские графства' },
+  { id: 'japan', name: 'Феодальная Япония', accentColor: '#c0392b', location: 'Храмы Киото' },
+  { id: 'mesoamerica', name: 'Мезоамерика (Майя)', accentColor: '#1abc9c', location: 'Сельва Юкатана' }
 ];
 
-export const ARTIFACTS = [
-  // ===================== ЕГИПЕТ =====================
+export const ARTIFACT_TEMPLATES = [
+  // --- ЕГИПЕТ ---
   {
-    id: 'egypt_scarab',
-    eraId: 'egypt',
-    eraName: 'Древний Египет',
+    templateId: 'egypt_scarab',
+    regionId: 'egypt',
     name: 'Золотой скарабей',
-    museumDesc: 'Священный символ возрождения из царской гробницы Фив.',
+    museumDesc: 'Священный амулет возрождения с лазуритом.',
     textureKey: 'art_egypt_scarab',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'sand',
-        name: 'Срезать пласт песчаника',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для окаменелого песка',
-        color: 0xb59846,
-        target: 200
-      },
-      {
-        type: 'clean',
-        id: 'salt',
-        name: 'Растворить вековой солевой налет',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для смывки солей',
-        color: 0x6e684d,
-        target: 170
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Отполировать золото и лазурит',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для финишного блеска',
-        color: 0x4a432b,
-        target: 140
-      }
-    ],
-    reward: 120
+    baseValue: 180,
+    canBreak: true,
+    breakType: 'shard_scarab_wing',
+    breakTitle: 'Припаять отломанное золотое крыло'
   },
   {
-    id: 'egypt_mask',
-    eraId: 'egypt',
-    eraName: 'Древний Египет',
+    templateId: 'egypt_mask',
+    regionId: 'egypt',
     name: 'Маска Тутанхамона',
-    museumDesc: 'Чеканная золотая маска с инкрустацией лазуритом.',
+    museumDesc: 'Чеканный царский венец из золота и бирюзы.',
     textureKey: 'art_egypt_mask',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'clay',
-        name: 'Счистить окаменевший битум',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для грубых смоляных корок',
-        color: 0x78562d,
-        target: 230
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Смыть налет с бирюзы и эмали',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для бережной промывки',
-        color: 0x42524a,
-        target: 180
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Навести зеркальный блеск на венец',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для золотого венца',
-        color: 0x332d1c,
-        target: 150
-      }
-    ],
-    reward: 150
+    baseValue: 240,
+    canBreak: true,
+    breakType: 'shard_mask_beard',
+    breakTitle: 'Склеить отколотую ритуальную бородку'
   },
   {
-    id: 'egypt_ankh',
-    eraId: 'egypt',
-    eraName: 'Древний Египет',
+    templateId: 'egypt_ankh',
+    regionId: 'egypt',
     name: 'Обрядовый Анкх',
-    museumDesc: 'Бронзовый кованый крест вечной жизни.',
+    museumDesc: 'Бронзовый крест вечной жизни жрецов Амона.',
     textureKey: 'art_egypt_ankh',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'crust',
-        name: 'Снять известковую корку',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК против плотных отложений',
-        color: 0x9c8344,
-        target: 200
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Нейтрализовать окислы бронзы',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для химической ванны',
-        color: 0x47493a,
-        target: 160
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Полировка священных символов',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для наводки глянца',
-        color: 0x2b2518,
-        target: 130
-      }
-    ],
-    reward: 130
+    baseValue: 190,
+    canBreak: true,
+    breakType: 'shard_ankh_loop',
+    breakTitle: 'Соединить расколотую петлю жизни'
   },
 
-  // ===================== ГРЕЦИЯ =====================
+  // --- ГРЕЦИЯ ---
   {
-    id: 'greece_amphora',
-    eraId: 'greece',
-    eraName: 'Античная Греция',
+    templateId: 'greece_amphora',
+    regionId: 'greece',
     name: 'Аттическая амфора',
-    museumDesc: 'Сосуд для оливкового масла с чернофигурной росписью V в. до н.э.',
+    museumDesc: 'Чернофигурный сосуд для оливкового масла.',
     textureKey: 'art_greece_amphora',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'scale',
-        name: 'Сколоть морской ракушечник',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК против ракушечника',
-        color: 0x48574c,
-        target: 220
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Промыть терракоту от солей',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для очистки глины',
-        color: 0x2f3d33,
-        target: 170
-      },
-      {
-        type: 'assemble',
-        id: 'glue_piece',
-        name: 'Склеить отколотый черепок горлышка',
-        requiredTool: 'tool_glue',
-        hint: 'Нанесите КЛЕЙ на трещину, затем приложите осколок',
-        shardTexture: 'shard_amphora',
-        targetX: 195,
-        targetY: 175
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Заполировать шов и вощить керамику',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для финишной полировки',
-        color: 0x242e2b,
-        target: 140
-      }
-    ],
-    reward: 180
+    baseValue: 210,
+    canBreak: true,
+    breakType: 'shard_amphora',
+    breakTitle: 'Склеить отколотую ручку горлышка'
   },
   {
-    id: 'greece_helmet',
-    eraId: 'greece',
-    eraName: 'Античная Греция',
+    templateId: 'greece_helmet',
+    regionId: 'greece',
     name: 'Коринфский шлем',
-    museumDesc: 'Бронзовый шлем спартанского воина.',
+    museumDesc: 'Боевое бронзовое наголовье спартанца.',
     textureKey: 'art_greece_helmet',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'dirt',
-        name: 'Счистить спекшийся полевой грунт',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК против твердого грунта',
-        color: 0x3d4239,
-        target: 230
-      },
-      {
-        type: 'clean',
-        id: 'chem',
-        name: 'Смыть зеленую оксидную патину',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для смывки патины',
-        color: 0x25302a,
-        target: 170
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Полировка до боевого бронзового сияния',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для полировки купола',
-        color: 0x1a211c,
-        target: 140
-      }
-    ],
-    reward: 160
+    baseValue: 250,
+    canBreak: true,
+    breakType: 'shard_helmet_cheek',
+    breakTitle: 'Установить выбитую нащечную пластину'
   },
   {
-    id: 'greece_coin',
-    eraId: 'greece',
-    eraName: 'Античная Греция',
+    templateId: 'greece_coin',
+    regionId: 'greece',
     name: 'Афинская тетрадрахма',
-    museumDesc: 'Массивная серебряная монета со священной совой Афины.',
+    museumDesc: 'Массивная серебряная монета с совой.',
     textureKey: 'art_greece_coin',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'crust',
-        name: 'Снять твердые минеральные наросты',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для минеральной корки',
-        color: 0x4d504b,
-        target: 190
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Нейтрализовать черный сульфид серебра',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для сульфидов',
-        color: 0x313330,
-        target: 150
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Серебряный глянец барельефа совы',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для чеканного рельефа',
-        color: 0x1d1e1c,
-        target: 120
-      }
-    ],
-    reward: 140
+    baseValue: 170,
+    canBreak: false
   },
 
-  // ===================== ЕВРОПА =====================
+  // --- ЕВРОПА ---
   {
-    id: 'europe_shield',
-    eraId: 'europe',
-    eraName: 'Средневековая Европа',
-    name: 'Рыцарский щит',
-    museumDesc: 'Турнирный тарч из кричной стали с геральдическим крестом.',
+    templateId: 'europe_shield',
+    regionId: 'europe',
+    name: 'Рыцарский тарч',
+    museumDesc: 'Турнирный щит с геральдическим крестом.',
     textureKey: 'art_europe_shield',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'rust',
-        name: 'Счистить пластовую рыхлую ржавчину',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для чешуйчатой ржавчины',
-        color: 0x543627,
-        target: 240
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Смыть копоть пожарищ и старый лак',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для копоти',
-        color: 0x2b2723,
-        target: 180
-      },
-      {
-        type: 'clean',
-        id: 'paint',
-        name: 'Восстановить стертый красный крест',
-        requiredTool: 'tool_brush',
-        hint: 'Используйте КРАСКУ для гербового узора',
-        color: 0xa83224,
-        target: 130
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Навести зеркальный блеск на оковку',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для стальных граней',
-        color: 0x211f1e,
-        target: 140
-      }
-    ],
-    reward: 200
+    baseValue: 220,
+    canBreak: false
   },
   {
-    id: 'europe_sword',
-    eraId: 'europe',
-    eraName: 'Средневековая Европа',
+    templateId: 'europe_sword',
+    regionId: 'europe',
     name: 'Меч крестоносца',
-    museumDesc: 'Полуторный меч с дисковидным навершием и гравировкой.',
+    museumDesc: 'Полуторный меч с дисковидным навершием.',
     textureKey: 'art_europe_sword',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'scale',
-        name: 'Снять глубокую окалину и коррозию лезвия',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК по металлу',
-        color: 0x403228,
-        target: 250
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Кислотная нейтрализация дола клинка',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для микропор стали',
-        color: 0x261f1a,
-        target: 170
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Алмазная полировка лезвия до блеска',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для зеркальной кромки',
-        color: 0x17120e,
-        target: 140
-      }
-    ],
-    reward: 190
+    baseValue: 260,
+    canBreak: true,
+    breakType: 'shard_sword_tip',
+    breakTitle: 'Припаять отломанное острие клинка'
   },
   {
-    id: 'europe_chalice',
-    eraId: 'europe',
-    eraName: 'Средневековая Европа',
+    templateId: 'europe_chalice',
+    regionId: 'europe',
     name: 'Готический потир',
-    museumDesc: 'Золоченый кубок с гранатами и филигранью.',
+    museumDesc: 'Золоченый кубок с рубинами и филигранью.',
     textureKey: 'art_europe_chalice',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'wax',
-        name: 'Снять застывший свечной нагар и воск',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК против застывшего воска',
-        color: 0x473d2d,
-        target: 200
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Бережная очистка гнезд драгоценных камней',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для промывки камней',
-        color: 0x2e271b,
-        target: 150
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Полировка филигранного золочения',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для драгоценного блеска',
-        color: 0x1f190f,
-        target: 120
-      }
-    ],
-    reward: 180
+    baseValue: 230,
+    canBreak: true,
+    breakType: 'shard_chalice_gem',
+    breakTitle: 'Вклеить выпавший в бою гранат'
   },
 
-  // ===================== ЯПОНИЯ =====================
+  // --- ЯПОНИЯ ---
   {
-    id: 'japan_katana',
-    eraId: 'japan',
-    eraName: 'Феодальная Япония',
+    templateId: 'japan_katana',
+    regionId: 'japan',
     name: 'Катана самурая',
-    museumDesc: 'Боевой клинок школы Бидзэн с волнообразным хамоном.',
+    museumDesc: 'Боевой клинок Бидзэн с волнообразным хамоном.',
     textureKey: 'art_japan_katana',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'oil',
-        name: 'Счистить застывшее масло чодзи и копоть',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для застывшего масла',
-        color: 0x332f2b,
-        target: 230
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Обработать клинок пудрой утико',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для удаления микроокислов',
-        color: 0x242421,
-        target: 170
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Проявить волнистую линию хамона',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для полировки стали',
-        color: 0x141413,
-        target: 140
-      }
-    ],
-    reward: 220
+    baseValue: 280,
+    canBreak: true,
+    breakType: 'shard_katana_tsuba',
+    breakTitle: 'Закрепить отколотый сегмент цубы'
   },
   {
-    id: 'japan_mask',
-    eraId: 'japan',
-    eraName: 'Феодальная Япония',
+    templateId: 'japan_mask',
+    regionId: 'japan',
     name: 'Маска Мэнгу',
-    museumDesc: 'Боевая полумаска с алым лаком уруси и клыками демона.',
+    museumDesc: 'Алый лак уруси и клыки демона Они.',
     textureKey: 'art_japan_mask',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'ash',
-        name: 'Счистить нагар и пепел осадных битв',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК против окалины и гари',
-        color: 0x3b2421,
-        target: 240
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Очистить позолоченные клыки Они',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для бережной промывки',
-        color: 0x241817,
-        target: 170
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Глянцевое вощение лака уруси',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для глубины рубинового лака',
-        color: 0x140d0c,
-        target: 140
-      }
-    ],
-    reward: 240
+    baseValue: 270,
+    canBreak: true,
+    breakType: 'shard_mask_fang',
+    breakTitle: 'Вклеить выбитый клык Они'
   },
   {
-    id: 'japan_netsuke',
-    eraId: 'japan',
-    eraName: 'Феодальная Япония',
+    templateId: 'japan_netsuke',
+    regionId: 'japan',
     name: 'Нэцкэ «Дракон»',
-    museumDesc: 'Резная миниатюра из кости с янтарными глазами.',
+    museumDesc: 'Миниатюра из моржовой кости с янтарем.',
     textureKey: 'art_japan_netsuke',
-    tasks: [
-      {
-        type: 'clean',
-        id: 'dust',
-        name: 'Вычистить спрессованную пыль из чешуи',
-        requiredTool: 'tool_scraper',
-        hint: 'Используйте СКРЕБОК для глубоких пазов кости',
-        color: 0x4a4336,
-        target: 200
-      },
-      {
-        type: 'clean',
-        id: 'wash',
-        name: 'Промыть рельеф мыльной пеной',
-        requiredTool: 'tool_solvent',
-        hint: 'Используйте РАСТВОРИТЕЛЬ для пор слоновой кости',
-        color: 0x2e2a22,
-        target: 150
-      },
-      {
-        type: 'clean',
-        id: 'polish',
-        name: 'Шелковая полировка кости до фарфора',
-        requiredTool: 'tool_polish',
-        hint: 'Используйте ЗАМШУ для матового теплого сияния',
-        color: 0x1c1913,
-        target: 120
-      }
-    ],
-    reward: 210
+    baseValue: 200,
+    canBreak: false
+  },
+
+  // --- МЕЗОАМЕРИКА (НОВАЯ ЗОНА) ---
+  {
+    templateId: 'meso_mask',
+    regionId: 'mesoamerica',
+    name: 'Нефритовая маска Пакаля',
+    museumDesc: 'Мозаика из пластин императорского нефрита и раковин.',
+    textureKey: 'art_meso_mask',
+    baseValue: 310,
+    canBreak: true,
+    breakType: 'shard_jade_piece',
+    breakTitle: 'Вставить расколотую нефритовую мозаику'
+  },
+  {
+    templateId: 'meso_disk',
+    regionId: 'mesoamerica',
+    name: 'Солярный диск Тонатиу',
+    museumDesc: 'Базальтовый календарный диск с ликом бога солнца.',
+    textureKey: 'art_meso_disk',
+    baseValue: 290,
+    canBreak: false
+  },
+  {
+    templateId: 'meso:dagger',
+    regionId: 'mesoamerica',
+    name: 'Кинжал из обсидиана',
+    museumDesc: 'Жертвенный нож с рукоятью в виде крадущегося ягуара.',
+    textureKey: 'art_meso_dagger',
+    baseValue: 260,
+    canBreak: true,
+    breakType: 'shard_dagger_blade',
+    breakTitle: 'Склеить расколотый вулканический скол'
   }
 ];
+
+// Генератор уникального процедурного заказа с рандомизацией дефектов
+export function generateArtifactOrder(preferredRegionId = null, excludeTemplateIds = []) {
+  let pool = ARTIFACT_TEMPLATES.filter(t => !excludeTemplateIds.includes(t.templateId));
+  if (preferredRegionId) {
+    const regionPool = pool.filter(t => t.regionId === preferredRegionId);
+    if (regionPool.length > 0) pool = regionPool;
+  }
+  if (pool.length === 0) pool = ARTIFACT_TEMPLATES;
+
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  const region = REGIONS.find(r => r.id === t.regionId);
+
+  // Рандомизация степени загрязнения
+  const dirtSeverity = 0.8 + Math.random() * 0.7; // 80% .. 150%
+  const hasBreakage = t.canBreak && (Math.random() < 0.65); // 65% шанс поломки
+
+  // Процедурные задачи под конкретное состояние
+  const tasks = [];
+
+  // Задача 1: Грубая зачистка
+  tasks.push({
+    type: 'clean',
+    name: 'Снять пласт окаменевшей породы',
+    requiredTool: 'tool_scraper',
+    hint: 'Используйте СКРЕБОК против грубого панциря',
+    color: 0x826d4b,
+    target: Math.round(200 * dirtSeverity)
+  });
+
+  // Задача 2: Химическая ванна / растворение
+  tasks.push({
+    type: 'clean',
+    name: 'Нейтрализовать окислы и нагар',
+    requiredTool: 'tool_solvent',
+    hint: 'Используйте РАСТВОРИТЕЛЬ для микропор',
+    color: 0x3d473d,
+    target: Math.round(170 * dirtSeverity)
+  });
+
+  // Задача 3 (Опционально): Склейка реального отломанного фрагмента
+  if (hasBreakage) {
+    tasks.push({
+      type: 'assemble',
+      name: t.breakTitle,
+      requiredTool: 'tool_glue',
+      hint: 'Нанесите КЛЕЙ по контуру, затем совместите осколок в паз',
+      shardTexture: t.breakType
+    });
+  }
+
+  // Задача 4: Финишная полировка
+  tasks.push({
+    type: 'clean',
+    name: 'Зеркальная полировка поверхности',
+    requiredTool: 'tool_polish',
+    hint: 'Используйте ЗАМШУ для глубокого блеска',
+    color: 0x221f1d,
+    target: Math.round(140 * dirtSeverity)
+  });
+
+  return {
+    instanceId: `art_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    templateId: t.templateId,
+    regionId: t.regionId,
+    regionName: region.name,
+    name: t.name,
+    museumDesc: t.museumDesc,
+    textureKey: t.textureKey,
+    hasBreakage,
+    marketValue: Math.round(t.baseValue * dirtSeverity * (hasBreakage ? 1.35 : 1.0)),
+    tasks
+  };
+}
