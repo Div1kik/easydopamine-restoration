@@ -1,5 +1,6 @@
 import { ARTIFACTS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
+import { AudioManager } from '../utils/AudioManager.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -23,6 +24,9 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     });
 
+    // Кнопка Mute в правом верхнем углу
+    this.createMuteButton(width - 36, 36);
+
     // Заголовки
     this.add.text(width / 2, 70, this.artifactData.eraName.toUpperCase(), {
       fontSize: '14px',
@@ -38,7 +42,7 @@ export class RestoreScene extends Phaser.Scene {
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    // Размеры и координаты
+    // Координаты и холст
     const artW = 300;
     const artH = 400;
     const centerX = width / 2;
@@ -46,10 +50,8 @@ export class RestoreScene extends Phaser.Scene {
     const topLeftX = centerX - artW / 2;
     const topLeftY = centerY - artH / 2;
 
-    // Чистый артефакт
     this.cleanArt = this.add.image(centerX, centerY, this.artifactData.textureKey);
 
-    // Слой загрязнения
     this.dirtLayer = this.add.renderTexture(topLeftX, topLeftY, artW, artH).setOrigin(0, 0);
 
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -67,7 +69,7 @@ export class RestoreScene extends Phaser.Scene {
     this.dirtLayer.draw(dirtGfx, 0, 0);
     dirtGfx.destroy();
 
-    // Эмиттер частиц пыли (под цвет грязи)
+    // Частицы
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 250, max: 450 },
       speed: { min: 60, max: 140 },
@@ -76,30 +78,28 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     });
 
-    // Инструмент в руках игрока (смещен чуть выше пальца для видимости)
+    // Инструмент
     this.toolSprite = this.add.image(centerX, centerY, 'tool_brush');
     this.toolSprite.setOrigin(0.5, 0.95);
     this.toolSprite.setScale(0.8);
-    this.toolSprite.setAlpha(0); // Появляется только при касании
+    this.toolSprite.setAlpha(0);
 
     // Прогресс
     this.cleanedPixels = 0;
     this.totalStepsTarget = 240;
     this.isCompleted = false;
 
-    // Прогресс-бар
     const barWidth = width * 0.7;
     this.add.rectangle(width / 2, height - 60, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Логика стирания
+    // Стирание и звук
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isCompleted) return;
 
       this.toolSprite.setPosition(pointer.x, pointer.y - 15);
       this.toolSprite.setAlpha(1);
 
-      // Легкий наклон инструмента в сторону движения
       const dx = pointer.x - pointer.prevPosition.x;
       this.toolSprite.setAngle(Phaser.Math.Clamp(dx * 2.5, -20, 20));
 
@@ -110,22 +110,33 @@ export class RestoreScene extends Phaser.Scene {
         this.dirtLayer.erase('brush', localX, localY);
         this.cleanedPixels++;
 
-        // Выброс частиц из-под кончика кисти
+        AudioManager.playScrub();
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
         this.updateProgress();
       }
     };
 
-    this.input.on('pointerdown', (pointer) => {
-      processScrubbing(pointer);
-    });
-
-    this.input.on('pointermove', (pointer) => {
-      processScrubbing(pointer);
-    });
-
+    this.input.on('pointerdown', processScrubbing);
+    this.input.on('pointermove', processScrubbing);
     this.input.on('pointerup', () => {
       this.toolSprite.setAlpha(0);
+    });
+  }
+
+  createMuteButton(x, y) {
+    const btn = this.add.image(x, y, 'icon_speaker').setInteractive({ useHandCursor: true });
+    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xe74c3c, 3).setOrigin(0);
+
+    const updateIcon = () => {
+      line.setVisible(Storage.isMuted());
+      btn.setAlpha(Storage.isMuted() ? 0.5 : 1);
+    };
+
+    updateIcon();
+
+    btn.on('pointerdown', () => {
+      Storage.toggleMute();
+      updateIcon();
     });
   }
 
@@ -137,11 +148,10 @@ export class RestoreScene extends Phaser.Scene {
     if (ratio >= 1 && !this.isCompleted) {
       this.isCompleted = true;
       this.toolSprite.setAlpha(0);
-
-      // Полное стирание остатков и победная вспышка
       this.dirtLayer.clear();
 
-      // Дофаминовый блеск: волна света по артефакту
+      AudioManager.playCoin();
+
       const flash = this.add.rectangle(
         this.cleanArt.x,
         this.cleanArt.y,
