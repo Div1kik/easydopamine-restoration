@@ -18,40 +18,52 @@ class AudioManagerClass {
     }
   }
 
-  // Шорох очистки кистью
+  // Мягкий ASMR-шелест кисти без треска
   playScrub() {
     if (Storage.isMuted()) return;
     this.init();
     if (!this.ctx) return;
 
     const now = performance.now();
-    if (now - this.lastScrubTime < 70) return; // Троттлинг, чтобы не перегружать звук
+    if (now - this.lastScrubTime < 80) return; // Плавный темп без перекрытия
     this.lastScrubTime = now;
 
-    const bufferSize = this.ctx.sampleRate * 0.04;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const output = buffer.getChannelData(0);
+    // Генерируем 70 мс мягкого шума
+    const sampleRate = this.ctx.sampleRate;
+    const duration = 0.07;
+    const bufferSize = Math.floor(sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, bufferSize, sampleRate);
+    const data = buffer.getChannelData(0);
+
+    let lastVal = 0;
     for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
+      // Броуновский/сглаженный шум вместо жесткого белого
+      const white = Math.random() * 2 - 1;
+      data[i] = (lastVal + (0.04 * white)) / 1.04;
+      lastVal = data[i];
+      data[i] *= 3.5;
     }
 
-    const whiteNoise = this.ctx.createBufferSource();
-    whiteNoise.buffer = buffer;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
 
+    // Мягкий срез высоких частот (lowpass фильтр)
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 1400;
-    filter.Q.value = 2.0;
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(750, this.ctx.currentTime);
 
+    // Очень плавная огибающая звука (шелест вдоха-выдоха)
     const gainNode = this.ctx.createGain();
-    gainNode.gain.setValueAtTime(0.06, this.ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+    const t = this.ctx.currentTime;
+    gainNode.gain.setValueAtTime(0.001, t);
+    gainNode.gain.linearRampToValueAtTime(0.08, t + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + duration);
 
-    whiteNoise.connect(filter);
+    noise.connect(filter);
     filter.connect(gainNode);
     gainNode.connect(this.ctx.destination);
 
-    whiteNoise.start();
+    noise.start(t);
   }
 
   // Звон монет
@@ -64,8 +76,8 @@ class AudioManagerClass {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(987.77, this.ctx.currentTime); // B5
-    osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08); // E6
+    osc.frequency.setValueAtTime(987.77, this.ctx.currentTime);
+    osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08);
 
     gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
@@ -83,7 +95,7 @@ class AudioManagerClass {
     this.init();
     if (!this.ctx) return;
 
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C - E - G - C
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
