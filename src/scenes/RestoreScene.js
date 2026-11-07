@@ -1,3 +1,4 @@
+import { TOOL_SHOP_ITEMS } from '../data/tools.js';
 import { ARTIFACTS, ERAS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
@@ -169,7 +170,14 @@ export class RestoreScene extends Phaser.Scene {
 
       if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
-        this.cleanedSteps += 2;
+        // Учитываем прокачку текущего экипированного инструмента
+        const equippedMap = Storage.getEquippedTools();
+        const equippedId = equippedMap[currentTask.requiredTool];
+        const toolSpec = TOOL_SHOP_ITEMS.find(t => t.id === equippedId);
+        const powerMultiplier = toolSpec ? toolSpec.powerMultiplier : 1.0;
+
+        this.dirtLayer.erase(this.activeMaskKey, localX, localY);
+        this.cleanedSteps += (2 * powerMultiplier);
 
         if (this.activeTool === 'tool_scraper') AudioManager.playScrub();
         else if (this.activeTool === 'tool_solvent') AudioManager.playWash();
