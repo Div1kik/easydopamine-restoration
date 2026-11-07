@@ -1,5 +1,6 @@
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
+import { EraSelectScene } from './scenes/EraSelectScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { RestoreScene } from './scenes/RestoreScene.js';
 import { VictoryScene } from './scenes/VictoryScene.js';
@@ -9,7 +10,7 @@ import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  backgroundColor: '#161311',
+  backgroundColor: '#141210',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -19,6 +20,7 @@ const config = {
   scene: [
     BootScene,
     MenuScene,
+    EraSelectScene,
     ShopScene,
     RestoreScene,
     VictoryScene,
