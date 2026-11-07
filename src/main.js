@@ -17,6 +17,12 @@ const config = {
     width: 480,
     height: 800
   },
+  input: {
+    activePointers: 3,
+    touch: {
+      capture: true
+    }
+  },
   scene: [
     BootScene,
     MenuScene,
