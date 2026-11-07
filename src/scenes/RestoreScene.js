@@ -1,4 +1,5 @@
 import { ARTIFACTS } from '../data/artifacts.js';
+import { TOOLS } from '../data/tools.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -12,12 +13,20 @@ export class RestoreScene extends Phaser.Scene {
     const currentIdx = Storage.getCurrentLevelIndex();
     this.artifactData = ARTIFACTS[currentIdx] || ARTIFACTS[0];
 
+    // Получаем текущую экипированную кисть
+    const equippedToolId = Storage.getEquippedTool();
+    this.currentTool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
+
     // Фон рабочей зоны
     this.add.rectangle(width / 2, height / 2, width, height, 0x1f1b18);
 
-    // Верхний интерфейс
+    // Кнопка выхода в главное меню слева
+    const homeBtn = this.add.image(36, 36, 'icon_home').setInteractive({ useHandCursor: true });
+    homeBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+
+    // Монеты по центру-слева
     const coins = Storage.getCoins();
-    this.coinsText = this.add.text(24, 28, `Золото: ${coins}`, {
+    this.coinsText = this.add.text(70, 26, `${coins}`, {
       fontSize: '20px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
@@ -78,14 +87,16 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     });
 
-    // Инструмент
-    this.toolSprite = this.add.image(centerX, centerY, 'tool_brush');
+    // Спрайт экипированного инструмента
+    this.toolSprite = this.add.image(centerX, centerY, this.currentTool.textureKey);
     this.toolSprite.setOrigin(0.5, 0.95);
-    this.toolSprite.setScale(0.8);
+    this.toolSprite.setScale(0.85);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс
+    // Прогресс (с учетом радиуса кисти)
     this.cleanedPixels = 0;
+    // Чем шире кисть, тем быстрее заполняется цель
+    this.stepWeight = Math.round(this.currentTool.brushRadius / 25);
     this.totalStepsTarget = 240;
     this.isCompleted = false;
 
@@ -93,7 +104,7 @@ export class RestoreScene extends Phaser.Scene {
     this.add.rectangle(width / 2, height - 60, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Стирание и звук
+    // Стирание
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isCompleted) return;
 
@@ -107,10 +118,17 @@ export class RestoreScene extends Phaser.Scene {
       const localY = pointer.y - topLeftY;
 
       if (localX >= 0 && localX <= artW && localY >= 0 && localY <= artH) {
-        this.dirtLayer.erase('brush', localX, localY);
-        this.cleanedPixels++;
+        // Стираем маской выбранной кисти
+        this.dirtLayer.erase(this.currentTool.maskKey, localX, localY);
+        this.cleanedPixels += this.stepWeight;
 
         AudioManager.playScrub();
+
+        // Микровибрация при наличии поддержки на смартфоне
+        if (navigator.vibrate && Math.random() < 0.25) {
+          navigator.vibrate(8);
+        }
+
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
         this.updateProgress();
       }
