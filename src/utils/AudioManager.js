@@ -18,7 +18,6 @@ class AudioManagerClass {
     }
   }
 
-  // ASMR-шелест кисти
   playScrub() {
     if (Storage.isMuted()) return;
     this.init();
@@ -62,7 +61,6 @@ class AudioManagerClass {
     noise.start(t);
   }
 
-  // Губка
   playWash() {
     if (Storage.isMuted()) return;
     this.init();
@@ -89,7 +87,6 @@ class AudioManagerClass {
     osc.stop(t + 0.06);
   }
 
-  // Замша
   playCloth() {
     if (Storage.isMuted()) return;
     this.init();
@@ -116,7 +113,29 @@ class AudioManagerClass {
     osc.stop(t + 0.05);
   }
 
-  // Ультразвуковой бустер (Dopamine Wave)
+  // Кристальный «дзынь» при финишном блеске
+  playShine() {
+    if (Storage.isMuted()) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+
+    const t = this.ctx.currentTime;
+    osc.frequency.setValueAtTime(2093, t); // C7
+    osc.frequency.exponentialRampToValueAtTime(2637, t + 0.25); // E7
+
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  }
+
   playPulse() {
     if (Storage.isMuted()) return;
     this.init();
@@ -141,7 +160,6 @@ class AudioManagerClass {
     osc.stop(t + 0.45);
   }
 
-  // Звон монет
   playCoin() {
     if (Storage.isMuted()) return;
     this.init();
@@ -164,7 +182,6 @@ class AudioManagerClass {
     osc.stop(this.ctx.currentTime + 0.35);
   }
 
-  // Победный аккорд
   playVictory() {
     if (Storage.isMuted()) return;
     this.init();
@@ -187,6 +204,30 @@ class AudioManagerClass {
 
       osc.start(startTime);
       osc.stop(startTime + 0.6);
+    });
+  }
+
+  // Торжественный фанфарный аккорд при открытии эпохи
+  playEraUnlock() {
+    if (Storage.isMuted()) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const notes = [440, 554.37, 659.25, 880, 1108.73]; // A Major арпеджио
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+
+      const t = this.ctx.currentTime + idx * 0.09;
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.7);
     });
   }
 }
