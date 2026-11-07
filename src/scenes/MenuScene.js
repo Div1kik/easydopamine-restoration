@@ -8,19 +8,20 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const tier = Storage.getWorkshopTier();
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
 
+    // Глубокий монолитный фон кабинета
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // Панель логотипа (дымчатое стекло + золото)
-    this.add.rectangle(width / 2, height * 0.23, width * 0.88, 150, 0x0f172a, 0.75)
-      .setStrokeStyle(2, 0xd4af37, 0.9)
+    // Панель заголовка (матовый графит с мягким золотым тиснением)
+    this.add.rectangle(width / 2, height * 0.23, width * 0.88, 150, 0x0c0f14, 0.88)
+      .setStrokeStyle(1.5, 0xc5a059, 0.85)
       .setDepth(1);
 
     this.add.text(width / 2, height * 0.17, 'EASY DOPAMINE GAMES', {
-      fontSize: '12px',
+      fontSize: '11px',
       fontFamily: 'sans-serif',
-      color: '#f59e0b',
+      color: '#d97706',
       fontStyle: 'bold',
       letterSpacing: 4
     }).setOrigin(0.5).setDepth(2);
@@ -28,18 +29,17 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(width / 2, height * 0.24, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
       fontSize: '28px',
       fontFamily: 'sans-serif',
-      color: '#ffffff',
+      color: '#f8fafc',
       fontStyle: 'bold',
       align: 'center',
       lineSpacing: 4
     }).setOrigin(0.5).setDepth(2);
 
-    // Прогресс мастера
     const coins = Storage.getCoins();
-    const lvl = Storage.getMasterLevel();
+    const lvl = Storage.getMasterLevel ? Storage.getMasterLevel() : 1;
     const tierNames = ['', 'Сырой подвал', 'Лавка древностей', 'Гильдия мастеров', 'Императорский музей'];
 
-    this.add.text(width / 2, height * 0.36, `Мастер ${lvl} уровня  •  ${tierNames[tier]}`, {
+    this.add.text(width / 2, height * 0.36, `Мастер ${lvl} ранга  •  ${tierNames[tier]}`, {
       fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#94a3b8'
@@ -52,16 +52,16 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(2);
 
-    // Кнопки интерфейса
-    this.createMenuButton(width / 2, height * 0.52, 'ВЕРСТАК МАСТЕРА', 0x16a34a, () => {
+    // Кнопки интерфейса с мягким свечением
+    this.createMenuButton(width / 2, height * 0.52, 'ВЕРСТАК МАСТЕРА', 0x15803d, () => {
       this.scene.start('EraSelectScene');
     });
 
-    this.createMenuButton(width / 2, height * 0.61, 'МАСТЕРСКАЯ И ЛАВКА', 0xd97706, () => {
+    this.createMenuButton(width / 2, height * 0.61, 'МАСТЕРСКАЯ И ЛАВКА', 0xb45309, () => {
       this.scene.start('ShopScene');
     });
 
-    this.createMenuButton(width / 2, height * 0.70, 'ВИТРИНА РЕДКОСТЕЙ', 0x2563eb, () => {
+    this.createMenuButton(width / 2, height * 0.70, 'ВИТРИНА РЕДКОСТЕЙ', 0x1d4ed8, () => {
       this.scene.start('MuseumScene');
     });
 
@@ -70,12 +70,12 @@ export class MenuScene extends Phaser.Scene {
 
   createMenuButton(x, y, text, color, onClick) {
     const btn = this.add.rectangle(x, y, 260, 52, color, 0.95)
-      .setStrokeStyle(1.5, 0xffffff, 0.4)
+      .setStrokeStyle(1.5, 0xffffff, 0.35)
       .setInteractive({ useHandCursor: true })
       .setDepth(5);
 
     this.add.text(x, y, text, {
-      fontSize: '15px',
+      fontSize: '14px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
