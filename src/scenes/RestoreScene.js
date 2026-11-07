@@ -1,4 +1,4 @@
-import { ARTIFACTS } from '../data/artifacts.js';
+import { ARTIFACTS, ERAS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -12,14 +12,18 @@ export class RestoreScene extends Phaser.Scene {
     const currentIdx = Storage.getCurrentLevelIndex();
     this.artifactData = ARTIFACTS[currentIdx] || ARTIFACTS[0];
 
+    // Безопасное определение названия эпохи
+    const matchedEra = ERAS.find(e => e.id === this.artifactData.eraId);
+    const displayEraName = (this.artifactData.eraName || (matchedEra ? matchedEra.name : 'ЭПОХА')).toUpperCase();
+
     this.currentTaskIndex = 0;
     this.activeTool = 'tool_scraper';
     this.lastTouchPos = null;
 
-    // Фоновый верстак
+    // Фон верстака
     this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
-    // Домой
+    // Кнопка назад в выбор уровней
     const homeBtn = this.add.image(36, 36, 'icon_home')
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
@@ -35,8 +39,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.createMuteButton(width - 36, 36);
 
-    // Заголовки
-    this.add.text(width / 2, 65, this.artifactData.eraName.toUpperCase(), {
+    // Заголовки (теперь строго безопасные)
+    this.add.text(width / 2, 65, displayEraName, {
       fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#e67e22',
@@ -44,7 +48,7 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(20);
 
-    this.add.text(width / 2, 88, this.artifactData.name, {
+    this.add.text(width / 2, 88, this.artifactData.name || 'Артефакт', {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
@@ -77,13 +81,13 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(3);
 
     // Маска грязи строго по силуэту
-    const maskGfx = this.make.image({
+    const maskImage = this.make.image({
       x: this.centerX,
       y: this.centerY,
       key: this.artifactData.textureKey,
       add: false
     });
-    this.dirtLayer.setMask(maskGfx.createBitmapMask());
+    this.dirtLayer.setMask(maskImage.createBitmapMask());
 
     // Частицы
     this.particles = this.add.particles(0, 0, 'particle_dust', {
@@ -93,7 +97,7 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     }).setDepth(5);
 
-    // Инструмент
+    // Инструмент под пальцем
     this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper')
       .setOrigin(0.5, 0.95)
       .setScale(0.7)
@@ -107,17 +111,15 @@ export class RestoreScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(11);
 
-    // Интерактивный лоток инструментов
+    // Лоток инструментов
     this.createToolsTray(height * 0.83);
 
     // Старт первой задачи
     this.startTask(0);
 
-    // Логика стирания с жестким ограничением зоны (только по верстаку, не по кнопкам)
+    // Логика стирания
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
-
-      // Игнорируем тапы в зоне лотка инструментов (ниже 75% экрана)
       if (pointer.y > height * 0.74) return;
 
       if (!this.lastTouchPos) {
