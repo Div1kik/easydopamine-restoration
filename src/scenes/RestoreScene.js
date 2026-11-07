@@ -7,7 +7,7 @@ export class RestoreScene extends Phaser.Scene {
     super('RestoreScene');
   }
 
-  create(data) {
+  create(da
     const { width, height } = this.scale;
 
     const history = (Storage.getRecentHistory && typeof Storage.getRecentHistory === 'function') 
