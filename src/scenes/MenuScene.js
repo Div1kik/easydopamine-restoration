@@ -1,4 +1,5 @@
 import { Storage } from '../utils/Storage.js';
+import { AudioManager } from '../utils/AudioManager.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -7,98 +8,96 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    const tier = Storage.getWorkshopTier();
 
-    this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
+    this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // Панель логотипа
-    this.add.rectangle(width / 2, height * 0.23, width * 0.86, 150, 0x1f1b18, 0.9)
-      .setStrokeStyle(2, 0xd4af37, 0.5)
+    // Панель логотипа (дымчатое стекло + золото)
+    this.add.rectangle(width / 2, height * 0.23, width * 0.88, 150, 0x0f172a, 0.75)
+      .setStrokeStyle(2, 0xd4af37, 0.9)
       .setDepth(1);
 
     this.add.text(width / 2, height * 0.17, 'EASY DOPAMINE GAMES', {
-      fontSize: '13px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
-      color: '#e67e22',
+      color: '#f59e0b',
       fontStyle: 'bold',
-      letterSpacing: 3
+      letterSpacing: 4
     }).setOrigin(0.5).setDepth(2);
 
     this.add.text(width / 2, height * 0.24, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
       fontSize: '28px',
       fontFamily: 'sans-serif',
-      color: '#f5f6fa',
+      color: '#ffffff',
       fontStyle: 'bold',
-      align: 'center'
+      align: 'center',
+      lineSpacing: 4
     }).setOrigin(0.5).setDepth(2);
 
-    // Уровень мастера и монеты
+    // Прогресс мастера
     const coins = Storage.getCoins();
     const lvl = Storage.getMasterLevel();
-    const tier = Storage.getWorkshopTier();
-    const tierNames = ['', 'Подвал мастера', 'Лавка древностей', 'Гильдия реставраторов', 'Императорский музей'];
+    const tierNames = ['', 'Сырой подвал', 'Лавка древностей', 'Гильдия мастеров', 'Императорский музей'];
 
-    this.add.text(width / 2, height * 0.36, `Мастер ${lvl} уровня  |  ${tierNames[tier]}`, {
+    this.add.text(width / 2, height * 0.36, `Мастер ${lvl} уровня  •  ${tierNames[tier]}`, {
       fontSize: '13px',
       fontFamily: 'sans-serif',
-      color: '#bdc3c7'
+      color: '#94a3b8'
     }).setOrigin(0.5).setDepth(2);
 
-    this.add.text(width / 2, height * 0.40, `Баланс: ${coins} золота`, {
-      fontSize: '18px',
+    this.add.text(width / 2, height * 0.40, `Казна: ${coins} золота`, {
+      fontSize: '19px',
       fontFamily: 'sans-serif',
-      color: '#f1c40f',
+      color: '#facc15',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(2);
 
-    // 1. ВЕРСТАК (ВЫБОР ЭПОХИ)
-    const playBtn = this.add.rectangle(width / 2, height * 0.51, 260, 52, 0x27ae60)
-      .setInteractive({ useHandCursor: true }).setDepth(5);
-    this.add.text(width / 2, height * 0.51, 'ВЕРСТАК МАСТЕРА', {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(6);
-    playBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
+    // Кнопки интерфейса
+    this.createMenuButton(width / 2, height * 0.52, 'ВЕРСТАК МАСТЕРА', 0x16a34a, () => {
+      this.scene.start('EraSelectScene');
+    });
 
-    // 2. МАСТЕРСКАЯ И МАГАЗИН (Апгрейды и новые инструменты)
-    const shopBtn = this.add.rectangle(width / 2, height * 0.60, 260, 52, 0xd35400)
-      .setInteractive({ useHandCursor: true }).setDepth(5);
-    this.add.text(width / 2, height * 0.60, 'МАСТЕРСКАЯ И ЛАВКА', {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(6);
-    shopBtn.on('pointerdown', () => this.scene.start('ShopScene'));
+    this.createMenuButton(width / 2, height * 0.61, 'МАСТЕРСКАЯ И ЛАВКА', 0xd97706, () => {
+      this.scene.start('ShopScene');
+    });
 
-    // 3. МУЗЕЙНАЯ ВИТРИНА
-    const museumBtn = this.add.rectangle(width / 2, height * 0.69, 260, 52, 0x2c3e50)
-      .setInteractive({ useHandCursor: true }).setDepth(5);
-    this.add.text(width / 2, height * 0.69, 'МУЗЕЙНАЯ ВИТРИНА', {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
-      color: '#ecf0f1',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(6);
-    museumBtn.on('pointerdown', () => this.scene.start('MuseumScene'));
+    this.createMenuButton(width / 2, height * 0.70, 'ВИТРИНА РЕДКОСТЕЙ', 0x2563eb, () => {
+      this.scene.start('MuseumScene');
+    });
 
     this.createMuteButton(width - 36, 36);
   }
 
+  createMenuButton(x, y, text, color, onClick) {
+    const btn = this.add.rectangle(x, y, 260, 52, color, 0.95)
+      .setStrokeStyle(1.5, 0xffffff, 0.4)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(5);
+
+    this.add.text(x, y, text, {
+      fontSize: '15px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      letterSpacing: 1
+    }).setOrigin(0.5).setDepth(6);
+
+    btn.on('pointerdown', onClick);
+  }
+
   createMuteButton(x, y) {
     const btn = this.add.image(x, y, 'icon_speaker').setInteractive({ useHandCursor: true }).setDepth(10);
-    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xe74c3c, 3).setOrigin(0).setDepth(11);
+    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xef4444, 3).setOrigin(0).setDepth(11);
 
     const updateIcon = () => {
       line.setVisible(Storage.isMuted());
-      btn.setAlpha(Storage.isMuted() ? 0.5 : 1);
+      btn.setAlpha(Storage.isMuted() ? 0.4 : 1);
     };
 
     updateIcon();
 
     btn.on('pointerdown', () => {
-      Storage.toggleMute();
+      AudioManager.toggleMute();
       updateIcon();
     });
   }
