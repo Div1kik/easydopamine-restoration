@@ -6,16 +6,13 @@ export class BootScene extends Phaser.Scene {
   create() {
     // 1. ЕГИПЕТ: Золотой скарабей с лазуритом
     const scarab = this.make.graphics({ x: 0, y: 0, add: false });
-    // Крылья и тело
     scarab.fillStyle(0xd4af37, 1);
     scarab.fillEllipse(150, 200, 160, 220);
-    scarab.fillStyle(0x1a5276, 1); // Лазуритовый центр
+    scarab.fillStyle(0x1a5276, 1);
     scarab.fillEllipse(150, 190, 80, 140);
-    // Голова и лапки
     scarab.fillStyle(0xb7950b, 1);
     scarab.fillCircle(150, 80, 35);
     scarab.lineStyle(12, 0x9a7d0a, 1);
-    // Лапы
     scarab.strokeLineShape(new Phaser.Geom.Line(90, 120, 30, 90));
     scarab.strokeLineShape(new Phaser.Geom.Line(210, 120, 270, 90));
     scarab.strokeLineShape(new Phaser.Geom.Line(70, 200, 20, 210));
@@ -48,7 +45,7 @@ export class BootScene extends Phaser.Scene {
 
     // 3. ЕВРОПА: Стальной рыцарский щит
     const shield = this.make.graphics({ x: 0, y: 0, add: false });
-    shield.fillStyle(0x7f8c8d, 1); // Полированная сталь
+    shield.fillStyle(0x7f8c8d, 1);
     shield.beginPath();
     shield.moveTo(50, 60);
     shield.lineTo(250, 60);
@@ -57,21 +54,47 @@ export class BootScene extends Phaser.Scene {
     shield.lineTo(50, 220);
     shield.closePath();
     shield.fillPath();
-    // Окантовка и золотой геральдический крест
     shield.lineStyle(10, 0xbdc3c7, 1);
     shield.strokePath();
-    shield.fillStyle(0xc0392b, 1); // Красное знамя внутри
+    shield.fillStyle(0xc0392b, 1);
     shield.fillRect(135, 75, 30, 200);
     shield.fillRect(80, 140, 140, 30);
     shield.generateTexture('art_europe_shield', 300, 400);
     shield.destroy();
 
-    // 4. Кисть для очистки
-    const brush = this.make.graphics({ x: 0, y: 0, add: false });
-    brush.fillStyle(0xffffff, 1);
-    brush.fillCircle(30, 30, 30);
-    brush.generateTexture('brush', 60, 60);
-    brush.destroy();
+    // 4. Пятно ластика (для маски RenderTexture)
+    const brushMask = this.make.graphics({ x: 0, y: 0, add: false });
+    brushMask.fillStyle(0xffffff, 1);
+    brushMask.fillCircle(35, 35, 35);
+    brushMask.generateTexture('brush', 70, 70);
+    brushMask.destroy();
+
+    // 5. Видимый инструмент: Реставрационная кисть
+    const brushTool = this.make.graphics({ x: 0, y: 0, add: false });
+    // Деревянная ручка
+    brushTool.fillStyle(0x8e5d34, 1);
+    brushTool.fillRoundedRect(32, 0, 16, 75, 6);
+    // Металлический ободок
+    brushTool.fillStyle(0xbdc3c7, 1);
+    brushTool.fillRect(28, 70, 24, 15);
+    // Щетина
+    brushTool.fillStyle(0xecd8a5, 1);
+    brushTool.beginPath();
+    brushTool.moveTo(28, 85);
+    brushTool.lineTo(52, 85);
+    brushTool.lineTo(58, 115);
+    brushTool.lineTo(22, 115);
+    brushTool.closePath();
+    brushTool.fillPath();
+    brushTool.generateTexture('tool_brush', 80, 120);
+    brushTool.destroy();
+
+    // 6. Частица пыли/грязи
+    const dust = this.make.graphics({ x: 0, y: 0, add: false });
+    dust.fillStyle(0xffffff, 1);
+    dust.fillCircle(4, 4, 4);
+    dust.generateTexture('particle_dust', 8, 8);
+    dust.destroy();
 
     this.scene.start('RestoreScene');
   }
