@@ -37,4 +37,28 @@ export class Storage {
     this.set('level_index', next);
     return next;
   }
+
+  // Коллекция открытых артефактов
+  static unlockArtifact(id) {
+    const unlocked = this.get('unlocked_artifacts', []);
+    if (!unlocked.includes(id)) {
+      unlocked.push(id);
+      this.set('unlocked_artifacts', unlocked);
+    }
+  }
+
+  static getUnlockedArtifacts() {
+    return this.get('unlocked_artifacts', []);
+  }
+
+  // Состояние звука
+  static isMuted() {
+    return this.get('sound_muted', false);
+  }
+
+  static toggleMute() {
+    const state = !this.isMuted();
+    this.set('sound_muted', state);
+    return state;
+  }
 }
