@@ -18,7 +18,7 @@ class AudioManagerClass {
     }
   }
 
-  // Мягкий ASMR-шелест кисти
+  // ASMR-шелест кисти
   playScrub() {
     if (Storage.isMuted()) return;
     this.init();
@@ -62,7 +62,7 @@ class AudioManagerClass {
     noise.start(t);
   }
 
-  // Влажная губка / промывка
+  // Губка
   playWash() {
     if (Storage.isMuted()) return;
     this.init();
@@ -77,8 +77,7 @@ class AudioManagerClass {
     osc.type = 'sine';
 
     const t = this.ctx.currentTime;
-    const startFreq = 260 + Math.random() * 120;
-    osc.frequency.setValueAtTime(startFreq, t);
+    osc.frequency.setValueAtTime(280 + Math.random() * 100, t);
     osc.frequency.exponentialRampToValueAtTime(140, t + 0.06);
 
     gain.gain.setValueAtTime(0.04, t);
@@ -90,7 +89,7 @@ class AudioManagerClass {
     osc.stop(t + 0.06);
   }
 
-  // Мягкая замшевая полировка
+  // Замша
   playCloth() {
     if (Storage.isMuted()) return;
     this.init();
@@ -115,6 +114,31 @@ class AudioManagerClass {
     gain.connect(this.ctx.destination);
     osc.start(t);
     osc.stop(t + 0.05);
+  }
+
+  // Ультразвуковой бустер (Dopamine Wave)
+  playPulse() {
+    if (Storage.isMuted()) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+
+    const t = this.ctx.currentTime;
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.2);
+    osc.frequency.exponentialRampToValueAtTime(440, t + 0.45);
+
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.45);
   }
 
   // Звон монет
