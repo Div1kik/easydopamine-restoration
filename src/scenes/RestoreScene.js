@@ -23,7 +23,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     });
 
-    // Название текущей эпохи и артефакта (по центру)
+    // Заголовки
     this.add.text(width / 2, 70, this.artifactData.eraName.toUpperCase(), {
       fontSize: '14px',
       fontFamily: 'sans-serif',
@@ -38,7 +38,7 @@ export class RestoreScene extends Phaser.Scene {
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    // Габариты и точные координаты артефакта
+    // Размеры и координаты
     const artW = 300;
     const artH = 400;
     const centerX = width / 2;
@@ -46,10 +46,10 @@ export class RestoreScene extends Phaser.Scene {
     const topLeftX = centerX - artW / 2;
     const topLeftY = centerY - artH / 2;
 
-    // 1. Чистый артефакт (базовый слой)
-    this.add.image(centerX, centerY, this.artifactData.textureKey);
+    // Чистый артефакт
+    this.cleanArt = this.add.image(centerX, centerY, this.artifactData.textureKey);
 
-    // 2. Слой загрязнения: привязываем origin к (0, 0), чтобы он сидел ровно на объекте
+    // Слой загрязнения
     this.dirtLayer = this.add.renderTexture(topLeftX, topLeftY, artW, artH).setOrigin(0, 0);
 
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -67,33 +67,66 @@ export class RestoreScene extends Phaser.Scene {
     this.dirtLayer.draw(dirtGfx, 0, 0);
     dirtGfx.destroy();
 
-    // Параметры прогресса
+    // Эмиттер частиц пыли (под цвет грязи)
+    this.particles = this.add.particles(0, 0, 'particle_dust', {
+      lifespan: { min: 250, max: 450 },
+      speed: { min: 60, max: 140 },
+      scale: { start: 1.2, end: 0 },
+      tint: this.artifactData.dirtColor,
+      emitting: false
+    });
+
+    // Инструмент в руках игрока (смещен чуть выше пальца для видимости)
+    this.toolSprite = this.add.image(centerX, centerY, 'tool_brush');
+    this.toolSprite.setOrigin(0.5, 0.95);
+    this.toolSprite.setScale(0.8);
+    this.toolSprite.setAlpha(0); // Появляется только при касании
+
+    // Прогресс
     this.cleanedPixels = 0;
     this.totalStepsTarget = 240;
     this.isCompleted = false;
 
-    // Прогресс-бар внизу
+    // Прогресс-бар
     const barWidth = width * 0.7;
     this.add.rectangle(width / 2, height - 60, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Ввод / Стирание без смещения
-    const handleErase = (pointer) => {
+    // Логика стирания
+    const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isCompleted) return;
 
-      // Локальные координаты относительно верхнего левого угла холста грязи
+      this.toolSprite.setPosition(pointer.x, pointer.y - 15);
+      this.toolSprite.setAlpha(1);
+
+      // Легкий наклон инструмента в сторону движения
+      const dx = pointer.x - pointer.prevPosition.x;
+      this.toolSprite.setAngle(Phaser.Math.Clamp(dx * 2.5, -20, 20));
+
       const localX = pointer.x - topLeftX;
       const localY = pointer.y - topLeftY;
 
       if (localX >= 0 && localX <= artW && localY >= 0 && localY <= artH) {
         this.dirtLayer.erase('brush', localX, localY);
         this.cleanedPixels++;
+
+        // Выброс частиц из-под кончика кисти
+        this.particles.emitParticleAt(pointer.x, pointer.y, 2);
         this.updateProgress();
       }
     };
 
-    this.input.on('pointermove', handleErase);
-    this.input.on('pointerdown', handleErase);
+    this.input.on('pointerdown', (pointer) => {
+      processScrubbing(pointer);
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      processScrubbing(pointer);
+    });
+
+    this.input.on('pointerup', () => {
+      this.toolSprite.setAlpha(0);
+    });
   }
 
   updateProgress() {
@@ -103,8 +136,35 @@ export class RestoreScene extends Phaser.Scene {
 
     if (ratio >= 1 && !this.isCompleted) {
       this.isCompleted = true;
-      this.time.delayedCall(350, () => {
-        this.scene.start('VictoryScene', { artifact: this.artifactData });
+      this.toolSprite.setAlpha(0);
+
+      // Полное стирание остатков и победная вспышка
+      this.dirtLayer.clear();
+
+      // Дофаминовый блеск: волна света по артефакту
+      const flash = this.add.rectangle(
+        this.cleanArt.x,
+        this.cleanArt.y,
+        this.cleanArt.width,
+        this.cleanArt.height,
+        0xffffff,
+        0.8
+      );
+      flash.setBlendMode(Phaser.BlendModes.ADD);
+
+      this.tweens.add({
+        targets: flash,
+        alpha: 0,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 450,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          flash.destroy();
+          this.time.delayedCall(250, () => {
+            this.scene.start('VictoryScene', { artifact: this.artifactData });
+          });
+        }
       });
     }
   }
