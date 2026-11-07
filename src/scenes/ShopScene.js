@@ -1,4 +1,4 @@
-import { TOOLS } from '../data/tools.js';
+import { TOOL_SHOP_ITEMS, WORKSHOP_UPGRADES } from '../data/tools.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -9,122 +9,251 @@ export class ShopScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    this.currentTab = 'tools'; // 'tools' или 'workshop'
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x161311);
+    this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
-    this.add.text(width / 2, 45, 'ИНСТРУМЕНТЫ', {
+    // Шапка
+    this.add.text(width / 2, 38, 'МАСТЕРСКАЯ И ЛАВКА', {
       fontSize: '22px',
       fontFamily: 'sans-serif',
       color: '#d4af37',
       fontStyle: 'bold',
       letterSpacing: 2
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(2);
 
-    const currentCoins = Storage.getCoins();
-    this.coinsText = this.add.text(width / 2, 75, `Баланс: ${currentCoins} золота`, {
-      fontSize: '16px',
+    // Баланс и уровень
+    this.statusText = this.add.text(width / 2, 65, '', {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(2);
+    this.updateStatusHeader();
 
-    this.renderCards();
+    // Табы выбора
+    this.createTabs();
 
-    // Кнопка возврата в меню
-    const backBtn = this.add.rectangle(width / 2, height - 55, 220, 48, 0x34495e)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height - 55, 'В главное меню', {
-      fontSize: '16px',
+    // Контейнер списка
+    this.itemsContainer = this.add.container(0, 0).setDepth(3);
+    this.renderContent();
+
+    // Назад
+    const backBtn = this.add.rectangle(width / 2, height - 42, 220, 44, 0x34495e)
+      .setInteractive({ useHandCursor: true }).setDepth(10);
+    this.add.text(width / 2, height - 42, 'В главное меню', {
+      fontSize: '15px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(11);
 
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
 
-  renderCards() {
+  updateStatusHeader() {
+    const coins = Storage.getCoins();
+    const lvl = Storage.getMasterLevel();
+    const xpPct = Math.floor(Storage.getXPProgress() * 100);
+    this.statusText.setText(`Уровень: ${lvl} (${xpPct}% XP)  |  Золото: ${coins}`);
+  }
+
+  createTabs() {
     const { width } = this.scale;
-    const startY = 120;
-    const cardH = 175;
-    const owned = Storage.getOwnedTools();
-    const equipped = Storage.getEquippedTool();
+    const tabY = 95;
 
-    TOOLS.forEach((tool, idx) => {
-      const cardY = startY + idx * cardH;
-      const isOwned = owned.includes(tool.id);
-      const isEquipped = equipped === tool.id;
+    this.toolsTabBtn = this.add.rectangle(width * 0.3, tabY, 130, 32, this.currentTab === 'tools' ? 0xd4af37 : 0x221d19)
+      .setInteractive({ useHandCursor: true }).setDepth(4);
+    this.toolsTabText = this.add.text(width * 0.3, tabY, 'ИНСТРУМЕНТЫ', {
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      color: this.currentTab === 'tools' ? '#141210' : '#bdc3c7',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(5);
 
-      // Подложка
-      this.add.rectangle(width / 2, cardY + 65, width * 0.9, 150, 0x221d19)
-        .setStrokeStyle(1.5, isEquipped ? 0x2ecc71 : 0x444444, 0.8);
+    this.workshopTabBtn = this.add.rectangle(width * 0.7, tabY, 130, 32, this.currentTab === 'workshop' ? 0xd4af37 : 0x221d19)
+      .setInteractive({ useHandCursor: true }).setDepth(4);
+    this.workshopTabText = this.add.text(width * 0.7, tabY, 'ИНТЕРЬЕР', {
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      color: this.currentTab === 'workshop' ? '#141210' : '#bdc3c7',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(5);
 
-      // Иконка
-      const icon = this.add.image(width * 0.22, cardY + 65, tool.textureKey);
-      icon.setScale(0.85);
-
-      // Тексты
-      const textX = width * 0.38;
-      this.add.text(textX, cardY + 20, tool.name, {
-        fontSize: '16px',
-        fontFamily: 'sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      });
-
-      this.add.text(textX, cardY + 45, tool.desc, {
-        fontSize: '12px',
-        fontFamily: 'sans-serif',
-        color: '#bdc3c7',
-        wordWrap: { width: width * 0.52 }
-      });
-
-      this.add.text(textX, cardY + 80, `Радиус: ${tool.brushRadius}px`, {
-        fontSize: '12px',
-        fontFamily: 'sans-serif',
-        color: '#e67e22'
-      });
-
-      // Кнопка
-      const btnX = width * 0.72;
-      const btnY = cardY + 115;
-      const btn = this.add.rectangle(btnX, btnY, 130, 36, isEquipped ? 0x27ae60 : (isOwned ? 0x2980b9 : 0xd35400))
-        .setInteractive({ useHandCursor: true });
-
-      let btnLabel = `КУПИТЬ ${tool.price}`;
-      if (isEquipped) {
-        btnLabel = 'АКТИВНА';
-      } else if (isOwned) {
-        btnLabel = 'ВЫБРАТЬ';
-      }
-
-      this.add.text(btnX, btnY, btnLabel, {
-        fontSize: '12px',
-        fontFamily: 'sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-
-      btn.on('pointerdown', () => {
-        if (isEquipped) return;
-
-        if (isOwned) {
-          Storage.equipTool(tool.id);
-          this.scene.restart();
-        } else {
-          if (Storage.buyTool(tool.id, tool.price)) {
-            AudioManager.playCoin();
-            this.scene.restart();
-          } else {
-            this.tweens.add({
-              targets: this.coinsText,
-              scale: 1.2,
-              duration: 120,
-              yoyo: true
-            });
-          }
-        }
-      });
+    this.toolsTabBtn.on('pointerdown', () => {
+      this.currentTab = 'tools';
+      this.updateTabStyles();
+      this.renderContent();
     });
+
+    this.workshopTabBtn.on('pointerdown', () => {
+      this.currentTab = 'workshop';
+      this.updateTabStyles();
+      this.renderContent();
+    });
+  }
+
+  updateTabStyles() {
+    this.toolsTabBtn.setFillStyle(this.currentTab === 'tools' ? 0xd4af37 : 0x221d19);
+    this.toolsTabText.setColor(this.currentTab === 'tools' ? '#141210' : '#bdc3c7');
+    this.workshopTabBtn.setFillStyle(this.currentTab === 'workshop' ? 0xd4af37 : 0x221d19);
+    this.workshopTabText.setColor(this.currentTab === 'workshop' ? '#141210' : '#bdc3c7');
+  }
+
+  renderContent() {
+    this.itemsContainer.removeAll(true);
+    const { width } = this.scale;
+
+    if (this.currentTab === 'tools') {
+      const owned = Storage.getOwnedTools();
+      const equipped = Storage.getEquippedTools();
+      const masterLvl = Storage.getMasterLevel();
+
+      TOOL_SHOP_ITEMS.forEach((tool, idx) => {
+        const cardY = 145 + idx * 68;
+        if (cardY > 680) return;
+
+        const isOwned = owned.includes(tool.id);
+        const isEquipped = (equipped[tool.category] === tool.id);
+        const canUnlockByLevel = (masterLvl >= tool.requiredLevel);
+
+        const cardBg = this.add.rectangle(width / 2, cardY, width * 0.9, 60, 0x1f1b18, 0.95)
+          .setStrokeStyle(1.5, isEquipped ? 0x2ecc71 : 0x444444);
+
+        const title = this.add.text(width * 0.1, cardY - 14, tool.name, {
+          fontSize: '14px',
+          fontFamily: 'sans-serif',
+          color: isEquipped ? '#2ecc71' : '#ffffff',
+          fontStyle: 'bold'
+        });
+
+        const desc = this.add.text(width * 0.1, cardY + 5, tool.desc, {
+          fontSize: '11px',
+          fontFamily: 'sans-serif',
+          color: '#a4b0be',
+          wordWrap: { width: width * 0.55 }
+        });
+
+        // Кнопка статуса
+        let btnColor = 0x27ae60;
+        let btnLabel = `КУПИТЬ ${tool.price}`;
+        let isClickable = false;
+
+        if (isEquipped) {
+          btnColor = 0x2c3e50;
+          btnLabel = 'АКТИВЕН';
+        } else if (isOwned) {
+          btnColor = 0x2980b9;
+          btnLabel = 'ВЫБРАТЬ';
+          isClickable = true;
+        } else if (!canUnlockByLevel) {
+          btnColor = 0x333333;
+          btnLabel = `${tool.requiredLevel} УР.`;
+        } else {
+          isClickable = (Storage.getCoins() >= tool.price);
+          btnColor = isClickable ? 0xe67e22 : 0x555555;
+        }
+
+        const actionBtn = this.add.rectangle(width * 0.82, cardY, 80, 36, btnColor);
+        const actionText = this.add.text(width * 0.82, cardY, btnLabel, {
+          fontSize: '11px',
+          fontFamily: 'sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        if (isClickable) {
+          actionBtn.setInteractive({ useHandCursor: true });
+          actionBtn.on('pointerdown', () => {
+            if (isOwned) {
+              Storage.equipTool(tool.category, tool.id);
+            } else {
+              if (Storage.spendCoins(tool.price)) {
+                Storage.unlockTool(tool.id);
+                Storage.equipTool(tool.category, tool.id);
+                AudioManager.playCoin();
+              }
+            }
+            this.updateStatusHeader();
+            this.renderContent();
+          });
+        }
+
+        this.itemsContainer.add([cardBg, title, desc, actionBtn, actionText]);
+      });
+    } else {
+      // ВКЛАДКА АПГРЕЙДОВ МАСТЕРСКОЙ
+      const currentTier = Storage.getWorkshopTier();
+      const masterLvl = Storage.getMasterLevel();
+
+      WORKSHOP_UPGRADES.forEach((upg, idx) => {
+        const cardY = 160 + idx * 120;
+        const isBought = currentTier >= upg.tier;
+        const canUnlock = masterLvl >= upg.requiredLevel;
+        const canAfford = Storage.getCoins() >= upg.price;
+
+        const cardBg = this.add.rectangle(width / 2, cardY, width * 0.9, 105, 0x1f1b18, 0.95)
+          .setStrokeStyle(1.5, isBought ? 0x2ecc71 : 0xd4af37, 0.8);
+
+        const title = this.add.text(width * 0.1, cardY - 32, `Этап ${upg.tier}: ${upg.name}`, {
+          fontSize: '16px',
+          fontFamily: 'sans-serif',
+          color: isBought ? '#2ecc71' : '#f1c40f',
+          fontStyle: 'bold'
+        });
+
+        const bonus = this.add.text(width * 0.1, cardY - 12, upg.incomeBonus, {
+          fontSize: '12px',
+          fontFamily: 'sans-serif',
+          color: '#2ecc71',
+          fontStyle: 'bold'
+        });
+
+        const desc = this.add.text(width * 0.1, cardY + 8, upg.desc, {
+          fontSize: '11px',
+          fontFamily: 'sans-serif',
+          color: '#bdc3c7',
+          wordWrap: { width: width * 0.54 }
+        });
+
+        let btnColor = 0xe67e22;
+        let btnLabel = `${upg.price} ЗОЛОТА`;
+        let clickable = false;
+
+        if (isBought) {
+          btnColor = 0x2c3e50;
+          btnLabel = 'УЛУЧШЕНО';
+        } else if (!canUnlock) {
+          btnColor = 0x333333;
+          btnLabel = `${upg.requiredLevel} УРОВЕНЬ`;
+        } else if (canAfford) {
+          clickable = true;
+        } else {
+          btnColor = 0x555555;
+        }
+
+        const btn = this.add.rectangle(width * 0.82, cardY, 84, 42, btnColor);
+        const btnTxt = this.add.text(width * 0.82, cardY, btnLabel, {
+          fontSize: '10px',
+          fontFamily: 'sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        if (clickable) {
+          btn.setInteractive({ useHandCursor: true });
+          btn.on('pointerdown', () => {
+            if (Storage.spendCoins(upg.price)) {
+              Storage.upgradeWorkshopTier();
+              AudioManager.playCoin();
+              this.updateStatusHeader();
+              this.renderContent();
+            }
+          });
+        }
+
+        this.itemsContainer.add([cardBg, title, bonus, desc, btn, btnTxt]);
+      });
+    }
   }
 }
