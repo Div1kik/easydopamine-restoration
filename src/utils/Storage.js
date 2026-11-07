@@ -26,4 +26,15 @@ export class Storage {
     this.set('coins', updated);
     return updated;
   }
+
+  static getCurrentLevelIndex() {
+    return this.get('level_index', 0);
+  }
+
+  static setNextLevel(totalLevels) {
+    const current = this.getCurrentLevelIndex();
+    const next = (current + 1) % totalLevels;
+    this.set('level_index', next);
+    return next;
+  }
 }
