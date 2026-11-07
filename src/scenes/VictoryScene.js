@@ -1,4 +1,4 @@
-import { ARTIFACTS, ERAS } from '../data/artifacts.js';
+import { ARTIFACTS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
@@ -12,41 +12,22 @@ export class VictoryScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.artData = data.artifact;
     this.stars = data.stars || 3;
-    this.reward = (this.artData.reward || 60) + (this.stars * 10);
+    this.reward = (this.artData.reward || 120) + (this.stars * 20);
+    this.xpReward = 150 + (this.stars * 30);
     this.rewardClaimed = false;
 
-    // Проверяем статус до сохранения
-    const unlockedBefore = Storage.getUnlockedArtifacts();
+    // Начисляем опыт и золото
+    const oldLevel = Storage.getMasterLevel();
     Storage.addCoins(this.reward);
+    Storage.addXP(this.xpReward);
     Storage.unlockArtifact(this.artData.id);
     Storage.setStars(this.artData.id, this.stars);
 
-    // Проверяем, открылась ли новая эпоха прямо сейчас
-    let justUnlockedEra = null;
-    ERAS.forEach(era => {
-      if (era.order > 0) {
-        const wasUnlocked = Storage.isEraUnlocked(era.id);
-        if (wasUnlocked && !unlockedBefore.includes(this.artData.id)) {
-          // Если текущий артефакт закрыл предыдущую эпоху
-          const currentEra = ERAS.find(e => e.id === this.artData.eraId);
-          if (currentEra && currentEra.order === era.order - 1) {
-            const prevItems = ARTIFACTS.filter(a => a.eraId === currentEra.id);
-            const allClean = prevItems.every(i => Storage.getUnlockedArtifacts().includes(i.id));
-            if (allClean) {
-              justUnlockedEra = era;
-            }
-          }
-        }
-      }
-    });
+    const newLevel = Storage.getMasterLevel();
+    const leveledUp = newLevel > oldLevel;
 
-    if (justUnlockedEra) {
-      AudioManager.playEraUnlock();
-    } else {
-      AudioManager.playVictory();
-    }
+    AudioManager.playVictory();
 
-    // Парадный фон
     this.add.rectangle(width / 2, height / 2, width, height, 0x111114, 0.95);
 
     // Конфетти
@@ -62,8 +43,7 @@ export class VictoryScene extends Phaser.Scene {
     this.time.delayedCall(600, () => emitter.stop());
 
     // Экспонат
-    const art = this.add.image(width / 2, height * 0.30, this.artData.textureKey);
-    art.setScale(0);
+    const art = this.add.image(width / 2, height * 0.28, this.artData.textureKey).setScale(0);
     this.tweens.add({
       targets: art,
       scale: 0.75,
@@ -74,12 +54,11 @@ export class VictoryScene extends Phaser.Scene {
     // Звезды
     const starStartX = width / 2 - (this.stars - 1) * 24;
     for (let i = 0; i < this.stars; i++) {
-      const s = this.add.image(starStartX + i * 48, height * 0.48, 'icon_star');
-      s.setScale(0);
+      const s = this.add.image(starStartX + i * 48, height * 0.45, 'icon_star').setScale(0);
       this.tweens.add({
         targets: s,
         scale: 1.2,
-        delay: 350 + i * 160,
+        delay: 300 + i * 150,
         duration: 350,
         ease: 'Back.easeOut',
         onStart: () => AudioManager.playCoin()
@@ -87,33 +66,31 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     // Заголовки
-    const titleText = justUnlockedEra ? `ОТКРЫТА ЭПОХА: ${justUnlockedEra.name.toUpperCase()}!` : 'ИДЕАЛЬНАЯ РЕСТАВРАЦИЯ!';
-    const titleColor = justUnlockedEra ? '#f39c12' : '#2ecc71';
-
-    this.add.text(width / 2, height * 0.55, titleText, {
-      fontSize: justUnlockedEra ? '18px' : '20px',
+    this.add.text(width / 2, height * 0.52, leveledUp ? 'НОВЫЙ УРОВЕНЬ МАСТЕРА!' : 'ИДЕАЛЬНАЯ РЕСТАВРАЦИЯ!', {
+      fontSize: '20px',
       fontStyle: 'bold',
       fontFamily: 'sans-serif',
-      color: titleColor
+      color: leveledUp ? '#f39c12' : '#2ecc71'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height * 0.60, this.artData.name, {
+    this.add.text(width / 2, height * 0.57, this.artData.name, {
       fontSize: '17px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    this.rewardText = this.add.text(width / 2, height * 0.65, `+${this.reward} золота`, {
-      fontSize: '22px',
+    // Награды (Золото + XP)
+    this.rewardText = this.add.text(width / 2, height * 0.63, `+${this.reward} золота   |   +${this.xpReward} XP`, {
+      fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // Удвоение за рекламу
-    this.doubleBtn = this.add.rectangle(width / 2, height * 0.74, 250, 46, 0xe67e22)
+    // Удвоение за просмотр рекламы
+    this.doubleBtn = this.add.rectangle(width / 2, height * 0.72, 250, 46, 0xe67e22)
       .setInteractive({ useHandCursor: true });
-    this.doubleText = this.add.text(width / 2, height * 0.74, 'УДВОИТЬ ЗА РЕКЛАМУ x2', {
+    this.doubleText = this.add.text(width / 2, height * 0.72, 'УДВОИТЬ НАГРАДУ x2', {
       fontSize: '14px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
@@ -127,42 +104,36 @@ export class VictoryScene extends Phaser.Scene {
         onRewarded: () => {
           this.rewardClaimed = true;
           Storage.addCoins(this.reward);
+          Storage.addXP(this.xpReward);
           AudioManager.playCoin();
-          this.rewardText.setText(`+${this.reward * 2} золота!`);
+          this.rewardText.setText(`+${this.reward * 2} золота | +${this.xpReward * 2} XP`);
           this.doubleBtn.setAlpha(0.4);
           this.doubleText.setText('УДВОЕНО!');
         }
       });
     });
 
-    // Следующий артефакт
-    const nextBtn = this.add.rectangle(width / 2, height * 0.83, 250, 50, 0x27ae60)
+    // Кнопка в Музей выставить на витрину
+    const museumBtn = this.add.rectangle(width / 2, height * 0.81, 250, 48, 0x27ae60)
       .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height * 0.83, 'Следующий артефакт', {
-      fontSize: '16px',
+    this.add.text(width / 2, height * 0.81, 'Выставить на витрину', {
+      fontSize: '15px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    nextBtn.on('pointerdown', () => {
-      YandexSDK.showFullscreenAdv({
-        onClose: () => {
-          Storage.setNextLevel(ARTIFACTS.length);
-          this.scene.start('RestoreScene');
-        }
-      });
-    });
+    museumBtn.on('pointerdown', () => this.scene.start('MuseumScene'));
 
-    // В Музей
-    const museumBtn = this.add.rectangle(width / 2, height * 0.91, 250, 40, 0x2c3e50)
+    // Вернуться к верстаку
+    const nextBtn = this.add.rectangle(width / 2, height * 0.89, 250, 42, 0x34495e)
       .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height * 0.91, 'В музейную витрину', {
+    this.add.text(width / 2, height * 0.89, 'К выбору эпохи', {
       fontSize: '14px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    museumBtn.on('pointerdown', () => this.scene.start('MuseumScene'));
+    nextBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
   }
 }
