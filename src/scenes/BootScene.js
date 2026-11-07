@@ -62,38 +62,22 @@ export class BootScene extends Phaser.Scene {
     shield.generateTexture('art_europe_shield', 300, 400);
     shield.destroy();
 
-    // 4. Ластик
-    const brushMask = this.make.graphics({ x: 0, y: 0, add: false });
-    brushMask.fillStyle(0xffffff, 1);
-    brushMask.fillCircle(35, 35, 35);
-    brushMask.generateTexture('brush', 70, 70);
-    brushMask.destroy();
+    // 4. Текстуры кистей и масок
+    // Базовая кисть (радиус 35)
+    this.createBrushAsset('basic', 0x8e5d34, 0xbdc3c7, 0xecd8a5, 35);
+    // Широкая кисть (радиус 50)
+    this.createBrushAsset('wide', 0x2c3e50, 0x95a5a6, 0xdfe6e9, 50);
+    // Золотая кисть (радиус 65)
+    this.createBrushAsset('gold', 0xd4af37, 0xf39c12, 0xfff9d2, 65);
 
-    // 5. Кисть
-    const brushTool = this.make.graphics({ x: 0, y: 0, add: false });
-    brushTool.fillStyle(0x8e5d34, 1);
-    brushTool.fillRoundedRect(32, 0, 16, 75, 6);
-    brushTool.fillStyle(0xbdc3c7, 1);
-    brushTool.fillRect(28, 70, 24, 15);
-    brushTool.fillStyle(0xecd8a5, 1);
-    brushTool.beginPath();
-    brushTool.moveTo(28, 85);
-    brushTool.lineTo(52, 85);
-    brushTool.lineTo(58, 115);
-    brushTool.lineTo(22, 115);
-    brushTool.closePath();
-    brushTool.fillPath();
-    brushTool.generateTexture('tool_brush', 80, 120);
-    brushTool.destroy();
-
-    // 6. Частицы
+    // 5. Частицы пыли
     const dust = this.make.graphics({ x: 0, y: 0, add: false });
     dust.fillStyle(0xffffff, 1);
     dust.fillCircle(4, 4, 4);
     dust.generateTexture('particle_dust', 8, 8);
     dust.destroy();
 
-    // 7. Иконка звука (динамик)
+    // 6. Иконка звука
     const speaker = this.make.graphics({ x: 0, y: 0, add: false });
     speaker.fillStyle(0xffffff, 1);
     speaker.fillRect(6, 14, 8, 12);
@@ -107,7 +91,45 @@ export class BootScene extends Phaser.Scene {
     speaker.generateTexture('icon_speaker', 40, 40);
     speaker.destroy();
 
-    // Переходим в главное меню
+    // 7. Иконка "Домой" (стрелка назад / меню)
+    const home = this.make.graphics({ x: 0, y: 0, add: false });
+    home.fillStyle(0xffffff, 1);
+    home.beginPath();
+    home.moveTo(20, 8);
+    home.lineTo(6, 20);
+    home.lineTo(34, 20);
+    home.closePath();
+    home.fillPath();
+    home.fillRect(11, 20, 18, 14);
+    home.generateTexture('icon_home', 40, 40);
+    home.destroy();
+
     this.scene.start('MenuScene');
+  }
+
+  createBrushAsset(id, handleColor, ferruleColor, bristleColor, radius) {
+    // Маска стирания
+    const mask = this.make.graphics({ x: 0, y: 0, add: false });
+    mask.fillStyle(0xffffff, 1);
+    mask.fillCircle(radius, radius, radius);
+    mask.generateTexture(`brush_mask_${id}`, radius * 2, radius * 2);
+    mask.destroy();
+
+    // Визуальный инструмент
+    const tool = this.make.graphics({ x: 0, y: 0, add: false });
+    tool.fillStyle(handleColor, 1);
+    tool.fillRoundedRect(32, 0, 16, 75, 6);
+    tool.fillStyle(ferruleColor, 1);
+    tool.fillRect(26, 70, 28, 15);
+    tool.fillStyle(bristleColor, 1);
+    tool.beginPath();
+    tool.moveTo(26, 85);
+    tool.lineTo(54, 85);
+    tool.lineTo(60 + (radius - 35) * 0.4, 120);
+    tool.lineTo(20 - (radius - 35) * 0.4, 120);
+    tool.closePath();
+    tool.fillPath();
+    tool.generateTexture(`tool_brush_${id}`, 80, 130);
+    tool.destroy();
   }
 }
