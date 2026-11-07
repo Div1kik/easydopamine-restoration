@@ -13,8 +13,8 @@ export class RestoreScene extends Phaser.Scene {
     const currentIdx = Storage.getCurrentLevelIndex();
     this.artifactData = ARTIFACTS[currentIdx] || ARTIFACTS[0];
 
-    // Текущая активная фаза (0, 1 или 2)
     this.currentPhaseIndex = 0;
+    this.startTime = performance.now();
 
     // Фон рабочей зоны
     this.add.rectangle(width / 2, height / 2, width, height, 0x1f1b18);
@@ -36,23 +36,22 @@ export class RestoreScene extends Phaser.Scene {
     this.createMuteButton(width - 36, 36);
 
     // Заголовки
-    this.add.text(width / 2, 70, this.artifactData.eraName.toUpperCase(), {
-      fontSize: '14px',
+    this.add.text(width / 2, 68, this.artifactData.eraName.toUpperCase(), {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#e67e22',
       fontStyle: 'bold',
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 96, this.artifactData.name, {
+    this.add.text(width / 2, 92, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    // Подзаголовок текущей фазы
-    this.phaseText = this.add.text(width / 2, 122, '', {
-      fontSize: '14px',
+    this.phaseText = this.add.text(width / 2, 118, '', {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#2ecc71',
       fontStyle: 'bold'
@@ -66,10 +65,7 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Базовый чистый артефакт
     this.cleanArt = this.add.image(this.centerX, this.centerY, this.artifactData.textureKey);
-
-    // Слой грязи RenderTexture
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH).setOrigin(0, 0);
 
     // Частицы
@@ -80,20 +76,23 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     });
 
-    // Спрайт инструмента
+    // Инструмент
     this.toolSprite = this.add.image(this.centerX, this.centerY, 'tool_brush_basic');
     this.toolSprite.setOrigin(0.5, 0.95);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс-бар внизу
+    // Прогресс-бар
     const barWidth = width * 0.7;
     this.add.rectangle(width / 2, height - 55, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 55, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Инициализация первой фазы
+    // Кнопка Ультразвукового Бустера
+    this.createBoosterButton(width - 45, height - 120);
+
+    // Инициализация фазы
     this.startPhase(0);
 
-    // Обработка касаний
+    // Логика стирания
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isPhaseTransition) return;
 
@@ -110,7 +109,6 @@ export class RestoreScene extends Phaser.Scene {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
         this.cleanedPixels += this.stepWeight;
 
-        // Звук в зависимости от фазы
         if (this.currentPhaseIndex === 0) AudioManager.playScrub();
         else if (this.currentPhaseIndex === 1) AudioManager.playWash();
         else AudioManager.playCloth();
@@ -129,6 +127,54 @@ export class RestoreScene extends Phaser.Scene {
     this.input.on('pointerup', () => this.toolSprite.setAlpha(0));
   }
 
+  createBoosterButton(x, y) {
+    const btn = this.add.image(x, y, 'icon_booster').setInteractive({ useHandCursor: true });
+    
+    // Легкая пульсация кнопки для привлечения внимания
+    this.tweens.add({
+      targets: btn,
+      scale: 1.1,
+      duration: 800,
+      yoyo: true,
+      repeat: -1
+    });
+
+    btn.on('pointerdown', () => {
+      if (this.isPhaseTransition) return;
+
+      AudioManager.playPulse();
+      if (navigator.vibrate) navigator.vibrate([30, 50, 60]);
+
+      // Дофаминовая ультразвуковая волна через экран
+      const wave = this.add.circle(this.centerX, this.centerY, 20, 0x9b59b6, 0.7);
+      wave.setBlendMode(Phaser.BlendModes.ADD);
+
+      this.tweens.add({
+        targets: wave,
+        radius: 220,
+        alpha: 0,
+        duration: 450,
+        ease: 'Cubic.easeOut',
+        onComplete: () => wave.destroy()
+      });
+
+      // Мгновенное стирание половины нормы шагов
+      const boostAmount = Math.round(this.totalStepsTarget * 0.45);
+      this.cleanedPixels += boostAmount;
+      
+      // Стирание нескольких случайных областей для эффекта очистки
+      for (let i = 0; i < 8; i++) {
+        this.dirtLayer.erase(
+          'brush_mask_gold',
+          Phaser.Math.Between(30, this.artW - 30),
+          Phaser.Math.Between(30, this.artH - 30)
+        );
+      }
+
+      this.updateProgress();
+    });
+  }
+
   startPhase(phaseIdx) {
     this.currentPhaseIndex = phaseIdx;
     this.isPhaseTransition = false;
@@ -138,7 +184,6 @@ export class RestoreScene extends Phaser.Scene {
     this.phaseText.setText(`ЭТАП ${phaseIdx + 1}/3: ${phase.name.toUpperCase()}`);
     this.totalStepsTarget = phase.targetSteps;
 
-    // Подбор инструмента и маски под фазу
     if (phaseIdx === 0) {
       const equippedToolId = Storage.getEquippedTool();
       const tool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
@@ -155,7 +200,6 @@ export class RestoreScene extends Phaser.Scene {
       this.stepWeight = 3;
     }
 
-    // Заливка слоя грязи под текущую фазу
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
     dirtGfx.fillStyle(phase.color, phaseIdx === 2 ? 0.75 : 0.95);
@@ -188,7 +232,6 @@ export class RestoreScene extends Phaser.Scene {
 
       AudioManager.playCoin();
 
-      // Волна блеска
       const flash = this.add.rectangle(
         this.cleanArt.x,
         this.cleanArt.y,
@@ -210,14 +253,21 @@ export class RestoreScene extends Phaser.Scene {
           flash.destroy();
 
           if (this.currentPhaseIndex < 2) {
-            // Переход к следующей фазе реставрации
             this.time.delayedCall(300, () => {
               this.startPhase(this.currentPhaseIndex + 1);
             });
           } else {
-            // Все 3 фазы пройдены — триумф!
+            // Расчет звезд (до 35 сек — 3 звезды, до 60 сек — 2 звезды)
+            const elapsedSeconds = (performance.now() - this.startTime) / 1000;
+            let stars = 3;
+            if (elapsedSeconds > 45) stars = 1;
+            else if (elapsedSeconds > 28) stars = 2;
+
             this.time.delayedCall(350, () => {
-              this.scene.start('VictoryScene', { artifact: this.artifactData });
+              this.scene.start('VictoryScene', { 
+                artifact: this.artifactData,
+                stars: stars
+              });
             });
           }
         }
