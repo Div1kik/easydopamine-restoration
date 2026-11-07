@@ -20,7 +20,8 @@ export class ShopScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.coinsText = this.add.text(width / 2, 75, `Баланс: ${Storage.getCoins()} золота`, {
+    const currentCoins = Storage.getCoins();
+    this.coinsText = this.add.text(width / 2, 75, `Баланс: ${currentCoins} золота`, {
       fontSize: '16px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
@@ -54,15 +55,15 @@ export class ShopScene extends Phaser.Scene {
       const isOwned = owned.includes(tool.id);
       const isEquipped = equipped === tool.id;
 
-      // Фоновая плашка
+      // Подложка
       this.add.rectangle(width / 2, cardY + 65, width * 0.9, 150, 0x221d19)
         .setStrokeStyle(1.5, isEquipped ? 0x2ecc71 : 0x444444, 0.8);
 
-      // Изображение инструмента
+      // Иконка
       const icon = this.add.image(width * 0.22, cardY + 65, tool.textureKey);
       icon.setScale(0.85);
 
-      // Описание
+      // Тексты
       const textX = width * 0.38;
       this.add.text(textX, cardY + 20, tool.name, {
         fontSize: '16px',
@@ -84,15 +85,18 @@ export class ShopScene extends Phaser.Scene {
         color: '#e67e22'
       });
 
-      // Кнопка действия (Купить / Надеть / Выбрано)
+      // Кнопка
       const btnX = width * 0.72;
       const btnY = cardY + 115;
       const btn = this.add.rectangle(btnX, btnY, 130, 36, isEquipped ? 0x27ae60 : (isOwned ? 0x2980b9 : 0xd35400))
         .setInteractive({ useHandCursor: true });
 
-      let btnLabel = 'КУПИТЬ ' + tool.price;
-      if (isEquipped) btnLabel = 'АКТИВНА';
-      else if (isOwned) btnLabel = 'ВЫБРАТЬ';
+      let btnLabel = `КУПИТЬ ${tool.price}`;
+      if (isEquipped) {
+        btnLabel = 'АКТИВНА';
+      } else if (isOwned) {
+        btnLabel = 'ВЫБРАТЬ';
+      }
 
       this.add.text(btnX, btnY, btnLabel, {
         fontSize: '12px',
@@ -112,7 +116,6 @@ export class ShopScene extends Phaser.Scene {
             AudioManager.playCoin();
             this.scene.restart();
           } else {
-            // Анимация нехватки монет
             this.tweens.add({
               targets: this.coinsText,
               scale: 1.2,
