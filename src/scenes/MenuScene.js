@@ -8,13 +8,13 @@ export class MenuScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x161311);
+    this.add.image(width / 2, height / 2, 'bg_workshop');
 
     // Панель логотипа
-    this.add.rectangle(width / 2, height * 0.24, width * 0.86, 160, 0x241e1a)
-      .setStrokeStyle(2, 0xd4af37, 0.4);
+    this.add.rectangle(width / 2, height * 0.25, width * 0.86, 160, 0x1f1b18, 0.9)
+      .setStrokeStyle(2, 0xd4af37, 0.5);
 
-    this.add.text(width / 2, height * 0.18, 'EASY DOPAMINE GAMES', {
+    this.add.text(width / 2, height * 0.19, 'EASY DOPAMINE GAMES', {
       fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#e67e22',
@@ -22,7 +22,7 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 3
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height * 0.25, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
+    this.add.text(width / 2, height * 0.26, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
       fontSize: '28px',
       fontFamily: 'sans-serif',
       color: '#f5f6fa',
@@ -32,39 +32,28 @@ export class MenuScene extends Phaser.Scene {
 
     // Баланс
     const coins = Storage.getCoins();
-    this.add.text(width / 2, height * 0.38, `Баланс: ${coins} золота`, {
+    this.add.text(width / 2, height * 0.39, `Баланс: ${coins} золота`, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // 1. В мастерскую
-    const playBtn = this.add.rectangle(width / 2, height * 0.52, 250, 52, 0x27ae60)
+    // 1. Выбор эпохи и реставрация
+    const playBtn = this.add.rectangle(width / 2, height * 0.53, 250, 52, 0x27ae60)
       .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height * 0.52, 'В МАСТЕРСКУЮ', {
+    this.add.text(width / 2, height * 0.53, 'ВЕРСТАК МАСТЕРА', {
       fontSize: '17px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
-    playBtn.on('pointerdown', () => this.scene.start('RestoreScene'));
+    playBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
 
-    // 2. Магазин кистей
-    const shopBtn = this.add.rectangle(width / 2, height * 0.62, 250, 52, 0xd35400)
+    // 2. Музей
+    const museumBtn = this.add.rectangle(width / 2, height * 0.63, 250, 52, 0x2c3e50)
       .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height * 0.62, 'МАСТЕРСКАЯ КИСТЕЙ', {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-    shopBtn.on('pointerdown', () => this.scene.start('ShopScene'));
-
-    // 3. Музей
-    const museumBtn = this.add.rectangle(width / 2, height * 0.72, 250, 52, 0x2c3e50)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height * 0.72, 'МУЗЕЙ ЭКСПОНАТОВ', {
+    this.add.text(width / 2, height * 0.63, 'МУЗЕЙНАЯ ВИТРИНА', {
       fontSize: '16px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1',
