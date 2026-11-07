@@ -17,7 +17,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTime = performance.now();
 
     // Фон рабочей зоны
-    this.add.rectangle(width / 2, height / 2, width, height, 0x1f1b18);
+    this.add.rectangle(width / 2, height / 2, width, height, 0x1a1614);
 
     // Домой
     const homeBtn = this.add.image(36, 36, 'icon_home').setInteractive({ useHandCursor: true });
@@ -81,18 +81,18 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setOrigin(0.5, 0.95);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс-бар
+    // Прогресс-бар без раздражающих цифр
     const barWidth = width * 0.7;
     this.add.rectangle(width / 2, height - 55, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 55, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Кнопка Ультразвукового Бустера
+    // Ультразвуковой бустер
     this.createBoosterButton(width - 45, height - 120);
 
-    // Инициализация фазы
+    // Инициализация первой фазы
     this.startPhase(0);
 
-    // Логика стирания
+    // Стирание пальцем/курсором
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isPhaseTransition) return;
 
@@ -129,8 +129,6 @@ export class RestoreScene extends Phaser.Scene {
 
   createBoosterButton(x, y) {
     const btn = this.add.image(x, y, 'icon_booster').setInteractive({ useHandCursor: true });
-    
-    // Легкая пульсация кнопки для привлечения внимания
     this.tweens.add({
       targets: btn,
       scale: 1.1,
@@ -145,7 +143,6 @@ export class RestoreScene extends Phaser.Scene {
       AudioManager.playPulse();
       if (navigator.vibrate) navigator.vibrate([30, 50, 60]);
 
-      // Дофаминовая ультразвуковая волна через экран
       const wave = this.add.circle(this.centerX, this.centerY, 20, 0x9b59b6, 0.7);
       wave.setBlendMode(Phaser.BlendModes.ADD);
 
@@ -158,11 +155,9 @@ export class RestoreScene extends Phaser.Scene {
         onComplete: () => wave.destroy()
       });
 
-      // Мгновенное стирание половины нормы шагов
       const boostAmount = Math.round(this.totalStepsTarget * 0.45);
       this.cleanedPixels += boostAmount;
-      
-      // Стирание нескольких случайных областей для эффекта очистки
+
       for (let i = 0; i < 8; i++) {
         this.dirtLayer.erase(
           'brush_mask_gold',
@@ -257,7 +252,9 @@ export class RestoreScene extends Phaser.Scene {
               this.startPhase(this.currentPhaseIndex + 1);
             });
           } else {
-            // Расчет звезд (до 35 сек — 3 звезды, до 60 сек — 2 звезды)
+            // Финишный блеск с чистым хрустальным звуком
+            AudioManager.playShine();
+
             const elapsedSeconds = (performance.now() - this.startTime) / 1000;
             let stars = 3;
             if (elapsedSeconds > 45) stars = 1;
