@@ -1,4 +1,5 @@
 import { YandexSDK } from './YandexSDK.js';
+import { ERAS, ARTIFACTS } from '../data/artifacts.js';
 
 export class Storage {
   static get(key, defaultValue) {
@@ -13,14 +14,12 @@ export class Storage {
   static set(key, value) {
     try {
       localStorage.setItem(`edg_${key}`, JSON.stringify(value));
-      // Асинхронная отправка копии в облако Яндекса
       this.syncToYandexCloud();
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   }
 
-  // Облачная синхронизация с аккаунтом игрока
   static async syncToYandexCloud() {
     if (YandexSDK.player) {
       try {
@@ -96,7 +95,7 @@ export class Storage {
     return next;
   }
 
-  // Музей
+  // Музей и эпохи
   static unlockArtifact(id) {
     const unlocked = this.get('unlocked_artifacts', []);
     if (!unlocked.includes(id)) {
@@ -107,6 +106,21 @@ export class Storage {
 
   static getUnlockedArtifacts() {
     return this.get('unlocked_artifacts', []);
+  }
+
+  // Проверка, открыта ли конкретная эпоха
+  static isEraUnlocked(eraId) {
+    const era = ERAS.find(e => e.id === eraId);
+    if (!era || era.order === 0) return true; // Первая эпоха открыта всегда
+
+    // Предыдущая эпоха
+    const prevEra = ERAS.find(e => e.order === era.order - 1);
+    if (!prevEra) return true;
+
+    // Все ли предметы прошлой эпохи собраны
+    const prevItems = ARTIFACTS.filter(a => a.eraId === prevEra.id);
+    const unlocked = this.getUnlockedArtifacts();
+    return prevItems.every(item => unlocked.includes(item.id));
   }
 
   // Звезды
