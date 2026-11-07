@@ -23,7 +23,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     });
 
-    // Название текущей эпохи и артефакта
+    // Название текущей эпохи и артефакта (по центру)
     this.add.text(width / 2, 70, this.artifactData.eraName.toUpperCase(), {
       fontSize: '14px',
       fontFamily: 'sans-serif',
@@ -32,30 +32,32 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 95, this.artifactData.name, {
+    this.add.text(width / 2, 98, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    // Координаты объекта
-    const centerX = width / 2;
-    const centerY = height / 2 + 10;
+    // Габариты и точные координаты артефакта
     const artW = 300;
     const artH = 400;
+    const centerX = width / 2;
+    const centerY = height / 2 + 10;
+    const topLeftX = centerX - artW / 2;
+    const topLeftY = centerY - artH / 2;
 
-    // Чистый артефакт (базовый слой)
+    // 1. Чистый артефакт (базовый слой)
     this.add.image(centerX, centerY, this.artifactData.textureKey);
 
-    // Слой загрязнения под специфику эпохи
-    this.dirtLayer = this.add.renderTexture(centerX - artW / 2, centerY - artH / 2, artW, artH);
-    
+    // 2. Слой загрязнения: привязываем origin к (0, 0), чтобы он сидел ровно на объекте
+    this.dirtLayer = this.add.renderTexture(topLeftX, topLeftY, artW, artH).setOrigin(0, 0);
+
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
     dirtGfx.fillStyle(this.artifactData.dirtColor, 0.96);
     dirtGfx.fillRect(0, 0, artW, artH);
-    
+
     dirtGfx.fillStyle(this.artifactData.dirtSpots, 0.95);
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 20; i++) {
       dirtGfx.fillCircle(
         Phaser.Math.Between(25, artW - 25),
         Phaser.Math.Between(25, artH - 25),
@@ -67,26 +69,31 @@ export class RestoreScene extends Phaser.Scene {
 
     // Параметры прогресса
     this.cleanedPixels = 0;
-    this.totalStepsTarget = 250;
+    this.totalStepsTarget = 240;
     this.isCompleted = false;
 
-    // Прогресс-бар
-    this.add.rectangle(width / 2, height - 60, width * 0.7, 14, 0x111111);
-    this.progressBar = this.add.rectangle(width / 2 - (width * 0.7) / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
+    // Прогресс-бар внизу
+    const barWidth = width * 0.7;
+    this.add.rectangle(width / 2, height - 60, barWidth, 14, 0x111111);
+    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Ввод / Стирание
-    this.input.on('pointermove', (pointer) => {
+    // Ввод / Стирание без смещения
+    const handleErase = (pointer) => {
       if (!pointer.isDown || this.isCompleted) return;
 
-      const localX = pointer.x - (centerX - artW / 2);
-      const localY = pointer.y - (centerY - artH / 2);
+      // Локальные координаты относительно верхнего левого угла холста грязи
+      const localX = pointer.x - topLeftX;
+      const localY = pointer.y - topLeftY;
 
       if (localX >= 0 && localX <= artW && localY >= 0 && localY <= artH) {
         this.dirtLayer.erase('brush', localX, localY);
         this.cleanedPixels++;
         this.updateProgress();
       }
-    });
+    };
+
+    this.input.on('pointermove', handleErase);
+    this.input.on('pointerdown', handleErase);
   }
 
   updateProgress() {
