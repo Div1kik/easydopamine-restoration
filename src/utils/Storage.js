@@ -26,12 +26,10 @@ export class Storage {
           coins: this.getCoins(),
           xp: this.getXP(),
           workshop_tier: this.getWorkshopTier(),
-          level_index: this.getCurrentLevelIndex(),
-          unlocked_artifacts: this.getUnlockedArtifacts(),
-          sold_artifacts: this.getSoldArtifacts(),
+          inventory: this.getInventory(),
+          recent_history: this.getRecentHistory(),
           owned_tools: this.getOwnedTools(),
-          equipped_tools: this.getEquippedTools(),
-          stars: this.getStarsData()
+          equipped_tools: this.getEquippedTools()
         };
         await YandexSDK.player.setData(payload, true);
       } catch (err) {
@@ -48,12 +46,10 @@ export class Storage {
           if (data.coins !== undefined) this.setLocal('coins', data.coins);
           if (data.xp !== undefined) this.setLocal('xp', data.xp);
           if (data.workshop_tier !== undefined) this.setLocal('workshop_tier', data.workshop_tier);
-          if (data.level_index !== undefined) this.setLocal('level_index', data.level_index);
-          if (data.unlocked_artifacts) this.setLocal('unlocked_artifacts', data.unlocked_artifacts);
-          if (data.sold_artifacts) this.setLocal('sold_artifacts', data.sold_artifacts);
+          if (data.inventory) this.setLocal('inventory', data.inventory);
+          if (data.recent_history) this.setLocal('recent_history', data.recent_history);
           if (data.owned_tools) this.setLocal('owned_tools', data.owned_tools);
           if (data.equipped_tools) this.setLocal('equipped_tools', data.equipped_tools);
-          if (data.stars) this.setLocal('stars', data.stars);
         }
       } catch (err) {
         console.warn("Yandex Cloud load failed", err);
@@ -67,9 +63,9 @@ export class Storage {
     } catch {}
   }
 
-  // 1. ЗОЛОТО
+  // 1. ДЕНЬГИ И ОПЫТ
   static getCoins() {
-    return this.get('coins', 100); // 100 монет на старте
+    return this.get('coins', 150);
   }
 
   static addCoins(amount) {
@@ -88,7 +84,6 @@ export class Storage {
     return false;
   }
 
-  // 2. ОПЫТ (XP) И УРОВЕНЬ МАСТЕРА
   static getXP() {
     return this.get('xp', 0);
   }
@@ -102,25 +97,24 @@ export class Storage {
 
   static getMasterLevel() {
     const xp = this.getXP();
-    // 0 XP = 1 ур, 300 XP = 2 ур, 800 XP = 3 ур, 1500 XP = 4 ур, 2500 XP = 5 ур...
-    if (xp < 300) return 1;
-    if (xp < 800) return 2;
-    if (xp < 1600) return 3;
-    if (xp < 2700) return 4;
+    if (xp < 350) return 1;
+    if (xp < 900) return 2;
+    if (xp < 1800) return 3;
+    if (xp < 3200) return 4;
     return 5;
   }
 
   static getXPProgress() {
     const xp = this.getXP();
     const lvl = this.getMasterLevel();
-    const thresholds = [0, 300, 800, 1600, 2700, 5000];
+    const thresholds = [0, 350, 900, 1800, 3200, 6000];
     const currentBase = thresholds[lvl - 1];
-    const nextBase = thresholds[lvl] || 5000;
+    const nextBase = thresholds[lvl] || 6000;
     const progress = (xp - currentBase) / (nextBase - currentBase);
     return Math.min(Math.max(progress, 0), 1);
   }
 
-  // 3. АПГРЕЙДЫ МАСТЕРСКОЙ (1..4)
+  // 2. АПГРЕЙД МАСТЕРСКОЙ (1..4)
   static getWorkshopTier() {
     return this.get('workshop_tier', 1);
   }
@@ -134,7 +128,46 @@ export class Storage {
     return false;
   }
 
-  // 4. ИНСТРУМЕНТЫ ПО ТИПАМ
+  // 3. ИНВЕНТАРЬ ВИТРИНЫ (Реальные предметы, которые можно продать)
+  static getInventory() {
+    return this.get('inventory', []);
+  }
+
+  static addArtifactToInventory(artInstance) {
+    const inv = this.getInventory();
+    inv.push(artInstance);
+    this.set('inventory', inv);
+
+    // Добавляем в историю недавних выпадений
+    this.pushRecentHistory(artInstance.templateId);
+  }
+
+  static removeArtifactFromInventory(instanceId) {
+    let inv = this.getInventory();
+    inv = inv.filter(item => item.instanceId !== instanceId);
+    this.set('inventory', inv);
+  }
+
+  // 4. ИСТОРИЯ ВЫПАДЕНИЙ (гарантия: не чаще, чем раз в 3 заказа)
+  static getRecentHistory() {
+    return this.get('recent_history', []);
+  }
+
+  static pushRecentHistory(templateId) {
+    const history = this.getRecentHistory();
+    history.push(templateId);
+    if (history.length > 5) history.shift();
+    this.set('recent_history', history);
+  }
+
+  static isRecentlyUsed(templateId) {
+    const history = this.getRecentHistory();
+    // Последние 3 предмета не должны повторяться
+    const lastThree = history.slice(-3);
+    return lastThree.includes(templateId);
+  }
+
+  // 5. ИНСТРУМЕНТЫ
   static getOwnedTools() {
     return this.get('owned_tools', ['scraper_1', 'solvent_1', 'glue_1', 'brush_1', 'polish_1']);
   }
@@ -161,56 +194,6 @@ export class Storage {
     const equipped = this.getEquippedTools();
     equipped[type] = toolId;
     this.set('equipped_tools', equipped);
-  }
-
-  // 5. ВИТРИНА И ПРОДАЖА
-  static unlockArtifact(id) {
-    const unlocked = this.get('unlocked_artifacts', []);
-    if (!unlocked.includes(id)) {
-      unlocked.push(id);
-      this.set('unlocked_artifacts', unlocked);
-    }
-  }
-
-  static getUnlockedArtifacts() {
-    return this.get('unlocked_artifacts', []);
-  }
-
-  static sellArtifactReplica(id, price) {
-    this.addCoins(price);
-    const sold = this.get('sold_artifacts', []);
-    sold.push({ id, date: Date.now() });
-    this.set('sold_artifacts', sold);
-  }
-
-  static getSoldArtifacts() {
-    return this.get('sold_artifacts', []);
-  }
-
-  // 6. НАВИГАЦИЯ И УРОВНИ
-  static getCurrentLevelIndex() {
-    return this.get('level_index', 0);
-  }
-
-  static isEraUnlocked(eraId) {
-    if (eraId === 'egypt') return true;
-    const unlocked = this.getUnlockedArtifacts();
-    if (eraId === 'greece') return unlocked.includes('egypt_scarab');
-    if (eraId === 'europe') return unlocked.includes('greece_amphora');
-    if (eraId === 'japan') return unlocked.includes('europe_shield');
-    return false;
-  }
-
-  static getStarsData() {
-    return this.get('stars', {});
-  }
-
-  static setStars(artifactId, stars) {
-    const data = this.getStarsData();
-    if (!data[artifactId] || data[artifactId] < stars) {
-      data[artifactId] = stars;
-      this.set('stars', data);
-    }
   }
 
   static isMuted() {
