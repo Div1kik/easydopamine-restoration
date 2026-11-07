@@ -10,34 +10,33 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
 
-    // Включаем уютную музыку главного меню
     AudioManager.playMenuMusic();
 
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // Панель логотипа
-    this.add.rectangle(width / 2, height * 0.21, width * 0.88, 140, 0x0c0f14, 0.88)
-      .setStrokeStyle(1.5, 0xc5a059, 0.85)
+    // Парящая карточка бренда (Dark Glassmorphism)
+    const brandCard = this.add.rectangle(width / 2, height * 0.20, width * 0.88, 140, 0x141820, 0.75)
+      .setStrokeStyle(1.5, 0xffffff, 0.1)
       .setDepth(1);
 
-    this.add.text(width / 2, height * 0.16, 'EASY DOPAMINE GAMES', {
+    this.add.text(width / 2, height * 0.15, 'EASY DOPAMINE GAMES', {
       fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#d97706',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#f59e0b',
       fontStyle: 'bold',
       letterSpacing: 4
     }).setOrigin(0.5).setDepth(2);
 
-    this.add.text(width / 2, height * 0.23, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
-      fontSize: '28px',
-      fontFamily: 'sans-serif',
-      color: '#f8fafc',
+    this.add.text(width / 2, height * 0.22, 'АРТЕФАКТЫ\nВРЕМЕНИ', {
+      fontSize: '26px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
       fontStyle: 'bold',
       align: 'center',
       lineSpacing: 4
     }).setOrigin(0.5).setDepth(2);
 
-    // БЛОК ОПЫТА И ПРОГРЕССА МАСТЕРА
+    // Блок статуса мастера
     const lvl = Storage.getMasterLevel ? Storage.getMasterLevel() : 1;
     const xp = Storage.getXP ? Storage.getXP() : 0;
     const thresholds = [0, 350, 900, 1800, 3200, 6000];
@@ -47,52 +46,53 @@ export class MenuScene extends Phaser.Scene {
     const neededLvlXP = nextBase - currentBase;
     const progressRatio = Math.min(Math.max(currentLvlXP / neededLvlXP, 0), 1);
 
-    const tierNames = ['', 'Сырой подвал', 'Лавка древностей', 'Гильдия мастеров', 'Императорская галерея'];
+    const tierNames = ['', 'Базовая мастерская', 'Лавка древностей', 'Гильдия реставраторов', 'Императорская галерея'];
 
     this.add.text(width / 2, height * 0.33, `МАСТЕР ${lvl} РАНГА  •  ${tierNames[tier].toUpperCase()}`, {
-      fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#cbd5e1',
+      fontSize: '11px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#94a3b8',
       fontStyle: 'bold',
-      letterSpacing: 1
+      letterSpacing: 1.5
     }).setOrigin(0.5).setDepth(2);
 
-    // Шкала XP
-    const barW = width * 0.72;
-    this.add.rectangle(width / 2, height * 0.365, barW, 12, 0x1e2430)
-      .setStrokeStyle(1, 0x475569)
+    // Минималистичный гладкий прогресс-бар XP
+    const barW = width * 0.74;
+    this.add.rectangle(width / 2, height * 0.365, barW, 8, 0x1e2430)
       .setDepth(2);
 
-    this.add.rectangle(width / 2 - barW / 2, height * 0.365, barW * progressRatio, 10, 0xf59e0b)
+    this.add.rectangle(width / 2 - barW / 2, height * 0.365, barW * progressRatio, 8, 0xf59e0b)
       .setOrigin(0, 0.5)
       .setDepth(3);
 
-    this.add.text(width / 2, height * 0.39, `Опыт: ${xp} / ${nextBase} XP`, {
+    this.add.text(width / 2, height * 0.395, `${xp} / ${nextBase} XP`, {
       fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#94a3b8'
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#64748b'
     }).setOrigin(0.5).setDepth(2);
 
+    // Монеты
     const coins = Storage.getCoins();
-    this.add.text(width / 2, height * 0.43, `Казна: ${coins} золота`, {
-      fontSize: '19px',
-      fontFamily: 'sans-serif',
-      color: '#facc15',
-      fontStyle: 'bold'
+    this.add.text(width / 2, height * 0.44, `${coins} ЗОЛОТА`, {
+      fontSize: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#fbbf24',
+      fontStyle: 'bold',
+      letterSpacing: 2
     }).setOrigin(0.5).setDepth(2);
 
-    // Кнопки меню
-    this.createMenuButton(width / 2, height * 0.53, 'ВЕРСТАК МАСТЕРА', 0x15803d, () => {
+    // Кнопки навигации с мягким пружинящим эффектом (Spring feedback)
+    this.createModernButton(width / 2, height * 0.54, 'ВЕРСТАК МАСТЕРА', 0x10b981, () => {
       AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
     });
 
-    this.createMenuButton(width / 2, height * 0.62, 'МАСТЕРСКАЯ И ЛАВКА', 0xb45309, () => {
+    this.createModernButton(width / 2, height * 0.63, 'МАСТЕРСКАЯ И ЛАВКА', 0xf59e0b, () => {
       AudioManager.stopMusic();
       this.scene.start('ShopScene');
     });
 
-    this.createMenuButton(width / 2, height * 0.71, 'ВИТРИНА РЕДКОСТЕЙ', 0x1d4ed8, () => {
+    this.createModernButton(width / 2, height * 0.72, 'ВИТРИНА РЕДКОСТЕЙ', 0x3b82f6, () => {
       AudioManager.stopMusic();
       this.scene.start('MuseumScene');
     });
@@ -100,30 +100,42 @@ export class MenuScene extends Phaser.Scene {
     this.createMuteButton(width - 36, 36);
   }
 
-  createMenuButton(x, y, text, color, onClick) {
-    const btn = this.add.rectangle(x, y, 260, 52, color, 0.95)
-      .setStrokeStyle(1.5, 0xffffff, 0.35)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(5);
+  createModernButton(x, y, text, accentColor, onClick) {
+    const btnContainer = this.add.container(x, y).setDepth(5);
 
-    this.add.text(x, y, text, {
-      fontSize: '14px',
-      fontFamily: 'sans-serif',
+    const bg = this.add.rectangle(0, 0, 260, 52, 0x161b24, 0.95)
+      .setStrokeStyle(1.5, accentColor, 0.7)
+      .setInteractive({ useHandCursor: true });
+
+    const label = this.add.text(0, 0, text, {
+      fontSize: '13px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
-      letterSpacing: 1
-    }).setOrigin(0.5).setDepth(6);
+      letterSpacing: 1.5
+    }).setOrigin(0.5);
 
-    btn.on('pointerdown', onClick);
+    btnContainer.add([bg, label]);
+
+    bg.on('pointerdown', () => {
+      this.tweens.add({
+        targets: btnContainer,
+        scale: 0.95,
+        duration: 80,
+        yoyo: true,
+        ease: 'Quad.easeInOut',
+        onComplete: onClick
+      });
+    });
   }
 
   createMuteButton(x, y) {
     const btn = this.add.image(x, y, 'icon_speaker').setInteractive({ useHandCursor: true }).setDepth(10);
-    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xef4444, 3).setOrigin(0).setDepth(11);
+    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xef4444, 2.5).setOrigin(0).setDepth(11);
 
     const updateIcon = () => {
       line.setVisible(Storage.isMuted());
-      btn.setAlpha(Storage.isMuted() ? 0.4 : 1);
+      btn.setAlpha(Storage.isMuted() ? 0.35 : 1);
     };
 
     updateIcon();
