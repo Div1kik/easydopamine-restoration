@@ -1,8 +1,6 @@
 import { ARTIFACTS } from '../data/artifacts.js';
-import { TOOLS } from '../data/tools.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
-import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -14,35 +12,29 @@ export class RestoreScene extends Phaser.Scene {
     const currentIdx = Storage.getCurrentLevelIndex();
     this.artifactData = ARTIFACTS[currentIdx] || ARTIFACTS[0];
 
-    this.currentPhaseIndex = 0;
-    this.startTime = performance.now();
+    this.currentTaskIndex = 0;
+    this.activeTool = 'tool_scraper'; // По умолчанию в руке скребок
     this.lastTouchPos = null;
 
-    // Энергия бустера: 0..100%
-    this.boosterEnergy = 0;
-    this.maxBoosterEnergy = 100;
+    // 1. Фон мастерской с мягким теплым светом
+    this.add.image(width / 2, height / 2, 'bg_workshop');
 
-    // Фон рабочей зоны
-    this.add.rectangle(width / 2, height / 2, width, height, 0x141210);
-
-    // Домой
+    // Верхняя панель
     const homeBtn = this.add.image(36, 36, 'icon_home').setInteractive({ useHandCursor: true });
-    homeBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    homeBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
 
-    // Монеты
     const coins = Storage.getCoins();
-    this.coinsText = this.add.text(70, 26, `${coins}`, {
+    this.add.text(70, 26, `${coins}`, {
       fontSize: '20px',
       fontFamily: 'sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
     });
 
-    // Mute
     this.createMuteButton(width - 36, 36);
 
     // Заголовки
-    this.add.text(width / 2, 68, this.artifactData.eraName.toUpperCase(), {
+    this.add.text(width / 2, 65, this.artifactData.eraName.toUpperCase(), {
       fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#e67e22',
@@ -50,29 +42,46 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 92, this.artifactData.name, {
+    this.add.text(width / 2, 88, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    this.phaseText = this.add.text(width / 2, 118, '', {
+    // Подсказка задачи
+    this.taskNotice = this.add.text(width / 2, 114, '', {
       fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#2ecc71',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // Габариты холста (HD 300x400)
+    // Габариты предмета
     this.artW = 300;
     this.artH = 400;
     this.centerX = width / 2;
-    this.centerY = height / 2 + 25;
+    this.centerY = height * 0.43;
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
+    // Мягкая тень под артефактом
+    this.add.ellipse(this.centerX, this.centerY + 160, 260, 45, 0x000000, 0.45);
+
+    // Чистый базовый артефакт
     this.cleanArt = this.add.image(this.centerX, this.centerY, this.artifactData.textureKey);
+
+    // Слой грязи
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH).setOrigin(0, 0);
+
+    // ГРЯЗЬ СТРОГО НА ПРЕДМЕТЕ: создаем маску по альфа-каналу чистого предмета
+    const maskImage = this.make.image({
+      x: this.centerX,
+      y: this.centerY,
+      key: this.artifactData.textureKey,
+      add: false
+    });
+    const artMask = maskImage.createBitmapMask();
+    this.dirtLayer.setMask(artMask);
 
     // Частицы
     this.particles = this.add.particles(0, 0, 'particle_dust', {
@@ -82,68 +91,61 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     });
 
-    // Инструмент
-    this.toolSprite = this.add.image(this.centerX, this.centerY, 'tool_brush_basic');
+    // Видимый инструмент под пальцем
+    this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper');
     this.toolSprite.setOrigin(0.5, 0.95);
+    this.toolSprite.setScale(0.7);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс-бар внизу
-    const barWidth = width * 0.7;
-    this.add.rectangle(width / 2, height - 55, barWidth, 14, 0x111111);
-    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 55, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
+    // Прогресс-бар текущей задачи
+    const barWidth = width * 0.72;
+    this.add.rectangle(width / 2, height * 0.70, barWidth, 12, 0x111111);
+    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height * 0.70, 0, 12, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Кнопка Ультразвукового Бустера с шкалой энергии вокруг
-    this.createBoosterUI(width - 45, height - 120);
+    // 2. ИНТЕРАКТИВНЫЙ ЛОТОК ИНСТРУМЕНТОВ ВНИЗУ
+    this.createToolsTray(height * 0.83);
 
-    // Инициализация фазы
-    this.startPhase(0);
+    // Инициализация первой задачи
+    this.startTask(0);
 
-    // Стирание: ТОЛЬКО ПРИ ДВИЖЕНИИ (устраняет чит с удержанием пальца)
+    // Стирание с проверкой соответствия инструмента
     const processScrubbing = (pointer) => {
-      if (!pointer.isDown || this.isPhaseTransition) return;
+      if (!pointer.isDown || this.isTaskTransition) return;
 
       if (!this.lastTouchPos) {
         this.lastTouchPos = { x: pointer.x, y: pointer.y };
         return;
       }
 
-      // Вычисляем пройденную дистанцию
       const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.lastTouchPos.x, this.lastTouchPos.y);
-      if (dist < 6) {
-        // Палец почти на месте — прогресс не начисляется
-        return;
-      }
+      if (dist < 6) return; // Исключаем чит удержания пальца
 
       this.lastTouchPos = { x: pointer.x, y: pointer.y };
-
-      this.toolSprite.setPosition(pointer.x, pointer.y - 15);
+      this.toolSprite.setPosition(pointer.x, pointer.y - 10);
       this.toolSprite.setAlpha(1);
-
-      const dx = pointer.x - pointer.prevPosition.x;
-      this.toolSprite.setAngle(Phaser.Math.Clamp(dx * 2.5, -20, 20));
 
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
       if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
+        const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+        const isCorrectTool = (this.activeTool === currentTask.requiredTool);
+
+        // Если инструмент неправильный — скорость стирания минимальна
+        const effectiveStep = isCorrectTool ? 2 : 0.3;
+
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
-        this.cleanedPixels += this.stepWeight;
+        this.cleanedSteps += effectiveStep;
 
-        // Накопление заряда энергии бустера от реального труда
-        if (this.boosterEnergy < this.maxBoosterEnergy) {
-          this.boosterEnergy = Math.min(this.boosterEnergy + 0.35, this.maxBoosterEnergy);
-          this.updateBoosterUI();
+        if (isCorrectTool) {
+          if (this.activeTool === 'tool_scraper') AudioManager.playScrub();
+          else if (this.activeTool === 'tool_solvent') AudioManager.playWash();
+          else AudioManager.playCloth();
+
+          if (navigator.vibrate && Math.random() < 0.2) navigator.vibrate(8);
+          this.particles.emitParticleAt(pointer.x, pointer.y, 2);
         }
 
-        if (this.currentPhaseIndex === 0) AudioManager.playScrub();
-        else if (this.currentPhaseIndex === 1) AudioManager.playWash();
-        else AudioManager.playCloth();
-
-        if (navigator.vibrate && Math.random() < 0.2) {
-          navigator.vibrate(8);
-        }
-
-        this.particles.emitParticleAt(pointer.x, pointer.y, 2);
         this.updateProgress();
       }
     };
@@ -152,7 +154,6 @@ export class RestoreScene extends Phaser.Scene {
       this.lastTouchPos = { x: p.x, y: p.y };
       processScrubbing(p);
     });
-
     this.input.on('pointermove', processScrubbing);
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
@@ -160,157 +161,96 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  createBoosterUI(x, y) {
-    this.boosterBg = this.add.circle(x, y, 26, 0x221d19).setStrokeStyle(3, 0x444444);
-    this.boosterBtn = this.add.image(x, y, 'icon_booster').setScale(0.85).setInteractive({ useHandCursor: true });
-    this.boosterEnergyGfx = this.add.graphics();
-    this.boosterEnergyText = this.add.text(x, y + 36, '0%', {
-      fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#bdc3c7',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+  createToolsTray(trayY) {
+    const { width } = this.scale;
+    const tools = [
+      { id: 'tool_scraper', icon: 'slot_scraper', mask: 'mask_scraper', label: 'Скребок' },
+      { id: 'tool_solvent', icon: 'slot_solvent', mask: 'mask_solvent', label: 'Растворитель' },
+      { id: 'tool_glue', icon: 'slot_glue', mask: 'mask_glue', label: 'Клей' },
+      { id: 'tool_brush', icon: 'slot_brush', mask: 'mask_brush', label: 'Краска' },
+      { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
+    ];
 
-    this.updateBoosterUI();
+    // Подложка лотка
+    this.add.rectangle(width / 2, trayY + 15, width * 0.94, 90, 0x1a1613, 0.9)
+      .setStrokeStyle(1.5, 0x444444);
 
-    this.boosterBtn.on('pointerdown', () => {
-      if (this.isPhaseTransition) return;
+    const stepX = (width * 0.90) / tools.length;
+    const startX = width * 0.05 + stepX / 2;
 
-      // Если заряжен — применяем
-      if (this.boosterEnergy >= this.maxBoosterEnergy) {
-        this.activateBooster();
-      } else {
-        // Если энергии мало — предлагаем зарядить за просмотр рекламы
-        YandexSDK.showRewardedVideo({
-          onRewarded: () => {
-            this.boosterEnergy = this.maxBoosterEnergy;
-            this.activateBooster();
-          }
-        });
-      }
+    this.traySlots = [];
+
+    tools.forEach((t, i) => {
+      const slotX = startX + i * stepX;
+      const slotBg = this.add.rectangle(slotX, trayY + 10, 52, 60, 0x241e1a)
+        .setStrokeStyle(1.5, t.id === this.activeTool ? 0x2ecc71 : 0x555555)
+        .setInteractive({ useHandCursor: true });
+
+      const icon = this.add.image(slotX, trayY + 5, t.icon).setScale(0.55);
+      const label = this.add.text(slotX, trayY + 44, t.label, {
+        fontSize: '9px',
+        fontFamily: 'sans-serif',
+        color: '#bdc3c7'
+      }).setOrigin(0.5);
+
+      slotBg.on('pointerdown', () => {
+        this.selectTool(t.id, t.icon, t.mask);
+      });
+
+      this.traySlots.push({ id: t.id, bg: slotBg });
     });
   }
 
-  updateBoosterUI() {
-    const pct = Math.floor((this.boosterEnergy / this.maxBoosterEnergy) * 100);
-    this.boosterEnergyText.setText(pct >= 100 ? 'ГОТОВ' : `${pct}%`);
-    this.boosterEnergyText.setColor(pct >= 100 ? '#2ecc71' : '#bdc3c7');
+  selectTool(toolId, iconKey, maskKey) {
+    this.activeTool = toolId;
+    this.activeMaskKey = maskKey;
+    this.toolSprite.setTexture(iconKey);
 
-    this.boosterEnergyGfx.clear();
-    const x = this.boosterBtn.x;
-    const y = this.boosterBtn.y;
-
-    if (pct >= 100) {
-      this.boosterBg.setStrokeStyle(3, 0x2ecc71);
-      this.boosterBtn.setAlpha(1);
-    } else {
-      this.boosterBg.setStrokeStyle(3, 0x444444);
-      this.boosterBtn.setAlpha(0.6);
-
-      // Дуга заполнения энергии вокруг кнопки
-      this.boosterEnergyGfx.lineStyle(3, 0x9b59b6, 1);
-      this.boosterEnergyGfx.beginPath();
-      this.boosterEnergyGfx.arc(
-        x,
-        y,
-        26,
-        Phaser.Math.DegToRad(-90),
-        Phaser.Math.DegToRad(-90 + (360 * (this.boosterEnergy / this.maxBoosterEnergy))),
-        false
-      );
-      this.boosterEnergyGfx.strokePath();
-    }
-  }
-
-  activateBooster() {
-    this.boosterEnergy = 0;
-    this.updateBoosterUI();
-
-    AudioManager.playPulse();
-    if (navigator.vibrate) navigator.vibrate([40, 60, 80]);
-
-    const wave = this.add.circle(this.centerX, this.centerY, 20, 0x9b59b6, 0.7);
-    wave.setBlendMode(Phaser.BlendModes.ADD);
-
-    this.tweens.add({
-      targets: wave,
-      radius: 240,
-      alpha: 0,
-      duration: 450,
-      ease: 'Cubic.easeOut',
-      onComplete: () => wave.destroy()
+    this.traySlots.forEach(slot => {
+      slot.bg.setStrokeStyle(1.5, slot.id === toolId ? 0x2ecc71 : 0x555555);
     });
-
-    const boostAmount = Math.round(this.totalStepsTarget * 0.40);
-    this.cleanedPixels += boostAmount;
-
-    for (let i = 0; i < 10; i++) {
-      this.dirtLayer.erase(
-        'brush_mask_gold',
-        Phaser.Math.Between(25, this.artW - 25),
-        Phaser.Math.Between(25, this.artH - 25)
-      );
-    }
-
-    this.updateProgress();
   }
 
-  startPhase(phaseIdx) {
-    this.currentPhaseIndex = phaseIdx;
-    this.isPhaseTransition = false;
-    this.cleanedPixels = 0;
+  startTask(taskIdx) {
+    this.currentTaskIndex = taskIdx;
+    this.isTaskTransition = false;
+    this.cleanedSteps = 0;
 
-    const phase = this.artifactData.phases[phaseIdx];
-    this.phaseText.setText(`ЭТАП ${phaseIdx + 1}/3: ${phase.name.toUpperCase()}`);
-    this.totalStepsTarget = phase.targetSteps;
+    const task = this.artifactData.tasks[taskIdx];
+    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
+    this.targetSteps = task.target;
 
-    // Скорость и вес шагов под каждую фазу
-    if (phaseIdx === 0) {
-      // Фаза 1: грубая, вязкая очистка
-      const equippedToolId = Storage.getEquippedTool();
-      const tool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
-      this.toolSprite.setTexture(tool.textureKey);
-      this.activeMaskKey = tool.maskKey;
-      this.stepWeight = Math.max(1, Math.round(tool.brushRadius / 35));
-    } else if (phaseIdx === 1) {
-      // Фаза 2: губка — средняя скорость
-      this.toolSprite.setTexture('tool_sponge');
-      this.activeMaskKey = 'brush_mask_wide';
-      this.stepWeight = 2;
-    } else {
-      // Фаза 3: финишная замша — быстрая полировка
-      this.toolSprite.setTexture('tool_cloth');
-      this.activeMaskKey = 'brush_mask_gold';
-      this.stepWeight = 3;
-    }
+    // Автовыбор скребка при старте
+    this.selectTool('tool_scraper', 'slot_scraper', 'mask_scraper');
 
+    // Заливаем грязь под текущую задачу
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
-    dirtGfx.fillStyle(phase.color, phaseIdx === 2 ? 0.75 : 0.96);
+    dirtGfx.fillStyle(task.color, 0.95);
     dirtGfx.fillRect(0, 0, this.artW, this.artH);
 
-    dirtGfx.fillStyle(phase.spots, 0.92);
-    for (let i = 0; i < 24; i++) {
+    dirtGfx.fillStyle(0x111111, 0.4);
+    for (let i = 0; i < 22; i++) {
       dirtGfx.fillCircle(
         Phaser.Math.Between(20, this.artW - 20),
         Phaser.Math.Between(20, this.artH - 20),
-        Phaser.Math.Between(15, 55)
+        Phaser.Math.Between(15, 50)
       );
     }
     this.dirtLayer.draw(dirtGfx, 0, 0);
     dirtGfx.destroy();
 
-    this.particles.setParticleTint(phase.color);
+    this.particles.setParticleTint(task.color);
     this.updateProgress();
   }
 
   updateProgress() {
-    const ratio = Math.min(this.cleanedPixels / this.totalStepsTarget, 1);
-    const maxWidth = this.scale.width * 0.7;
+    const ratio = Math.min(this.cleanedSteps / this.targetSteps, 1);
+    const maxWidth = this.scale.width * 0.72;
     this.progressBar.width = ratio * maxWidth;
 
-    if (ratio >= 1 && !this.isPhaseTransition) {
-      this.isPhaseTransition = true;
+    if (ratio >= 1 && !this.isTaskTransition) {
+      this.isTaskTransition = true;
       this.toolSprite.setAlpha(0);
       this.dirtLayer.clear();
 
@@ -336,22 +276,16 @@ export class RestoreScene extends Phaser.Scene {
         onComplete: () => {
           flash.destroy();
 
-          if (this.currentPhaseIndex < 2) {
+          if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
             this.time.delayedCall(300, () => {
-              this.startPhase(this.currentPhaseIndex + 1);
+              this.startTask(this.currentTaskIndex + 1);
             });
           } else {
             AudioManager.playShine();
-
-            const elapsedSeconds = (performance.now() - this.startTime) / 1000;
-            let stars = 3;
-            if (elapsedSeconds > 60) stars = 1;
-            else if (elapsedSeconds > 35) stars = 2;
-
             this.time.delayedCall(350, () => {
               this.scene.start('VictoryScene', { 
                 artifact: this.artifactData,
-                stars: stars
+                stars: 3
               });
             });
           }
