@@ -21,25 +21,31 @@ export class MuseumScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 75, `Открыто экспонатов: ${unlocked.length} / ${ARTIFACTS.length}`, {
-      fontSize: '14px',
+    this.add.text(width / 2, 72, `Открыто: ${unlocked.length} из ${ARTIFACTS.length} (нажмите для осмотра)`, {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#7f8c8d'
     }).setOrigin(0.5);
 
-    // Витрина: список из 3 артефактов в виде карточек
-    const startY = 130;
+    // Карточки
+    const startY = 110;
     const cardH = 175;
 
     ARTIFACTS.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
       const isUnlocked = unlocked.includes(item.id);
 
-      // Подложка карточки
       const bg = this.add.rectangle(width / 2, cardY + 65, width * 0.9, 150, isUnlocked ? 0x221d19 : 0x1a1816)
         .setStrokeStyle(1.5, isUnlocked ? 0xd4af37 : 0x333333, 0.6);
 
-      // Миниатюра предмета слева
+      if (isUnlocked) {
+        bg.setInteractive({ useHandCursor: true });
+        bg.on('pointerdown', () => {
+          this.scene.start('ArtifactDetailScene', { artifact: item });
+        });
+      }
+
+      // Миниатюра
       const thumb = this.add.image(width * 0.22, cardY + 65, item.textureKey);
       thumb.setScale(0.28);
 
@@ -48,42 +54,40 @@ export class MuseumScene extends Phaser.Scene {
         thumb.setAlpha(0.4);
       }
 
-      // Тексты справа
+      // Тексты
       const textX = width * 0.38;
-      this.add.text(textX, cardY + 25, item.eraName.toUpperCase(), {
+      this.add.text(textX, cardY + 20, item.eraName.toUpperCase(), {
         fontSize: '11px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#e67e22' : '#555555',
         fontStyle: 'bold'
       });
 
-      this.add.text(textX, cardY + 45, isUnlocked ? item.name : 'Неизвестный артефакт', {
+      this.add.text(textX, cardY + 40, isUnlocked ? item.name : 'Неизвестный артефакт', {
         fontSize: '15px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#ffffff' : '#777777',
         fontStyle: 'bold'
       });
 
-      this.add.text(textX, cardY + 75, isUnlocked ? item.museumDesc : 'Отреставрируйте этот предмет в мастерской, чтобы выставить его в музее.', {
+      this.add.text(textX, cardY + 65, isUnlocked ? item.museumDesc : 'Отреставрируйте этот предмет в мастерской, чтобы открыть его историю.', {
         fontSize: '12px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#bdc3c7' : '#555555',
-        wordWrap: { width: width * 0.5 }
+        wordWrap: { width: width * 0.52 }
       });
     });
 
-    // Кнопка возврата в меню
-    const backBtn = this.add.rectangle(width / 2, height - 55, 220, 48, 0x34495e)
+    // Назад
+    const backBtn = this.add.rectangle(width / 2, height - 50, 220, 46, 0x34495e)
       .setInteractive({ useHandCursor: true });
-    this.add.text(width / 2, height - 55, 'В главное меню', {
+    this.add.text(width / 2, height - 50, 'В главное меню', {
       fontSize: '16px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    backBtn.on('pointerdown', () => {
-      this.scene.start('MenuScene');
-    });
+    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
 }
