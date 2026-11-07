@@ -1,5 +1,6 @@
 import { ARTIFACTS, ERAS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
+import { AudioManager } from '../utils/AudioManager.js';
 
 export class MuseumScene extends Phaser.Scene {
   constructor() {
@@ -8,167 +9,179 @@ export class MuseumScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    this.currentEraIndex = 0; // Активная вкладка
+    this.currentEraIndex = 0;
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x141210);
+    this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
     // Заголовок
-    this.add.text(width / 2, 38, 'ЗАЛ РЕДКОСТЕЙ', {
+    this.add.text(width / 2, 38, 'МУЗЕЙНАЯ ВИТРИНА', {
       fontSize: '22px',
       fontFamily: 'sans-serif',
       color: '#d4af37',
       fontStyle: 'bold',
       letterSpacing: 2
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(2);
 
-    // Контейнер для динамического рендера карточек эпохи
-    this.eraContainer = this.add.container(0, 0);
+    // Баланс
+    this.balanceText = this.add.text(width / 2, 65, `Баланс: ${Storage.getCoins()} золота`, {
+      fontSize: '14px',
+      fontFamily: 'sans-serif',
+      color: '#f1c40f',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2);
 
-    // Вкладки переключения эпох
-    this.createEraTabs();
-    this.renderCurrentEra();
+    this.container = this.add.container(0, 0).setDepth(3);
+
+    this.createTabs();
+    this.renderEraCards();
 
     // Кнопка возврата в меню
     const backBtn = this.add.rectangle(width / 2, height - 42, 220, 44, 0x34495e)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true }).setDepth(10);
     this.add.text(width / 2, height - 42, 'В главное меню', {
       fontSize: '15px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(11);
 
     backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
 
-  createEraTabs() {
+  createTabs() {
     const { width } = this.scale;
-    const tabY = 75;
+    const tabY = 95;
     const tabWidth = width / ERAS.length;
-
     this.tabButtons = [];
 
     ERAS.forEach((era, idx) => {
       const tabX = tabWidth * idx + tabWidth / 2;
       const isUnlocked = Storage.isEraUnlocked(era.id);
 
-      const tabText = this.add.text(tabX, tabY, era.name.split(' ')[1] || era.name, {
-        fontSize: '13px',
-        fontFamily: 'sans-serif',
-        color: idx === this.currentEraIndex ? '#f1c40f' : (isUnlocked ? '#bdc3c7' : '#555555'),
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const tabBg = this.add.rectangle(tabX, tabY, tabWidth - 6, 32, idx === this.currentEraIndex ? 0xd4af37 : 0x221d19)
+        .setInteractive({ useHandCursor: true }).setDepth(4);
 
-      tabText.on('pointerdown', () => {
+      const label = this.add.text(tabX, tabY, era.name.split(' ')[1] || era.name, {
+        fontSize: '12px',
+        fontFamily: 'sans-serif',
+        color: idx === this.currentEraIndex ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'),
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(5);
+
+      tabBg.on('pointerdown', () => {
         this.currentEraIndex = idx;
         this.updateTabStyles();
-        this.renderCurrentEra();
+        this.renderEraCards();
       });
 
-      this.tabButtons.push(tabText);
+      this.tabButtons.push({ tabBg, label, eraId: era.id });
     });
   }
 
   updateTabStyles() {
     this.tabButtons.forEach((tab, idx) => {
-      const isUnlocked = Storage.isEraUnlocked(ERAS[idx].id);
-      tab.setColor(idx === this.currentEraIndex ? '#f1c40f' : (isUnlocked ? '#bdc3c7' : '#555555'));
+      const isSelected = idx === this.currentEraIndex;
+      const isUnlocked = Storage.isEraUnlocked(tab.eraId);
+      tab.tabBg.setFillStyle(isSelected ? 0xd4af37 : 0x221d19);
+      tab.label.setColor(isSelected ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'));
     });
   }
 
-  renderCurrentEra() {
-    const { width, height } = this.scale;
-    this.eraContainer.removeAll(true);
+  renderEraCards() {
+    const { width } = this.scale;
+    this.container.removeAll(true);
 
     const era = ERAS[this.currentEraIndex];
     const isUnlocked = Storage.isEraUnlocked(era.id);
 
-    // Если эпоха заблокирована
     if (!isUnlocked) {
-      const lockBg = this.add.rectangle(width / 2, height * 0.46, width * 0.88, 380, 0x1a1816)
-        .setStrokeStyle(1.5, 0x444444, 0.6);
-      const lockIcon = this.add.image(width / 2, height * 0.40, 'icon_lock').setScale(1.5);
-      
-      const lockText = this.add.text(width / 2, height * 0.50, `${era.name.toUpperCase()}\nЗАБЛОКИРОВАНА`, {
+      const lockBg = this.add.rectangle(width / 2, 380, width * 0.88, 360, 0x141210, 0.9)
+        .setStrokeStyle(1.5, 0x444444);
+      const lockIcon = this.add.image(width / 2, 340, 'icon_lock').setScale(1.5);
+      const lockText = this.add.text(width / 2, 420, `${era.name.toUpperCase()}\nЗАБЛОКИРОВАНА`, {
         fontSize: '18px',
         fontFamily: 'sans-serif',
         color: '#7f8c8d',
         fontStyle: 'bold',
         align: 'center'
       }).setOrigin(0.5);
-
-      const hintText = this.add.text(width / 2, height * 0.58, 'Восстановите все артефакты\nпредыдущей эпохи, чтобы открыть доступ.', {
-        fontSize: '13px',
-        fontFamily: 'sans-serif',
-        color: '#555555',
-        align: 'center'
-      }).setOrigin(0.5);
-
-      this.eraContainer.add([lockBg, lockIcon, lockText, hintText]);
+      this.container.add([lockBg, lockIcon, lockText]);
       return;
     }
 
-    // Если эпоха открыта — показываем 3 артефакта
     const eraArtifacts = ARTIFACTS.filter(a => a.eraId === era.id);
     const unlocked = Storage.getUnlockedArtifacts();
-    const startY = 110;
-    const cardH = 175;
+
+    const startY = 135;
+    const cardH = 165;
 
     eraArtifacts.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
-      const isItemUnlocked = unlocked.includes(item.id);
-      const stars = Storage.getStars(item.id);
+      const isRestored = unlocked.includes(item.id);
+      const replicaPrice = Math.round((item.reward || 120) * 0.7);
 
-      const bg = this.add.rectangle(width / 2, cardY + 65, width * 0.9, 150, isItemUnlocked ? 0x221d19 : 0x1a1816)
-        .setStrokeStyle(1.5, isItemUnlocked ? 0xd4af37 : 0x333333, 0.6);
+      const bg = this.add.rectangle(width / 2, cardY + 55, width * 0.9, 140, isRestored ? 0x221d19 : 0x161413, 0.95)
+        .setStrokeStyle(1.5, isRestored ? 0xd4af37 : 0x333333, 0.8);
 
-      if (isItemUnlocked) {
-        bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerdown', () => {
-          this.scene.start('ArtifactDetailScene', { artifact: item });
-        });
-      }
+      const thumb = this.add.image(width * 0.22, cardY + 55, item.textureKey).setScale(0.26);
+      if (!isRestored) thumb.setTint(0x111111).setAlpha(0.3);
 
-      // Миниатюра
-      const thumb = this.add.image(width * 0.22, cardY + 65, item.textureKey);
-      thumb.setScale(0.28);
-
-      if (!isItemUnlocked) {
-        thumb.setTint(0x0a0a0a);
-        thumb.setAlpha(0.3);
-      }
-
-      // Тексты
       const textX = width * 0.38;
-      const eraTitle = this.add.text(textX, cardY + 16, item.eraName.toUpperCase(), {
-        fontSize: '11px',
-        fontFamily: 'sans-serif',
-        color: isItemUnlocked ? '#e67e22' : '#555555',
-        fontStyle: 'bold'
-      });
-
-      const nameTitle = this.add.text(textX, cardY + 36, isItemUnlocked ? item.name : 'Неизвестная реликвия', {
+      const title = this.add.text(textX, cardY + 14, item.name, {
         fontSize: '15px',
         fontFamily: 'sans-serif',
-        color: isItemUnlocked ? '#ffffff' : '#666666',
+        color: isRestored ? '#ffffff' : '#666666',
         fontStyle: 'bold'
       });
 
-      const descTitle = this.add.text(textX, cardY + 76, isItemUnlocked ? item.museumDesc : 'Скройте слой многовековой пыли в мастерской, чтобы выставить этот шедевр в зале.', {
-        fontSize: '12px',
+      const desc = this.add.text(textX, cardY + 36, isRestored ? item.museumDesc : 'Отреставрируйте экспонат, чтобы выставить в витрине.', {
+        fontSize: '11px',
         fontFamily: 'sans-serif',
-        color: isItemUnlocked ? '#bdc3c7' : '#555555',
+        color: isRestored ? '#bdc3c7' : '#444444',
         wordWrap: { width: width * 0.52 }
       });
 
-      this.eraContainer.add([bg, thumb, eraTitle, nameTitle, descTitle]);
+      this.container.add([bg, thumb, title, desc]);
 
-      if (isItemUnlocked && stars > 0) {
-        for (let s = 0; s < stars; s++) {
-          const starIcon = this.add.image(textX + s * 22, cardY + 58, 'icon_star');
-          starIcon.setScale(0.5);
-          this.eraContainer.add(starIcon);
-        }
+      if (isRestored) {
+        // Кнопка 1: 3D Осмотр
+        const inspectBtn = this.add.rectangle(textX + 40, cardY + 95, 80, 28, 0x2980b9)
+          .setInteractive({ useHandCursor: true });
+        const inspectTxt = this.add.text(textX + 40, cardY + 95, 'ОСМОТР', {
+          fontSize: '10px',
+          fontFamily: 'sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        inspectBtn.on('pointerdown', () => {
+          this.scene.start('ArtifactDetailScene', { artifact: item });
+        });
+
+        // Кнопка 2: Продать реплику коллекционеру за золото
+        const sellBtn = this.add.rectangle(textX + 135, cardY + 95, 95, 28, 0xe67e22)
+          .setInteractive({ useHandCursor: true });
+        const sellTxt = this.add.text(textX + 135, cardY + 95, `ПРОДАТЬ +${replicaPrice}`, {
+          fontSize: '10px',
+          fontFamily: 'sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        sellBtn.on('pointerdown', () => {
+          Storage.sellArtifactReplica(item.id, replicaPrice);
+          AudioManager.playCoin();
+          this.balanceText.setText(`Баланс: ${Storage.getCoins()} золота`);
+
+          sellBtn.setFillStyle(0x27ae60);
+          sellTxt.setText('ПРОДАНО!');
+          this.time.delayedCall(800, () => {
+            sellBtn.setFillStyle(0xe67e22);
+            sellTxt.setText(`ПРОДАТЬ +${replicaPrice}`);
+          });
+        });
+
+        this.container.add([inspectBtn, inspectTxt, sellBtn, sellTxt]);
       }
     });
   }
