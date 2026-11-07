@@ -13,18 +13,17 @@ export class RestoreScene extends Phaser.Scene {
     const currentIdx = Storage.getCurrentLevelIndex();
     this.artifactData = ARTIFACTS[currentIdx] || ARTIFACTS[0];
 
-    // Получаем текущую экипированную кисть
-    const equippedToolId = Storage.getEquippedTool();
-    this.currentTool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
+    // Текущая активная фаза (0, 1 или 2)
+    this.currentPhaseIndex = 0;
 
     // Фон рабочей зоны
     this.add.rectangle(width / 2, height / 2, width, height, 0x1f1b18);
 
-    // Кнопка выхода в главное меню слева
+    // Домой
     const homeBtn = this.add.image(36, 36, 'icon_home').setInteractive({ useHandCursor: true });
     homeBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    // Монеты по центру-слева
+    // Монеты
     const coins = Storage.getCoins();
     this.coinsText = this.add.text(70, 26, `${coins}`, {
       fontSize: '20px',
@@ -33,7 +32,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     });
 
-    // Кнопка Mute в правом верхнем углу
+    // Mute
     this.createMuteButton(width - 36, 36);
 
     // Заголовки
@@ -45,68 +44,58 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 98, this.artifactData.name, {
+    this.add.text(width / 2, 96, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
     }).setOrigin(0.5);
 
-    // Координаты и холст
-    const artW = 300;
-    const artH = 400;
-    const centerX = width / 2;
-    const centerY = height / 2 + 10;
-    const topLeftX = centerX - artW / 2;
-    const topLeftY = centerY - artH / 2;
+    // Подзаголовок текущей фазы
+    this.phaseText = this.add.text(width / 2, 122, '', {
+      fontSize: '14px',
+      fontFamily: 'sans-serif',
+      color: '#2ecc71',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-    this.cleanArt = this.add.image(centerX, centerY, this.artifactData.textureKey);
+    // Габариты холста
+    this.artW = 300;
+    this.artH = 400;
+    this.centerX = width / 2;
+    this.centerY = height / 2 + 25;
+    this.topLeftX = this.centerX - this.artW / 2;
+    this.topLeftY = this.centerY - this.artH / 2;
 
-    this.dirtLayer = this.add.renderTexture(topLeftX, topLeftY, artW, artH).setOrigin(0, 0);
+    // Базовый чистый артефакт
+    this.cleanArt = this.add.image(this.centerX, this.centerY, this.artifactData.textureKey);
 
-    const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
-    dirtGfx.fillStyle(this.artifactData.dirtColor, 0.96);
-    dirtGfx.fillRect(0, 0, artW, artH);
-
-    dirtGfx.fillStyle(this.artifactData.dirtSpots, 0.95);
-    for (let i = 0; i < 20; i++) {
-      dirtGfx.fillCircle(
-        Phaser.Math.Between(25, artW - 25),
-        Phaser.Math.Between(25, artH - 25),
-        Phaser.Math.Between(20, 55)
-      );
-    }
-    this.dirtLayer.draw(dirtGfx, 0, 0);
-    dirtGfx.destroy();
+    // Слой грязи RenderTexture
+    this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH).setOrigin(0, 0);
 
     // Частицы
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 250, max: 450 },
       speed: { min: 60, max: 140 },
       scale: { start: 1.2, end: 0 },
-      tint: this.artifactData.dirtColor,
       emitting: false
     });
 
-    // Спрайт экипированного инструмента
-    this.toolSprite = this.add.image(centerX, centerY, this.currentTool.textureKey);
+    // Спрайт инструмента
+    this.toolSprite = this.add.image(this.centerX, this.centerY, 'tool_brush_basic');
     this.toolSprite.setOrigin(0.5, 0.95);
-    this.toolSprite.setScale(0.85);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс (с учетом радиуса кисти)
-    this.cleanedPixels = 0;
-    // Чем шире кисть, тем быстрее заполняется цель
-    this.stepWeight = Math.round(this.currentTool.brushRadius / 25);
-    this.totalStepsTarget = 240;
-    this.isCompleted = false;
-
+    // Прогресс-бар внизу
     const barWidth = width * 0.7;
-    this.add.rectangle(width / 2, height - 60, barWidth, 14, 0x111111);
-    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 60, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
+    this.add.rectangle(width / 2, height - 55, barWidth, 14, 0x111111);
+    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 55, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Стирание
+    // Инициализация первой фазы
+    this.startPhase(0);
+
+    // Обработка касаний
     const processScrubbing = (pointer) => {
-      if (!pointer.isDown || this.isCompleted) return;
+      if (!pointer.isDown || this.isPhaseTransition) return;
 
       this.toolSprite.setPosition(pointer.x, pointer.y - 15);
       this.toolSprite.setAlpha(1);
@@ -114,17 +103,18 @@ export class RestoreScene extends Phaser.Scene {
       const dx = pointer.x - pointer.prevPosition.x;
       this.toolSprite.setAngle(Phaser.Math.Clamp(dx * 2.5, -20, 20));
 
-      const localX = pointer.x - topLeftX;
-      const localY = pointer.y - topLeftY;
+      const localX = pointer.x - this.topLeftX;
+      const localY = pointer.y - this.topLeftY;
 
-      if (localX >= 0 && localX <= artW && localY >= 0 && localY <= artH) {
-        // Стираем маской выбранной кисти
-        this.dirtLayer.erase(this.currentTool.maskKey, localX, localY);
+      if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
+        this.dirtLayer.erase(this.activeMaskKey, localX, localY);
         this.cleanedPixels += this.stepWeight;
 
-        AudioManager.playScrub();
+        // Звук в зависимости от фазы
+        if (this.currentPhaseIndex === 0) AudioManager.playScrub();
+        else if (this.currentPhaseIndex === 1) AudioManager.playWash();
+        else AudioManager.playCloth();
 
-        // Микровибрация при наличии поддержки на смартфоне
         if (navigator.vibrate && Math.random() < 0.25) {
           navigator.vibrate(8);
         }
@@ -136,9 +126,103 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerdown', processScrubbing);
     this.input.on('pointermove', processScrubbing);
-    this.input.on('pointerup', () => {
+    this.input.on('pointerup', () => this.toolSprite.setAlpha(0));
+  }
+
+  startPhase(phaseIdx) {
+    this.currentPhaseIndex = phaseIdx;
+    this.isPhaseTransition = false;
+    this.cleanedPixels = 0;
+
+    const phase = this.artifactData.phases[phaseIdx];
+    this.phaseText.setText(`ЭТАП ${phaseIdx + 1}/3: ${phase.name.toUpperCase()}`);
+    this.totalStepsTarget = phase.targetSteps;
+
+    // Подбор инструмента и маски под фазу
+    if (phaseIdx === 0) {
+      const equippedToolId = Storage.getEquippedTool();
+      const tool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
+      this.toolSprite.setTexture(tool.textureKey);
+      this.activeMaskKey = tool.maskKey;
+      this.stepWeight = Math.round(tool.brushRadius / 25);
+    } else if (phaseIdx === 1) {
+      this.toolSprite.setTexture('tool_sponge');
+      this.activeMaskKey = 'brush_mask_wide';
+      this.stepWeight = 2;
+    } else {
+      this.toolSprite.setTexture('tool_cloth');
+      this.activeMaskKey = 'brush_mask_gold';
+      this.stepWeight = 3;
+    }
+
+    // Заливка слоя грязи под текущую фазу
+    this.dirtLayer.clear();
+    const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
+    dirtGfx.fillStyle(phase.color, phaseIdx === 2 ? 0.75 : 0.95);
+    dirtGfx.fillRect(0, 0, this.artW, this.artH);
+
+    dirtGfx.fillStyle(phase.spots, 0.9);
+    for (let i = 0; i < 22; i++) {
+      dirtGfx.fillCircle(
+        Phaser.Math.Between(25, this.artW - 25),
+        Phaser.Math.Between(25, this.artH - 25),
+        Phaser.Math.Between(15, 50)
+      );
+    }
+    this.dirtLayer.draw(dirtGfx, 0, 0);
+    dirtGfx.destroy();
+
+    this.particles.setParticleTint(phase.color);
+    this.updateProgress();
+  }
+
+  updateProgress() {
+    const ratio = Math.min(this.cleanedPixels / this.totalStepsTarget, 1);
+    const maxWidth = this.scale.width * 0.7;
+    this.progressBar.width = ratio * maxWidth;
+
+    if (ratio >= 1 && !this.isPhaseTransition) {
+      this.isPhaseTransition = true;
       this.toolSprite.setAlpha(0);
-    });
+      this.dirtLayer.clear();
+
+      AudioManager.playCoin();
+
+      // Волна блеска
+      const flash = this.add.rectangle(
+        this.cleanArt.x,
+        this.cleanArt.y,
+        this.cleanArt.width,
+        this.cleanArt.height,
+        0xffffff,
+        0.85
+      );
+      flash.setBlendMode(Phaser.BlendModes.ADD);
+
+      this.tweens.add({
+        targets: flash,
+        alpha: 0,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 400,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          flash.destroy();
+
+          if (this.currentPhaseIndex < 2) {
+            // Переход к следующей фазе реставрации
+            this.time.delayedCall(300, () => {
+              this.startPhase(this.currentPhaseIndex + 1);
+            });
+          } else {
+            // Все 3 фазы пройдены — триумф!
+            this.time.delayedCall(350, () => {
+              this.scene.start('VictoryScene', { artifact: this.artifactData });
+            });
+          }
+        }
+      });
+    }
   }
 
   createMuteButton(x, y) {
@@ -156,44 +240,5 @@ export class RestoreScene extends Phaser.Scene {
       Storage.toggleMute();
       updateIcon();
     });
-  }
-
-  updateProgress() {
-    const ratio = Math.min(this.cleanedPixels / this.totalStepsTarget, 1);
-    const maxWidth = this.scale.width * 0.7;
-    this.progressBar.width = ratio * maxWidth;
-
-    if (ratio >= 1 && !this.isCompleted) {
-      this.isCompleted = true;
-      this.toolSprite.setAlpha(0);
-      this.dirtLayer.clear();
-
-      AudioManager.playCoin();
-
-      const flash = this.add.rectangle(
-        this.cleanArt.x,
-        this.cleanArt.y,
-        this.cleanArt.width,
-        this.cleanArt.height,
-        0xffffff,
-        0.8
-      );
-      flash.setBlendMode(Phaser.BlendModes.ADD);
-
-      this.tweens.add({
-        targets: flash,
-        alpha: 0,
-        scaleX: 1.1,
-        scaleY: 1.1,
-        duration: 450,
-        ease: 'Quad.easeOut',
-        onComplete: () => {
-          flash.destroy();
-          this.time.delayedCall(250, () => {
-            this.scene.start('VictoryScene', { artifact: this.artifactData });
-          });
-        }
-      });
-    }
   }
 }
