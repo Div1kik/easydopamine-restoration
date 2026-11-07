@@ -4,7 +4,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    // 1. ЕГИПЕТ: Золотой скарабей с лазуритом
+    // 1. ЕГИПЕТ
     const scarab = this.make.graphics({ x: 0, y: 0, add: false });
     scarab.fillStyle(0xd4af37, 1);
     scarab.fillEllipse(150, 200, 160, 220);
@@ -22,7 +22,7 @@ export class BootScene extends Phaser.Scene {
     scarab.generateTexture('art_egypt_scarab', 300, 400);
     scarab.destroy();
 
-    // 2. ГРЕЦИЯ: Терракотовая амфора
+    // 2. ГРЕЦИЯ
     const amphora = this.make.graphics({ x: 0, y: 0, add: false });
     amphora.fillStyle(0xd35400, 1);
     amphora.fillEllipse(150, 200, 180, 260);
@@ -43,7 +43,7 @@ export class BootScene extends Phaser.Scene {
     amphora.generateTexture('art_greece_amphora', 300, 400);
     amphora.destroy();
 
-    // 3. ЕВРОПА: Стальной рыцарский щит
+    // 3. ЕВРОПА
     const shield = this.make.graphics({ x: 0, y: 0, add: false });
     shield.fillStyle(0x7f8c8d, 1);
     shield.beginPath();
@@ -62,22 +62,19 @@ export class BootScene extends Phaser.Scene {
     shield.generateTexture('art_europe_shield', 300, 400);
     shield.destroy();
 
-    // 4. Пятно ластика (для маски RenderTexture)
+    // 4. Ластик
     const brushMask = this.make.graphics({ x: 0, y: 0, add: false });
     brushMask.fillStyle(0xffffff, 1);
     brushMask.fillCircle(35, 35, 35);
     brushMask.generateTexture('brush', 70, 70);
     brushMask.destroy();
 
-    // 5. Видимый инструмент: Реставрационная кисть
+    // 5. Кисть
     const brushTool = this.make.graphics({ x: 0, y: 0, add: false });
-    // Деревянная ручка
     brushTool.fillStyle(0x8e5d34, 1);
     brushTool.fillRoundedRect(32, 0, 16, 75, 6);
-    // Металлический ободок
     brushTool.fillStyle(0xbdc3c7, 1);
     brushTool.fillRect(28, 70, 24, 15);
-    // Щетина
     brushTool.fillStyle(0xecd8a5, 1);
     brushTool.beginPath();
     brushTool.moveTo(28, 85);
@@ -89,13 +86,28 @@ export class BootScene extends Phaser.Scene {
     brushTool.generateTexture('tool_brush', 80, 120);
     brushTool.destroy();
 
-    // 6. Частица пыли/грязи
+    // 6. Частицы
     const dust = this.make.graphics({ x: 0, y: 0, add: false });
     dust.fillStyle(0xffffff, 1);
     dust.fillCircle(4, 4, 4);
     dust.generateTexture('particle_dust', 8, 8);
     dust.destroy();
 
-    this.scene.start('RestoreScene');
+    // 7. Иконка звука (динамик)
+    const speaker = this.make.graphics({ x: 0, y: 0, add: false });
+    speaker.fillStyle(0xffffff, 1);
+    speaker.fillRect(6, 14, 8, 12);
+    speaker.beginPath();
+    speaker.moveTo(14, 14);
+    speaker.lineTo(26, 6);
+    speaker.lineTo(26, 34);
+    speaker.lineTo(14, 26);
+    speaker.closePath();
+    speaker.fillPath();
+    speaker.generateTexture('icon_speaker', 40, 40);
+    speaker.destroy();
+
+    // Переходим в главное меню
+    this.scene.start('MenuScene');
   }
 }
