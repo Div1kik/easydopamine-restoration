@@ -1,4 +1,4 @@
-import { ARTIFACTS } from '../data/artifacts.js';
+import { ARTIFACTS, ERAS } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
@@ -15,17 +15,41 @@ export class VictoryScene extends Phaser.Scene {
     this.reward = (this.artData.reward || 60) + (this.stars * 10);
     this.rewardClaimed = false;
 
-    // Сохранение золота и звезд в облако
+    // Проверяем статус до сохранения
+    const unlockedBefore = Storage.getUnlockedArtifacts();
     Storage.addCoins(this.reward);
     Storage.unlockArtifact(this.artData.id);
     Storage.setStars(this.artData.id, this.stars);
 
-    AudioManager.playVictory();
+    // Проверяем, открылась ли новая эпоха прямо сейчас
+    let justUnlockedEra = null;
+    ERAS.forEach(era => {
+      if (era.order > 0) {
+        const wasUnlocked = Storage.isEraUnlocked(era.id);
+        if (wasUnlocked && !unlockedBefore.includes(this.artData.id)) {
+          // Если текущий артефакт закрыл предыдущую эпоху
+          const currentEra = ERAS.find(e => e.id === this.artData.eraId);
+          if (currentEra && currentEra.order === era.order - 1) {
+            const prevItems = ARTIFACTS.filter(a => a.eraId === currentEra.id);
+            const allClean = prevItems.every(i => Storage.getUnlockedArtifacts().includes(i.id));
+            if (allClean) {
+              justUnlockedEra = era;
+            }
+          }
+        }
+      }
+    });
+
+    if (justUnlockedEra) {
+      AudioManager.playEraUnlock();
+    } else {
+      AudioManager.playVictory();
+    }
 
     // Парадный фон
     this.add.rectangle(width / 2, height / 2, width, height, 0x111114, 0.95);
 
-    // Залп праздничных конфетти
+    // Конфетти
     const emitter = this.add.particles(width / 2, height * 0.28, 'particle_confetti', {
       speed: { min: 140, max: 280 },
       angle: { min: 0, max: 360 },
@@ -37,7 +61,7 @@ export class VictoryScene extends Phaser.Scene {
     });
     this.time.delayedCall(600, () => emitter.stop());
 
-    // Артефакт
+    // Экспонат
     const art = this.add.image(width / 2, height * 0.30, this.artData.textureKey);
     art.setScale(0);
     this.tweens.add({
@@ -47,7 +71,7 @@ export class VictoryScene extends Phaser.Scene {
       ease: 'Back.easeOut'
     });
 
-    // Анимация звезд под экспонатом
+    // Звезды
     const starStartX = width / 2 - (this.stars - 1) * 24;
     for (let i = 0; i < this.stars; i++) {
       const s = this.add.image(starStartX + i * 48, height * 0.48, 'icon_star');
@@ -62,12 +86,15 @@ export class VictoryScene extends Phaser.Scene {
       });
     }
 
-    // Тексты
-    this.add.text(width / 2, height * 0.55, 'ИДЕАЛЬНАЯ РЕСТАВРАЦИЯ!', {
-      fontSize: '20px',
+    // Заголовки
+    const titleText = justUnlockedEra ? `ОТКРЫТА ЭПОХА: ${justUnlockedEra.name.toUpperCase()}!` : 'ИДЕАЛЬНАЯ РЕСТАВРАЦИЯ!';
+    const titleColor = justUnlockedEra ? '#f39c12' : '#2ecc71';
+
+    this.add.text(width / 2, height * 0.55, titleText, {
+      fontSize: justUnlockedEra ? '18px' : '20px',
       fontStyle: 'bold',
       fontFamily: 'sans-serif',
-      color: '#2ecc71'
+      color: titleColor
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height * 0.60, this.artData.name, {
@@ -83,7 +110,7 @@ export class VictoryScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // Кнопка удвоения за рекламу
+    // Удвоение за рекламу
     this.doubleBtn = this.add.rectangle(width / 2, height * 0.74, 250, 46, 0xe67e22)
       .setInteractive({ useHandCursor: true });
     this.doubleText = this.add.text(width / 2, height * 0.74, 'УДВОИТЬ ЗА РЕКЛАМУ x2', {
@@ -108,7 +135,7 @@ export class VictoryScene extends Phaser.Scene {
       });
     });
 
-    // Следующий уровень с показом межстраничной рекламы
+    // Следующий артефакт
     const nextBtn = this.add.rectangle(width / 2, height * 0.83, 250, 50, 0x27ae60)
       .setInteractive({ useHandCursor: true });
     this.add.text(width / 2, height * 0.83, 'Следующий артефакт', {
