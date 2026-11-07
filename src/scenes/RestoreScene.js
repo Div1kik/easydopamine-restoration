@@ -1,5 +1,4 @@
 import { generateArtifactOrder } from '../data/artifacts.js';
-import { TOOL_SHOP_ITEMS } from '../data/tools.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -15,19 +14,25 @@ export class RestoreScene extends Phaser.Scene {
     const preferredRegion = (data && data.regionId) ? data.regionId : null;
     this.artifactData = generateArtifactOrder(preferredRegion, history.slice(-3));
 
+    // Запускаем аутентичную музыку эпохи
+    AudioManager.playEraMusic(this.artifactData.regionId);
+
     this.currentTaskIndex = 0;
     this.activeTool = 'tool_scraper';
     this.lastTouchPos = null;
     this.glueApplied = false;
 
-    // 1. ОТРИСОВКА АТМОСФЕРНОГО ФОНА МАСТЕРСКОЙ
+    // Фон верстака мастерской
     const tier = Storage.getWorkshopTier();
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // Верхняя панель
+    // Домой
     const homeBtn = this.add.image(36, 36, 'icon_home')
       .setInteractive({ useHandCursor: true }).setDepth(25);
-    homeBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
+    homeBtn.on('pointerdown', () => {
+      AudioManager.stopMusic();
+      this.scene.start('EraSelectScene');
+    });
 
     const coins = Storage.getCoins();
     this.add.text(70, 26, `${coins}`, {
@@ -69,15 +74,14 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // Габариты верстака
+    // Центр стола верстака
     this.artW = 300;
     this.artH = 400;
-    this.centerX = width / 2;
-    this.centerY = height * 0.44;
+    this.centerX = Math.round(width / 2);
+    this.centerY = Math.round(height * 0.44);
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Глубокая тень верстака под предметом
     this.add.ellipse(this.centerX, this.centerY + 165, 270, 48, 0x000000, 0.55).setDepth(1);
 
     // Чистый артефакт
@@ -95,7 +99,7 @@ export class RestoreScene extends Phaser.Scene {
     });
     this.dirtLayer.setMask(maskImage.createBitmapMask());
 
-    // Частицы пыли / искр
+    // Частицы
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 250, max: 450 },
       speed: { min: 60, max: 140 },
@@ -103,8 +107,8 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     }).setDepth(5);
 
-    // Спрайт инструмента
-    this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper')
+    // Визуальный инструмент в руке (зависит от прокачки в магазине)
+    this.toolSprite = this.add.image(this.centerX, this.centerY, this.getEquippedVisualTool('tool_scraper'))
       .setOrigin(0.5, 0.95).setScale(0.7).setAlpha(0).setDepth(15);
 
     // Контейнер склейки
@@ -113,10 +117,10 @@ export class RestoreScene extends Phaser.Scene {
     // Лоток инструментов
     this.createToolsTray(height * 0.84);
 
-    // Старт первой фазы
+    // Первая задача
     this.startTask(0);
 
-    // Сенсорное управление
+    // Стирание грязи
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -141,7 +145,7 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool !== currentTask.requiredTool) {
-        this.toolWarning.setText(currentTask.hint || 'Выберите подходящий инструмент!');
+        this.toolWarning.setText(currentTask.hint || 'Выберите правильный инструмент в лотке!');
         return;
       }
 
@@ -149,9 +153,8 @@ export class RestoreScene extends Phaser.Scene {
       const localY = pointer.y - this.topLeftY;
 
       if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
+        // Гарантированное чистое стирание
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
-
-        // Отмечаем стертые контрольные точки реальной площади
         this.markPointsCleaned(localX, localY);
 
         if (this.activeTool === 'tool_scraper') AudioManager.playScrub();
@@ -176,7 +179,14 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // Сетка контрольных точек для проверки честной очистки поверхности
+  getEquippedVisualTool(type) {
+    const equipped = Storage.getEquippedTools();
+    const id = equipped[type] || 'scraper_1';
+    if (id === 'scraper_2') return 'tool_scraper_tier_2';
+    if (id === 'scraper_3') return 'tool_scraper_tier_3';
+    return 'tool_scraper_tier_1';
+  }
+
   initCoverageGrid() {
     this.gridPoints = [];
     const step = 20;
@@ -190,7 +200,7 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   markPointsCleaned(localX, localY) {
-    const radius = 35;
+    const radius = 38;
     for (let i = 0; i < this.gridPoints.length; i++) {
       const p = this.gridPoints[i];
       if (!p.cleaned) {
@@ -204,9 +214,9 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   checkRealCleanliness() {
-    // 92% очистки точек считается идеальным результатом без поиска микропикселей
+    // Этап завершается только когда предмет физически чист (90% покрытия сетки)
     const ratio = this.cleanedCoveragePoints / this.totalCoveragePoints;
-    if (ratio >= 0.92 && !this.isTaskTransition) {
+    if (ratio >= 0.90 && !this.isTaskTransition) {
       this.isTaskTransition = true;
       this.toolSprite.setAlpha(0);
       this.dirtLayer.clear();
@@ -275,7 +285,7 @@ export class RestoreScene extends Phaser.Scene {
   selectTool(toolId, iconKey, maskKey) {
     this.activeTool = toolId;
     this.activeMaskKey = maskKey;
-    this.toolSprite.setTexture(iconKey);
+    this.toolSprite.setTexture(this.getEquippedVisualTool(toolId) || iconKey);
     this.toolWarning.setText('');
 
     this.traySlots.forEach(slot => {
@@ -300,16 +310,16 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer.setVisible(false);
     this.initCoverageGrid();
 
-    // КОНТРАСТНАЯ ГРАФИКА ДЕФЕКТОВ ПО ЭТАПАМ
+    // ЯРКО ВЫРАЖЕННЫЕ КОНТРАСТНЫЕ СЛОИ
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
 
     if (task.requiredTool === 'tool_scraper') {
-      // 1. Окаменевшая грубая корка / ржавчина (глина, песок, окалина)
-      dirtGfx.fillStyle(task.color || 0x78562d, 0.98);
+      // 1. Грубая корка / ржавчина (буро-оранжевая плотная порода)
+      dirtGfx.fillStyle(0x78562d, 0.98);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x3e2714, 0.85);
-      for (let i = 0; i < 30; i++) {
+      dirtGfx.fillStyle(0x4a2e12, 0.85);
+      for (let i = 0; i < 28; i++) {
         dirtGfx.fillCircle(
           Phaser.Math.Between(20, this.artW - 20),
           Phaser.Math.Between(20, this.artH - 20),
@@ -317,11 +327,11 @@ export class RestoreScene extends Phaser.Scene {
         );
       }
     } else if (task.requiredTool === 'tool_solvent') {
-      // 2. Химические окислы, солевой налет, патина (зеленовато-белесая эмульсия)
-      dirtGfx.fillStyle(0x2d4f3e, 0.90);
+      // 2. Зеленовато-белесый налет солей и оксидной патины
+      dirtGfx.fillStyle(0x2a593f, 0.92);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x4a7c59, 0.75);
-      for (let i = 0; i < 20; i++) {
+      dirtGfx.fillStyle(0x438a63, 0.75);
+      for (let i = 0; i < 22; i++) {
         dirtGfx.fillEllipse(
           Phaser.Math.Between(30, this.artW - 30),
           Phaser.Math.Between(30, this.artH - 30),
@@ -330,11 +340,11 @@ export class RestoreScene extends Phaser.Scene {
         );
       }
     } else {
-      // 3. Неполированная матовая поверхность (дымчатая вуаль перед зеркальным блеском)
-      dirtGfx.fillStyle(0x1a1a1a, 0.55);
+      // 3. Матовая дымчатая вуаль перед зеркальным блеском
+      dirtGfx.fillStyle(0x181818, 0.60);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x333333, 0.40);
-      for (let i = 0; i < 15; i++) {
+      dirtGfx.fillStyle(0x2c2c2c, 0.45);
+      for (let i = 0; i < 16; i++) {
         dirtGfx.fillCircle(
           Phaser.Math.Between(25, this.artW - 25),
           Phaser.Math.Between(25, this.artH - 25),
@@ -427,6 +437,7 @@ export class RestoreScene extends Phaser.Scene {
           });
         } else {
           AudioManager.playShine();
+          AudioManager.stopMusic();
           Storage.addArtifactToInventory(this.artifactData);
 
           this.time.delayedCall(350, () => {
