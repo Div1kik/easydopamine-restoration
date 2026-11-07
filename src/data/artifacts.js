@@ -15,9 +15,33 @@ export const ARTIFACTS = [
     museumDesc: 'Священный символ возрождения из царской гробницы Фив.',
     textureKey: 'art_egypt_scarab',
     tasks: [
-      { id: 'sand', name: 'Снять пласт песчаника', requiredTool: 'tool_scraper', color: 0xb59846, target: 240 },
-      { id: 'salt', name: 'Промыть солевой налет растворителем', requiredTool: 'tool_solvent', color: 0x6e684d, target: 180 },
-      { id: 'polish', name: 'Отполировать золото замшей', requiredTool: 'tool_polish', color: 0x4a432b, target: 140 }
+      {
+        type: 'clean',
+        id: 'sand',
+        name: 'Срезать пласт песчаника',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для окаменелого песка',
+        color: 0xb59846,
+        target: 200
+      },
+      {
+        type: 'clean',
+        id: 'salt',
+        name: 'Растворить вековой солевой налет',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для смывки солей',
+        color: 0x6e684d,
+        target: 170
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Отполировать золото и лазурит',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для финишного блеска',
+        color: 0x4a432b,
+        target: 140
+      }
     ],
     reward: 120
   },
@@ -29,9 +53,33 @@ export const ARTIFACTS = [
     museumDesc: 'Чеканная золотая маска с инкрустацией лазуритом.',
     textureKey: 'art_egypt_mask',
     tasks: [
-      { id: 'clay', name: 'Счистить вековую глину и битум', requiredTool: 'tool_scraper', color: 0x8a6a3b, target: 280 },
-      { id: 'wash', name: 'Бережно смыть осадок с бирюзы', requiredTool: 'tool_solvent', color: 0x4d5b51, target: 200 },
-      { id: 'polish', name: 'Зеркальная полировка венца', requiredTool: 'tool_polish', color: 0x3a3320, target: 160 }
+      {
+        type: 'clean',
+        id: 'clay',
+        name: 'Счистить окаменевший битум',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для грубых смоляных корок',
+        color: 0x78562d,
+        target: 230
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Смыть налет с бирюзы и эмали',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для бережной промывки',
+        color: 0x42524a,
+        target: 180
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Навести зеркальный блеск на венец',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для золотого венца',
+        color: 0x332d1c,
+        target: 150
+      }
     ],
     reward: 150
   },
@@ -43,9 +91,33 @@ export const ARTIFACTS = [
     museumDesc: 'Бронзовый кованый крест вечной жизни.',
     textureKey: 'art_egypt_ankh',
     tasks: [
-      { id: 'sand', name: 'Удалить окаменевший песок', requiredTool: 'tool_scraper', color: 0xa88f4d, target: 230 },
-      { id: 'chem', name: 'Химическая смывка карбонатов', requiredTool: 'tool_solvent', color: 0x545244, target: 170 },
-      { id: 'polish', name: 'Полировка бронзового узора', requiredTool: 'tool_polish', color: 0x3b3323, target: 130 }
+      {
+        type: 'clean',
+        id: 'crust',
+        name: 'Снять известковую корку',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК против плотных отложений',
+        color: 0x9c8344,
+        target: 200
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Нейтрализовать окислы бронзы',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для химической ванны',
+        color: 0x47493a,
+        target: 160
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Полировка священных символов',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для наводки глянца',
+        color: 0x2b2518,
+        target: 130
+      }
     ],
     reward: 130
   },
@@ -59,10 +131,43 @@ export const ARTIFACTS = [
     museumDesc: 'Сосуд для оливкового масла с чернофигурной росписью V в. до н.э.',
     textureKey: 'art_greece_amphora',
     tasks: [
-      { id: 'scale', name: 'Снять морской ракушечник скребком', requiredTool: 'tool_scraper', color: 0x4a5b50, target: 260 },
-      { id: 'wash', name: 'Промыть терракоту мягкой губкой', requiredTool: 'tool_solvent', color: 0x344238, target: 190 },
-      { id: 'glue', name: 'Заполнить трещину керамическим клеем', requiredTool: 'tool_glue', color: 0xd35400, target: 130 },
-      { id: 'polish', name: 'Финишное вощение керамики', requiredTool: 'tool_polish', color: 0x2d3b36, target: 140 }
+      {
+        type: 'clean',
+        id: 'scale',
+        name: 'Сколоть морской ракушечник',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК против ракушечника',
+        color: 0x48574c,
+        target: 220
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Промыть терракоту от солей',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для очистки глины',
+        color: 0x2f3d33,
+        target: 170
+      },
+      {
+        type: 'assemble',
+        id: 'glue_piece',
+        name: 'Склеить отколотый черепок горлышка',
+        requiredTool: 'tool_glue',
+        hint: 'Нанесите КЛЕЙ на трещину, затем приложите осколок',
+        shardTexture: 'shard_amphora',
+        targetX: 195,
+        targetY: 175
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Заполировать шов и вощить керамику',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для финишной полировки',
+        color: 0x242e2b,
+        target: 140
+      }
     ],
     reward: 180
   },
@@ -74,9 +179,33 @@ export const ARTIFACTS = [
     museumDesc: 'Бронзовый шлем спартанского воина.',
     textureKey: 'art_greece_helmet',
     tasks: [
-      { id: 'earth', name: 'Снять окаменевший грунт', requiredTool: 'tool_scraper', color: 0x444b42, target: 270 },
-      { id: 'chem', name: 'Смывка зеленой оксидной патины', requiredTool: 'tool_solvent', color: 0x2d3a33, target: 200 },
-      { id: 'polish', name: 'Полировка античной бронзы', requiredTool: 'tool_polish', color: 0x202923, target: 150 }
+      {
+        type: 'clean',
+        id: 'dirt',
+        name: 'Счистить спекшийся полевой грунт',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК против твердого грунта',
+        color: 0x3d4239,
+        target: 230
+      },
+      {
+        type: 'clean',
+        id: 'chem',
+        name: 'Смыть зеленую оксидную патину',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для смывки патины',
+        color: 0x25302a,
+        target: 170
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Полировка до боевого бронзового сияния',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для полировки купола',
+        color: 0x1a211c,
+        target: 140
+      }
     ],
     reward: 160
   },
@@ -88,9 +217,33 @@ export const ARTIFACTS = [
     museumDesc: 'Массивная серебряная монета со священной совой Афины.',
     textureKey: 'art_greece_coin',
     tasks: [
-      { id: 'dirt', name: 'Очистить мелкий рельеф щеткой', requiredTool: 'tool_scraper', color: 0x555853, target: 220 },
-      { id: 'chem', name: 'Нейтрализовать черный сульфид серебра', requiredTool: 'tool_solvent', color: 0x3b3d3a, target: 160 },
-      { id: 'polish', name: 'Зеркальный серебряный блеск', requiredTool: 'tool_polish', color: 0x262725, target: 130 }
+      {
+        type: 'clean',
+        id: 'crust',
+        name: 'Снять твердые минеральные наросты',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для минеральной корки',
+        color: 0x4d504b,
+        target: 190
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Нейтрализовать черный сульфид серебра',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для сульфидов',
+        color: 0x313330,
+        target: 150
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Серебряный глянец барельефа совы',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для чеканного рельефа',
+        color: 0x1d1e1c,
+        target: 120
+      }
     ],
     reward: 140
   },
@@ -104,10 +257,42 @@ export const ARTIFACTS = [
     museumDesc: 'Турнирный тарч из кричной стали с геральдическим крестом.',
     textureKey: 'art_europe_shield',
     tasks: [
-      { id: 'rust', name: 'Счистить пластовую ржавчину скребком', requiredTool: 'tool_scraper', color: 0x5a3d2e, target: 280 },
-      { id: 'wash', name: 'Смыть копоть и старый защитный лак', requiredTool: 'tool_solvent', color: 0x35312d, target: 190 },
-      { id: 'paint', name: 'Подкрасить утраченный геральдический крест', requiredTool: 'tool_brush', color: 0xc0392b, target: 140 },
-      { id: 'polish', name: 'Навести зеркальный стальной блеск', requiredTool: 'tool_polish', color: 0x2a2826, target: 150 }
+      {
+        type: 'clean',
+        id: 'rust',
+        name: 'Счистить пластовую рыхлую ржавчину',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для чешуйчатой ржавчины',
+        color: 0x543627,
+        target: 240
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Смыть копоть пожарищ и старый лак',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для копоти',
+        color: 0x2b2723,
+        target: 180
+      },
+      {
+        type: 'clean',
+        id: 'paint',
+        name: 'Восстановить стертый красный крест',
+        requiredTool: 'tool_brush',
+        hint: 'Используйте КРАСКУ для гербового узора',
+        color: 0xa83224,
+        target: 130
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Навести зеркальный блеск на оковку',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для стальных граней',
+        color: 0x211f1e,
+        target: 140
+      }
     ],
     reward: 200
   },
@@ -119,9 +304,33 @@ export const ARTIFACTS = [
     museumDesc: 'Полуторный меч с дисковидным навершием и гравировкой.',
     textureKey: 'art_europe_sword',
     tasks: [
-      { id: 'scale', name: 'Удалить окалину и коррозию лезвия', requiredTool: 'tool_scraper', color: 0x483a30, target: 290 },
-      { id: 'chem', name: 'Кислотная нейтрализация микротрещин', requiredTool: 'tool_solvent', color: 0x312923, target: 200 },
-      { id: 'polish', name: 'Алмазная доводка клинка до блеска', requiredTool: 'tool_polish', color: 0x221c17, target: 150 }
+      {
+        type: 'clean',
+        id: 'scale',
+        name: 'Снять глубокую окалину и коррозию лезвия',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК по металлу',
+        color: 0x403228,
+        target: 250
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Кислотная нейтрализация дола клинка',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для микропор стали',
+        color: 0x261f1a,
+        target: 170
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Алмазная полировка лезвия до блеска',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для зеркальной кромки',
+        color: 0x17120e,
+        target: 140
+      }
     ],
     reward: 190
   },
@@ -133,9 +342,33 @@ export const ARTIFACTS = [
     museumDesc: 'Золоченый кубок с гранатами и филигранью.',
     textureKey: 'art_europe_chalice',
     tasks: [
-      { id: 'wax', name: 'Снять застывший свечной воск', requiredTool: 'tool_scraper', color: 0x524838, target: 240 },
-      { id: 'wash', name: 'Бережная очистка самоцветов', requiredTool: 'tool_solvent', color: 0x3b3325, target: 170 },
-      { id: 'polish', name: 'Филигранная полировка золочения', requiredTool: 'tool_polish', color: 0x292318, target: 130 }
+      {
+        type: 'clean',
+        id: 'wax',
+        name: 'Снять застывший свечной нагар и воск',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК против застывшего воска',
+        color: 0x473d2d,
+        target: 200
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Бережная очистка гнезд драгоценных камней',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для промывки камней',
+        color: 0x2e271b,
+        target: 150
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Полировка филигранного золочения',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для драгоценного блеска',
+        color: 0x1f190f,
+        target: 120
+      }
     ],
     reward: 180
   },
@@ -149,9 +382,33 @@ export const ARTIFACTS = [
     museumDesc: 'Боевой клинок школы Бидзэн с волнообразным хамоном.',
     textureKey: 'art_japan_katana',
     tasks: [
-      { id: 'oil', name: 'Снять застывшее масло гвоздики', requiredTool: 'tool_scraper', color: 0x3d3935, target: 290 },
-      { id: 'uchiko', name: 'Очистка рисовой пудрой утико', requiredTool: 'tool_solvent', color: 0x2b2b28, target: 200 },
-      { id: 'polish', name: 'Проявление зеркального хамона камнем', requiredTool: 'tool_polish', color: 0x1f1e1c, target: 150 }
+      {
+        type: 'clean',
+        id: 'oil',
+        name: 'Счистить застывшее масло чодзи и копоть',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для застывшего масла',
+        color: 0x332f2b,
+        target: 230
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Обработать клинок пудрой утико',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для удаления микроокислов',
+        color: 0x242421,
+        target: 170
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Проявить волнистую линию хамона',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для полировки стали',
+        color: 0x141413,
+        target: 140
+      }
     ],
     reward: 220
   },
@@ -163,9 +420,33 @@ export const ARTIFACTS = [
     museumDesc: 'Боевая полумаска с алым лаком уруси и клыками демона.',
     textureKey: 'art_japan_mask',
     tasks: [
-      { id: 'ash', name: 'Счистить боевой пепел и нагар', requiredTool: 'tool_scraper', color: 0x422a27, target: 300 },
-      { id: 'wash', name: 'Очистка золотых клыков Они', requiredTool: 'tool_solvent', color: 0x2d1f1e, target: 200 },
-      { id: 'polish', name: 'Глянцевое вощение драгоценного лака', requiredTool: 'tool_polish', color: 0x1f1514, target: 160 }
+      {
+        type: 'clean',
+        id: 'ash',
+        name: 'Счистить нагар и пепел осадных битв',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК против окалины и гари',
+        color: 0x3b2421,
+        target: 240
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Очистить позолоченные клыки Они',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для бережной промывки',
+        color: 0x241817,
+        target: 170
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Глянцевое вощение лака уруси',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для глубины рубинового лака',
+        color: 0x140d0c,
+        target: 140
+      }
     ],
     reward: 240
   },
@@ -177,9 +458,33 @@ export const ARTIFACTS = [
     museumDesc: 'Резная миниатюра из кости с янтарными глазами.',
     textureKey: 'art_japan_netsuke',
     tasks: [
-      { id: 'dust', name: 'Вычистить вековую пыль из резных пазов', requiredTool: 'tool_scraper', color: 0x5a5345, target: 250 },
-      { id: 'soap', name: 'Промывка чешуи мыльным раствором', requiredTool: 'tool_solvent', color: 0x3d3930, target: 180 },
-      { id: 'polish', name: 'Шелковая полировка кости до фарфора', requiredTool: 'tool_polish', color: 0x2b2822, target: 140 }
+      {
+        type: 'clean',
+        id: 'dust',
+        name: 'Вычистить спрессованную пыль из чешуи',
+        requiredTool: 'tool_scraper',
+        hint: 'Используйте СКРЕБОК для глубоких пазов кости',
+        color: 0x4a4336,
+        target: 200
+      },
+      {
+        type: 'clean',
+        id: 'wash',
+        name: 'Промыть рельеф мыльной пеной',
+        requiredTool: 'tool_solvent',
+        hint: 'Используйте РАСТВОРИТЕЛЬ для пор слоновой кости',
+        color: 0x2e2a22,
+        target: 150
+      },
+      {
+        type: 'clean',
+        id: 'polish',
+        name: 'Шелковая полировка кости до фарфора',
+        requiredTool: 'tool_polish',
+        hint: 'Используйте ЗАМШУ для матового теплого сияния',
+        color: 0x1c1913,
+        target: 120
+      }
     ],
     reward: 210
   }
