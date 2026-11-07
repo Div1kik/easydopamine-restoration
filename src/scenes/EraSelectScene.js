@@ -1,4 +1,4 @@
-import { ERAS, ARTIFACTS } from '../data/artifacts.js';
+import { REGIONS, ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 
 export class EraSelectScene extends Phaser.Scene {
@@ -8,13 +8,14 @@ export class EraSelectScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    this.selectedEraIndex = 0;
+    this.selectedRegionIndex = 0;
     this.renderedElements = [];
 
-    this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
+    const tier = Storage.getWorkshopTier();
+    this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    this.add.text(width / 2, 38, 'ВЫБОР ЭПОХИ', {
-      fontSize: '22px',
+    this.add.text(width / 2, 38, 'ЭКСПЕДИЦИИ И ЗАКАЗЫ', {
+      fontSize: '20px',
       fontFamily: 'sans-serif',
       color: '#d4af37',
       fontStyle: 'bold',
@@ -22,7 +23,7 @@ export class EraSelectScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2);
 
     const resetBtn = this.add.text(width - 20, 20, 'Сброс', {
-      fontSize: '13px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#e74c3c',
       fontStyle: 'bold'
@@ -34,7 +35,7 @@ export class EraSelectScene extends Phaser.Scene {
     });
 
     this.createTabs();
-    this.renderEraLevels();
+    this.renderRegionOrders();
 
     const backBg = this.add.rectangle(width / 2, height - 42, 220, 44, 0x34495e)
       .setInteractive({ useHandCursor: true })
@@ -55,141 +56,93 @@ export class EraSelectScene extends Phaser.Scene {
   createTabs() {
     const { width } = this.scale;
     const tabY = 75;
-    const tabWidth = width / ERAS.length;
+    const tabWidth = width / REGIONS.length;
     this.tabButtons = [];
 
-    ERAS.forEach((era, idx) => {
+    REGIONS.forEach((region, idx) => {
       const tabX = tabWidth * idx + tabWidth / 2;
-      const isUnlocked = Storage.isEraUnlocked(era.id);
+      const shortName = region.name.split(' ')[0];
 
-      const tabBg = this.add.rectangle(tabX, tabY, tabWidth - 8, 36, idx === this.selectedEraIndex ? 0xd4af37 : 0x221d19)
+      const tabBg = this.add.rectangle(tabX, tabY, tabWidth - 4, 32, idx === this.selectedRegionIndex ? 0xd4af37 : 0x221d19)
         .setInteractive({ useHandCursor: true })
         .setDepth(5);
 
-      const label = this.add.text(tabX, tabY, era.name.split(' ')[1] || era.name, {
-        fontSize: '13px',
+      const label = this.add.text(tabX, tabY, shortName, {
+        fontSize: '11px',
         fontFamily: 'sans-serif',
-        color: idx === this.selectedEraIndex ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'),
+        color: idx === this.selectedRegionIndex ? '#141210' : '#bdc3c7',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(6);
 
       tabBg.on('pointerdown', () => {
-        this.selectedEraIndex = idx;
+        this.selectedRegionIndex = idx;
         this.updateTabStyles();
-        this.renderEraLevels();
+        this.renderRegionOrders();
       });
 
-      this.tabButtons.push({ tabBg, label, eraId: era.id });
+      this.tabButtons.push({ tabBg, label });
     });
   }
 
   updateTabStyles() {
     this.tabButtons.forEach((tab, idx) => {
-      const isSelected = idx === this.selectedEraIndex;
-      const isUnlocked = Storage.isEraUnlocked(tab.eraId);
-
+      const isSelected = idx === this.selectedRegionIndex;
       tab.tabBg.setFillStyle(isSelected ? 0xd4af37 : 0x221d19);
-      tab.label.setColor(isSelected ? '#141210' : (isUnlocked ? '#bdc3c7' : '#555555'));
+      tab.label.setColor(isSelected ? '#141210' : '#bdc3c7');
     });
   }
 
-  renderEraLevels() {
-    const { width, height } = this.scale;
+  renderRegionOrders() {
+    const { width } = this.scale;
 
     this.renderedElements.forEach(el => el.destroy());
     this.renderedElements = [];
 
-    const era = ERAS[this.selectedEraIndex];
-    const isUnlocked = Storage.isEraUnlocked(era.id);
-
-    if (!isUnlocked) {
-      const lockBg = this.add.rectangle(width / 2, height * 0.45, width * 0.88, 360, 0x141210, 0.9)
-        .setStrokeStyle(1.5, 0x444444).setDepth(3);
-      const lockIcon = this.add.image(width / 2, height * 0.38, 'icon_lock').setScale(1.5).setDepth(4);
-      const lockText = this.add.text(width / 2, height * 0.48, `${era.name.toUpperCase()}\nЗАБЛОКИРОВАНА`, {
-        fontSize: '18px',
-        fontFamily: 'sans-serif',
-        color: '#7f8c8d',
-        fontStyle: 'bold',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(4);
-
-      const hintText = this.add.text(width / 2, height * 0.56, 'Отреставрируйте все предметы\nпредыдущей эпохи.', {
-        fontSize: '13px',
-        fontFamily: 'sans-serif',
-        color: '#555555',
-        align: 'center'
-      }).setOrigin(0.5).setDepth(4);
-
-      this.renderedElements.push(lockBg, lockIcon, lockText, hintText);
-      return;
-    }
-
-    const eraArtifacts = ARTIFACTS.filter(a => a.eraId === era.id);
-    const unlocked = Storage.getUnlockedArtifacts();
+    const region = REGIONS[this.selectedRegionIndex];
+    const templates = ARTIFACT_TEMPLATES.filter(t => t.regionId === region.id);
 
     const startY = 120;
-    const cardH = 160;
+    const cardH = 150;
 
-    eraArtifacts.forEach((item, idx) => {
+    templates.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
-      const isRestored = unlocked.includes(item.id);
-      const isPlayable = (idx === 0) || unlocked.includes(eraArtifacts[idx - 1].id) || isRestored;
 
-      const bg = this.add.rectangle(width / 2, cardY + 55, width * 0.9, 135, isPlayable ? 0x221d19 : 0x161413, 0.92)
-        .setStrokeStyle(1.5, isPlayable ? 0xd4af37 : 0x333333, 0.8)
-        .setDepth(3);
+      const bg = this.add.rectangle(width / 2, cardY + 50, width * 0.9, 130, 0x221d19, 0.95)
+        .setStrokeStyle(1.5, 0xd4af37, 0.8)
+        .setDepth(3)
+        .setInteractive({ useHandCursor: true });
 
-      if (isPlayable) {
-        bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerdown', () => {
-          const globalIdx = ARTIFACTS.findIndex(a => a.id === item.id);
-          Storage.set('level_index', globalIdx);
-          this.scene.start('RestoreScene');
-        });
-      }
+      bg.on('pointerdown', () => {
+        this.scene.start('RestoreScene', { regionId: region.id });
+      });
 
-      const thumb = this.add.image(width * 0.22, cardY + 55, item.textureKey)
+      const thumb = this.add.image(width * 0.22, cardY + 50, item.textureKey)
         .setScale(0.26)
         .setDepth(4);
 
-      if (!isPlayable) {
-        thumb.setTint(0x111111).setAlpha(0.3);
-      }
-
       const textX = width * 0.38;
-      const title = this.add.text(textX, cardY + 16, item.name, {
-        fontSize: '16px',
+      const title = this.add.text(textX, cardY + 14, item.name, {
+        fontSize: '15px',
         fontFamily: 'sans-serif',
-        color: isPlayable ? '#ffffff' : '#666666',
+        color: '#ffffff',
         fontStyle: 'bold'
       }).setDepth(4);
 
-      const desc = this.add.text(textX, cardY + 40, item.museumDesc, {
-        fontSize: '12px',
+      const desc = this.add.text(textX, cardY + 36, item.museumDesc, {
+        fontSize: '11px',
         fontFamily: 'sans-serif',
-        color: isPlayable ? '#bdc3c7' : '#444444',
+        color: '#bdc3c7',
         wordWrap: { width: width * 0.52 }
       }).setDepth(4);
 
-      let statusLabel = '🔒 ЗАБЛОКИРОВАНО';
-      let statusColor = '#555555';
-      if (isRestored) {
-        statusLabel = '✓ ОТРЕСТАВРИРОВАНО';
-        statusColor = '#2ecc71';
-      } else if (isPlayable) {
-        statusLabel = '▶ НА ВЕРСТАК';
-        statusColor = '#f39c12';
-      }
-
-      const status = this.add.text(textX, cardY + 86, statusLabel, {
-        fontSize: '12px',
+      const actionText = this.add.text(textX, cardY + 88, '▶ ПРИНЯТЬ ЗАКАЗ НА ВЕРСТАК', {
+        fontSize: '11px',
         fontFamily: 'sans-serif',
-        color: statusColor,
+        color: '#2ecc71',
         fontStyle: 'bold'
       }).setDepth(4);
 
-      this.renderedElements.push(bg, thumb, title, desc, status);
+      this.renderedElements.push(bg, thumb, title, desc, actionText);
     });
   }
 }
