@@ -12,7 +12,6 @@ export class MuseumScene extends Phaser.Scene {
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x141210);
 
-    // Заголовок
     this.add.text(width / 2, 45, 'ЗАЛ РЕДКОСТЕЙ', {
       fontSize: '22px',
       fontFamily: 'sans-serif',
@@ -27,13 +26,13 @@ export class MuseumScene extends Phaser.Scene {
       color: '#7f8c8d'
     }).setOrigin(0.5);
 
-    // Карточки
     const startY = 110;
     const cardH = 175;
 
     ARTIFACTS.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
       const isUnlocked = unlocked.includes(item.id);
+      const stars = Storage.getStars(item.id);
 
       const bg = this.add.rectangle(width / 2, cardY + 65, width * 0.9, 150, isUnlocked ? 0x221d19 : 0x1a1816)
         .setStrokeStyle(1.5, isUnlocked ? 0xd4af37 : 0x333333, 0.6);
@@ -56,21 +55,29 @@ export class MuseumScene extends Phaser.Scene {
 
       // Тексты
       const textX = width * 0.38;
-      this.add.text(textX, cardY + 20, item.eraName.toUpperCase(), {
+      this.add.text(textX, cardY + 16, item.eraName.toUpperCase(), {
         fontSize: '11px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#e67e22' : '#555555',
         fontStyle: 'bold'
       });
 
-      this.add.text(textX, cardY + 40, isUnlocked ? item.name : 'Неизвестный артефакт', {
+      this.add.text(textX, cardY + 36, isUnlocked ? item.name : 'Неизвестный артефакт', {
         fontSize: '15px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#ffffff' : '#777777',
         fontStyle: 'bold'
       });
 
-      this.add.text(textX, cardY + 65, isUnlocked ? item.museumDesc : 'Отреставрируйте этот предмет в мастерской, чтобы открыть его историю.', {
+      // Звездочки в музее
+      if (isUnlocked && stars > 0) {
+        for (let s = 0; s < stars; s++) {
+          const starIcon = this.add.image(textX + s * 22, cardY + 60, 'icon_star');
+          starIcon.setScale(0.5);
+        }
+      }
+
+      this.add.text(textX, cardY + 78, isUnlocked ? item.museumDesc : 'Отреставрируйте этот предмет в мастерской, чтобы открыть его историю.', {
         fontSize: '12px',
         fontFamily: 'sans-serif',
         color: isUnlocked ? '#bdc3c7' : '#555555',
@@ -78,7 +85,6 @@ export class MuseumScene extends Phaser.Scene {
       });
     });
 
-    // Назад
     const backBtn = this.add.rectangle(width / 2, height - 50, 220, 46, 0x34495e)
       .setInteractive({ useHandCursor: true });
     this.add.text(width / 2, height - 50, 'В главное меню', {
