@@ -19,13 +19,17 @@ export class RestoreScene extends Phaser.Scene {
     this.activeTool = 'tool_scraper';
     this.lastTouchPos = null;
 
-    // Фон верстака
+    // Состояния для интерактивной склейки
+    this.glueApplied = false;
+    this.pieceAssembled = false;
+
+    // 1. Фон мастерской
     this.add.image(width / 2, height / 2, 'bg_workshop').setDepth(0);
 
     // Домой
     const homeBtn = this.add.image(36, 36, 'icon_home')
       .setInteractive({ useHandCursor: true })
-      .setDepth(20);
+      .setDepth(25);
     homeBtn.on('pointerdown', () => this.scene.start('EraSelectScene'));
 
     const coins = Storage.getCoins();
@@ -34,7 +38,7 @@ export class RestoreScene extends Phaser.Scene {
       fontFamily: 'sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
-    }).setDepth(20);
+    }).setDepth(25);
 
     this.createMuteButton(width - 36, 36);
 
@@ -45,30 +49,31 @@ export class RestoreScene extends Phaser.Scene {
       color: '#e67e22',
       fontStyle: 'bold',
       letterSpacing: 2
-    }).setOrigin(0.5).setDepth(20);
+    }).setOrigin(0.5).setDepth(25);
 
-    this.add.text(width / 2, 84, this.artifactData.name || 'Артефакт', {
+    this.add.text(width / 2, 85, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ecf0f1'
-    }).setOrigin(0.5).setDepth(20);
+    }).setOrigin(0.5).setDepth(25);
 
-    // Инструкция и подсказка
-    this.taskNotice = this.add.text(width / 2, 108, '', {
-      fontSize: '12px',
+    // Подсказка задачи
+    this.taskNotice = this.add.text(width / 2, 110, '', {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#2ecc71',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(20);
+    }).setOrigin(0.5).setDepth(25);
 
-    this.warningNotice = this.add.text(width / 2, 128, '', {
-      fontSize: '11px',
+    // Всплывающее предупреждение при неверном инструменте
+    this.toolWarning = this.add.text(width / 2, 134, '', {
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#e74c3c',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(20);
+    }).setOrigin(0.5).setDepth(25);
 
-    // Габариты предмета
+    // Координаты центра верстака
     this.artW = 300;
     this.artH = 400;
     this.centerX = width / 2;
@@ -77,6 +82,8 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftY = this.centerY - this.artH / 2;
 
     this.add.ellipse(this.centerX, this.centerY + 160, 260, 45, 0x000000, 0.45).setDepth(1);
+
+    // Чистый артефакт
     this.cleanArt = this.add.image(this.centerX, this.centerY, this.artifactData.textureKey).setDepth(2);
 
     // Слой грязи
@@ -100,39 +107,48 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     }).setDepth(5);
 
-    // Спрайт инструмента
+    // Спрайт выбранного инструмента
     this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper')
       .setOrigin(0.5, 0.95)
       .setScale(0.7)
       .setAlpha(0)
       .setDepth(15);
 
-    // Прогресс-бар (появляется только там, где идет очистка)
+    // Контейнер прогресс-бара (скрывается на этапе склейки)
+    this.progressContainer = this.add.container(0, 0).setDepth(12);
     const barWidth = width * 0.72;
-    this.progressBg = this.add.rectangle(width / 2, height * 0.70, barWidth, 12, 0x111111).setDepth(10);
-    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height * 0.70, 0, 12, 0x2ecc71)
-      .setOrigin(0, 0.5)
-      .setDepth(11);
-    this.progressLabel = this.add.text(width / 2, height * 0.70 - 14, '', {
-      fontSize: '11px',
+    const pBg = this.add.rectangle(width / 2, height * 0.69, barWidth, 12, 0x111111);
+    this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height * 0.69, 0, 12, 0x2ecc71).setOrigin(0, 0.5);
+    this.progressText = this.add.text(width / 2, height * 0.69, '0%', {
+      fontSize: '10px',
       fontFamily: 'sans-serif',
-      color: '#bdc3c7',
+      color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(11);
+    }).setOrigin(0.5);
+    this.progressContainer.add([pBg, this.progressBar, this.progressText]);
+
+    // Контейнер интерактивной склейки
+    this.assemblyContainer = this.add.container(0, 0).setDepth(14).setVisible(false);
+    this.createAssemblyElements();
 
     // Лоток инструментов
     this.createToolsTray(height * 0.83);
 
-    // Запуск первого этапа
+    // Старт первой задачи
     this.startTask(0);
 
-    // Сенсорная очистка
+    // Обработка логики очистки
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
-      if (currentTask.type !== 'clean') return; // В режиме склейки ластик выключен
+
+      // Если идет склейка — стирание грязи отключено
+      if (currentTask.requiredTool === 'tool_glue') {
+        this.processGlueAction(pointer);
+        return;
+      }
 
       if (!this.lastTouchPos) {
         this.lastTouchPos = { x: pointer.x, y: pointer.y };
@@ -146,12 +162,10 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 10);
       this.toolSprite.setAlpha(1);
 
-      // Проверка логики инструмента
+      // ЖЕСТКАЯ ЛОГИКА: Не тот инструмент = 0 прогресса + предупреждение
       if (this.activeTool !== currentTask.requiredTool) {
-        this.warningNotice.setText(`❌ ${currentTask.hint}`);
+        this.showToolWarning(currentTask.requiredTool);
         return;
-      } else {
-        this.warningNotice.setText('');
       }
 
       const localX = pointer.x - this.topLeftX;
@@ -181,6 +195,88 @@ export class RestoreScene extends Phaser.Scene {
       this.lastTouchPos = null;
       this.toolSprite.setAlpha(0);
     });
+  }
+
+  // Создание интерактивного осколка для склейки
+  createAssemblyElements() {
+    const { width } = this.scale;
+
+    // Подсвеченный шов скола на амфоре
+    this.seamGfx = this.add.graphics();
+    this.seamGfx.lineStyle(6, 0xd4af37, 0.4);
+    this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
+
+    // Интерактивный осколок сбоку верстака
+    this.brokenPiece = this.add.image(width * 0.16, this.centerY + 50, 'slot_glue') // Заглушка формы осколка
+      .setScale(0.55)
+      .setInteractive({ draggable: true });
+
+    // Посадочная целевая зона осколка
+    this.targetZone = { x: this.centerX - 5, y: this.centerY + 25 };
+
+    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
+      if (!this.glueApplied) {
+        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ ПО ШВУ!');
+        return;
+      }
+      this.brokenPiece.setPosition(dragX, dragY);
+    });
+
+    this.brokenPiece.on('dragend', () => {
+      const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, this.targetZone.x, this.targetZone.y);
+      if (d < 35 && this.glueApplied) {
+        // Успешный защелк осколка на место
+        this.brokenPiece.setPosition(this.targetZone.x, this.targetZone.y);
+        this.brokenPiece.disableInteractive();
+        this.seamGfx.clear();
+        this.seamGfx.lineStyle(4, 0x2ecc71, 0.9);
+        this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
+
+        AudioManager.playCoin();
+        if (navigator.vibrate) navigator.vibrate([30, 40]);
+
+        this.time.delayedCall(400, () => {
+          this.assemblyContainer.setVisible(false);
+          this.completeTaskTransition();
+        });
+      }
+    });
+
+    this.assemblyContainer.add([this.seamGfx, this.brokenPiece]);
+  }
+
+  processGlueAction(pointer) {
+    if (this.activeTool !== 'tool_glue') {
+      this.showToolWarning('tool_glue');
+      return;
+    }
+
+    this.toolSprite.setPosition(pointer.x, pointer.y - 10);
+    this.toolSprite.setAlpha(1);
+
+    // Нанесение клея по шву трещины
+    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.centerX, this.centerY + 25);
+    if (d < 60 && !this.glueApplied) {
+      this.glueApplied = true;
+      this.seamGfx.clear();
+      this.seamGfx.lineStyle(6, 0xf39c12, 1);
+      this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 30, this.centerY - 20, this.centerX + 25, this.centerY + 70));
+
+      AudioManager.playWash();
+      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ПРИСОЕДИНИТЕ ОСКОЛОК');
+      this.toolWarning.setText('');
+    }
+  }
+
+  showToolWarning(neededToolId) {
+    const names = {
+      tool_scraper: 'Нужен СКРЕБОК для грубой корки!',
+      tool_solvent: 'Нужен РАСТВОРИТЕЛЬ для смывки налета!',
+      tool_glue: 'Нужен КЛЕЙ для реставрации трещины!',
+      tool_brush: 'Нужна КИСТЬ с пигментом для узора!',
+      tool_polish: 'Нужна ЗАМША для финишной полировки!'
+    };
+    this.toolWarning.setText(names[neededToolId] || 'Выберите подходящий инструмент в лотке!');
   }
 
   createToolsTray(trayY) {
@@ -228,6 +324,7 @@ export class RestoreScene extends Phaser.Scene {
     this.activeTool = toolId;
     this.activeMaskKey = maskKey;
     this.toolSprite.setTexture(iconKey);
+    this.toolWarning.setText('');
 
     this.traySlots.forEach(slot => {
       slot.bg.setStrokeStyle(1.5, slot.id === toolId ? 0x2ecc71 : 0x555555);
@@ -238,87 +335,120 @@ export class RestoreScene extends Phaser.Scene {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
     this.cleanedSteps = 0;
-    this.warningNotice.setText('');
+    this.toolWarning.setText('');
 
     const task = this.artifactData.tasks[taskIdx];
-    this.taskNotice.setText(`ЭТАП ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
+    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
+    this.targetSteps = task.target || 200;
 
-    // Автоматически переключаем в руке рекомендуемый инструмент
-    const toolMap = {
-      tool_scraper: { icon: 'slot_scraper', mask: 'mask_scraper' },
-      tool_solvent: { icon: 'slot_solvent', mask: 'mask_solvent' },
-      tool_glue: { icon: 'slot_glue', mask: 'mask_glue' },
-      tool_brush: { icon: 'slot_brush', mask: 'mask_brush' },
-      tool_polish: { icon: 'slot_polish', mask: 'mask_polish' }
-    };
-    const def = toolMap[task.requiredTool] || toolMap.tool_scraper;
-    this.selectTool(task.requiredTool, def.icon, def.mask);
-
-    if (task.type === 'clean') {
-      // 1. РЕЖИМ ОЧИСТКИ
-      this.progressBg.setVisible(true);
-      this.progressBar.setVisible(true);
-      this.progressLabel.setVisible(true);
-      this.targetSteps = task.target;
-
+    // Если фаза СКЛЕЙКИ — скрываем грязевой слой и ползунок, включаем интерактивный осколок
+    if (task.requiredTool === 'tool_glue') {
+      this.progressContainer.setVisible(false);
       this.dirtLayer.clear();
-      const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
-      dirtGfx.fillStyle(task.color, 0.96);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
+      this.assemblyContainer.setVisible(true);
+      this.glueApplied = false;
+      this.taskNotice.setText('ИНСТРУКЦИЯ: 1. НАНЕСИТЕ КЛЕЙ НА ШОВ. 2. ПРИСОЕДИНИТЕ ДЕТАЛЬ.');
+      return;
+    }
 
-      dirtGfx.fillStyle(0x111111, 0.35);
-      for (let i = 0; i < 22; i++) {
-        dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(15, 50)
-        );
-      }
-      this.dirtLayer.draw(dirtGfx, 0, 0);
-      dirtGfx.destroy();
+    // Обычная фаза очистки
+    this.progressContainer.setVisible(true);
+    this.assemblyContainer.setVisible(false);
 
-      this.particles.setParticleTint(task.color);
-      this.updateProgress();
+    this.dirtLayer.clear();
+    const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
+    dirtGfx.fillStyle(task.color, 0.96);
+    dirtGfx.fillRect(0, 0, this.artW, this.artH);
 
-    } else if (task.type === 'assemble') {
-      // 2. РЕЖИМ ИНТЕРАКТИВНОЙ СКЛЕЙКИ (Осколок + Клей)
+    dirtGfx.fillStyle(0x111111, 0.35);
+    for (let i = 0; i < 22; i++) {
+      dirtGfx.fillCircle(
+        Phaser.Math.Between(20, this.artW - 20),
+        Phaser.Math.Between(20, this.artH - 20),
+        Phaser.Math.Between(15, 50)
+      );
+    }
+    this.dirtLayer.draw(dirtGfx, 0, 0);
+    dirtGfx.destroy();
+
+    this.particles.setParticleTint(task.color);
+    this.updateProgress();
+  }
+
+  updateProgress() {
+    const ratio = Math.min(this.cleanedSteps / this.targetSteps, 1);
+    const maxWidth = this.scale.width * 0.72;
+
+    // Плавное пропорциональное заполнение
+    this.progressBar.width = ratio * maxWidth;
+    this.progressText.setText(`${Math.floor(ratio * 100)}%`);
+
+    if (ratio >= 1 && !this.isTaskTransition) {
+      this.isTaskTransition = true;
+      this.toolSprite.setAlpha(0);
       this.dirtLayer.clear();
-      this.progressBg.setVisible(false);
-      this.progressBar.setVisible(false);
-      this.progressLabel.setVisible(false);
-
-      this.setupAssemblyMode(task);
+      this.completeTaskTransition();
     }
   }
 
-  setupAssemblyMode(task) {
-    const { width, height } = this.scale;
+  completeTaskTransition() {
+    AudioManager.playCoin();
 
-    // Подсветка целевой зоны трещины
-    const targetZone = this.add.circle(this.topLeftX + task.targetX, this.topLeftY + task.targetY, 28, 0xd4af37, 0.3)
-      .setStrokeStyle(2, 0xf1c40f, 0.8)
-      .setDepth(6);
+    const flash = this.add.rectangle(
+      this.cleanArt.x,
+      this.cleanArt.y,
+      this.cleanArt.width,
+      this.cleanArt.height,
+      0xffffff,
+      0.85
+    ).setDepth(18);
+    flash.setBlendMode(Phaser.BlendModes.ADD);
 
     this.tweens.add({
-      targets: targetZone,
-      scale: 1.15,
-      alpha: 0.6,
-      duration: 600,
-      yoyo: true,
-      repeat: -1
+      targets: flash,
+      alpha: 0,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 400,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        flash.destroy();
+
+        if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
+          this.time.delayedCall(300, () => {
+            this.startTask(this.currentTaskIndex + 1);
+          });
+        } else {
+          AudioManager.playShine();
+          this.time.delayedCall(350, () => {
+            this.scene.start('VictoryScene', { 
+              artifact: this.artifactData,
+              stars: 3
+            });
+          });
+        }
+      }
     });
+  }
 
-    // Осколок, лежащий рядом на верстаке
-    const shard = this.add.image(width * 0.18, height * 0.58, task.shardTexture)
-      .setInteractive({ draggable: true })
-      .setDepth(12);
+  createMuteButton(x, y) {
+    const btn = this.add.image(x, y, 'icon_speaker')
+      .setInteractive({ useHandCursor: true })
+      .setDepth(25);
+    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xe74c3c, 3)
+      .setOrigin(0)
+      .setDepth(26);
 
-    this.input.setDraggable(shard);
+    const updateIcon = () => {
+      line.setVisible(Storage.isMuted());
+      btn.setAlpha(Storage.isMuted() ? 0.5 : 1);
+    };
 
-    shard.on('drag', (pointer, dragX, dragY) => {
-      shard.x = dragX;
-      shard.y = dragY;
+    updateIcon();
+
+    btn.on('pointerdown', () => {
+      Storage.toggleMute();
+      updateIcon();
     });
-
-    shard.on('dragend', () => {
-      const dist = Phaser.Math.
+  }
+}
