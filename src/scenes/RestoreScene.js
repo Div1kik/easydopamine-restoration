@@ -1,4 +1,4 @@
-import { generateArtifactOrder } from '../data/artifacts.js';
+import * as ArtifactsModule from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -10,11 +10,38 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
+    const history = (Storage.getRecentHistory && typeof Storage.getRecentHistory === 'function') 
+      ? Storage.getRecentHistory() 
+      : [];
     const preferredRegion = (data && data.regionId) ? data.regionId : null;
-    this.artifactData = generateArtifactOrder(preferredRegion, history.slice(-3));
 
-    AudioManager.playEraMusic(this.artifactData.regionId);
+    if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
+      this.artifactData = ArtifactsModule.generateArtifactOrder(preferredRegion, history.slice(-3));
+    } else {
+      const templates = ArtifactsModule.ARTIFACT_TEMPLATES || ArtifactsModule.ARTIFACTS || [];
+      const t = templates[0] || {
+        templateId: 'egypt_scarab',
+        regionId: 'egypt',
+        regionName: 'Древний Египет',
+        name: 'Золотой скарабей',
+        museumDesc: 'Священный амулет возрождения.',
+        textureKey: 'art_egypt_scarab',
+        marketValue: 180,
+        tasks: [
+          { type: 'clean', name: 'Снять пласт окаменевшей породы', requiredTool: 'tool_scraper', color: 0x78562d },
+          { type: 'clean', name: 'Смести вековую пыль кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
+          { type: 'clean', name: 'Финишная полировка замшей', requiredTool: 'tool_polish', color: 0x181818 }
+        ]
+      };
+      this.artifactData = {
+        ...t,
+        instanceId: `art_${Date.now()}`
+      };
+    }
+
+    if (AudioManager.playEraMusic) {
+      AudioManager.playEraMusic(this.artifactData.regionId);
+    }
 
     this.currentTaskIndex = 0;
     this.activeTool = 'tool_scraper';
@@ -23,13 +50,13 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
+    const tier = (Storage.getWorkshopTier && typeof Storage.getWorkshopTier === 'function') ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
     const homeBtn = this.add.image(36, 36, 'icon_home')
       .setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
-      AudioManager.stopMusic();
+      if (AudioManager.stopMusic) AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
     });
 
@@ -163,11 +190,15 @@ export class RestoreScene extends Phaser.Scene {
         if (this.activeTool === 'tool_scraper') {
           AudioManager.playScrub();
         } else if (this.activeTool === 'tool_brush') {
-          AudioManager.playBrush ? AudioManager.playBrush() : AudioManager.playCloth();
+          if (AudioManager.playBrush) AudioManager.playBrush();
+          else AudioManager.playCloth();
         } else if (this.activeTool === 'tool_solvent') {
-          const equipped = Storage.getEquippedTools ? Storage.getEquippedTools() : {};
+          const equipped = (Storage.getEquippedTools && typeof Storage.getEquippedTools === 'function') 
+            ? Storage.getEquippedTools() 
+            : {};
           if (equipped.tool_solvent === 'solvent_2' || equipped.tool_solvent === 'solvent_3') {
-            AudioManager.playSpray ? AudioManager.playSpray() : AudioManager.playWash();
+            if (AudioManager.playSpray) AudioManager.playSpray();
+            else AudioManager.playWash();
           } else {
             AudioManager.playWash();
           }
@@ -481,18 +512,20 @@ export class RestoreScene extends Phaser.Scene {
           });
         } else {
           AudioManager.playShine();
-          AudioManager.stopMusic();
+          if (AudioManager.stopMusic) AudioManager.stopMusic();
 
           try {
-            Storage.addArtifactToInventory({
-              instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
-              templateId: this.artifactData.templateId || this.artifactData.id || 'egypt_scarab',
-              regionName: this.artifactData.regionName || 'Древний Египет',
-              name: this.artifactData.name || 'Отреставрированный артефакт',
-              museumDesc: this.artifactData.museumDesc || '',
-              textureKey: this.artifactData.textureKey || 'art_egypt_scarab',
-              marketValue: this.artifactData.marketValue || 180
-            });
+            if (Storage.addArtifactToInventory) {
+              Storage.addArtifactToInventory({
+                instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
+                templateId: this.artifactData.templateId || this.artifactData.id || 'egypt_scarab',
+                regionName: this.artifactData.regionName || 'Древний Египет',
+                name: this.artifactData.name || 'Отреставрированный артефакт',
+                museumDesc: this.artifactData.museumDesc || '',
+                textureKey: this.artifactData.textureKey || 'art_egypt_scarab',
+                marketValue: this.artifactData.marketValue || 180
+              });
+            }
           } catch (e) {
             console.warn('Inventory save error:', e);
           }
@@ -522,7 +555,7 @@ export class RestoreScene extends Phaser.Scene {
     updateIcon();
 
     btn.on('pointerdown', () => {
-      AudioManager.toggleMute();
+      if (AudioManager.toggleMute) AudioManager.toggleMute();
       updateIcon();
     });
   }
