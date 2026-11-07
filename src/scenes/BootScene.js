@@ -1,9 +1,14 @@
+import { YandexSDK } from '../utils/YandexSDK.js';
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
   }
 
-  create() {
+  async create() {
+    // Инициализируем Яндекс SDK в фоновом режиме
+    await YandexSDK.init();
+
     // 1. ЕГИПЕТ
     const scarab = this.make.graphics({ x: 0, y: 0, add: false });
     scarab.fillStyle(0xd4af37, 1);
@@ -62,19 +67,46 @@ export class BootScene extends Phaser.Scene {
     shield.generateTexture('art_europe_shield', 300, 400);
     shield.destroy();
 
-    // 4. Текстуры кистей и масок
+    // 4. Текстуры кистей магазина
     this.buildBrush('basic', 0x8e5d34, 0xbdc3c7, 0xecd8a5, 35);
     this.buildBrush('wide', 0x2c3e50, 0x95a5a6, 0xdfe6e9, 50);
     this.buildBrush('gold', 0xd4af37, 0xf39c12, 0xfff9d2, 65);
 
-    // 5. Частицы пыли
+    // 5. Инструмент Фазы 2: Влажная губка
+    const sponge = this.make.graphics({ x: 0, y: 0, add: false });
+    sponge.fillStyle(0x27ae60, 1);
+    sponge.fillRoundedRect(10, 20, 60, 45, 12);
+    sponge.fillStyle(0x2ecc71, 1);
+    sponge.fillCircle(25, 35, 6);
+    sponge.fillCircle(45, 42, 8);
+    sponge.fillCircle(35, 52, 5);
+    sponge.generateTexture('tool_sponge', 80, 80);
+    sponge.destroy();
+
+    // 6. Инструмент Фазы 3: Замшевая салфетка для полировки
+    const cloth = this.make.graphics({ x: 0, y: 0, add: false });
+    cloth.fillStyle(0x9b59b6, 1);
+    cloth.fillRoundedRect(15, 15, 50, 50, 8);
+    cloth.fillStyle(0x8e44ad, 1);
+    cloth.fillRect(25, 25, 30, 30);
+    cloth.generateTexture('tool_cloth', 80, 80);
+    cloth.destroy();
+
+    // 7. Конфетти
+    const conf = this.make.graphics({ x: 0, y: 0, add: false });
+    conf.fillStyle(0xffffff, 1);
+    conf.fillRect(0, 0, 8, 8);
+    conf.generateTexture('particle_confetti', 8, 8);
+    conf.destroy();
+
+    // 8. Пыль
     const dust = this.make.graphics({ x: 0, y: 0, add: false });
     dust.fillStyle(0xffffff, 1);
     dust.fillCircle(4, 4, 4);
     dust.generateTexture('particle_dust', 8, 8);
     dust.destroy();
 
-    // 6. Иконка звука
+    // 9. Иконка звука
     const speaker = this.make.graphics({ x: 0, y: 0, add: false });
     speaker.fillStyle(0xffffff, 1);
     speaker.fillRect(6, 14, 8, 12);
@@ -88,7 +120,7 @@ export class BootScene extends Phaser.Scene {
     speaker.generateTexture('icon_speaker', 40, 40);
     speaker.destroy();
 
-    // 7. Иконка "Домой"
+    // 10. Иконка "Домой"
     const home = this.make.graphics({ x: 0, y: 0, add: false });
     home.fillStyle(0xffffff, 1);
     home.beginPath();
