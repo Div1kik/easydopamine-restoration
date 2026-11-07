@@ -1,3 +1,5 @@
+import { YandexSDK } from './YandexSDK.js';
+
 export class Storage {
   static get(key, defaultValue) {
     try {
@@ -11,9 +13,54 @@ export class Storage {
   static set(key, value) {
     try {
       localStorage.setItem(`edg_${key}`, JSON.stringify(value));
+      // Асинхронная отправка копии в облако Яндекса
+      this.syncToYandexCloud();
     } catch (e) {
       console.warn("Storage write failed", e);
     }
+  }
+
+  // Облачная синхронизация с аккаунтом игрока
+  static async syncToYandexCloud() {
+    if (YandexSDK.player) {
+      try {
+        const payload = {
+          coins: this.getCoins(),
+          level_index: this.getCurrentLevelIndex(),
+          unlocked_artifacts: this.getUnlockedArtifacts(),
+          owned_tools: this.getOwnedTools(),
+          equipped_tool: this.getEquippedTool(),
+          stars: this.getStarsData()
+        };
+        await YandexSDK.player.setData(payload, true);
+      } catch (err) {
+        console.warn("Yandex Cloud save failed", err);
+      }
+    }
+  }
+
+  static async loadFromYandexCloud() {
+    if (YandexSDK.player) {
+      try {
+        const data = await YandexSDK.player.getData();
+        if (data && typeof data === 'object') {
+          if (data.coins !== undefined) this.setLocal('coins', data.coins);
+          if (data.level_index !== undefined) this.setLocal('level_index', data.level_index);
+          if (data.unlocked_artifacts) this.setLocal('unlocked_artifacts', data.unlocked_artifacts);
+          if (data.owned_tools) this.setLocal('owned_tools', data.owned_tools);
+          if (data.equipped_tool) this.setLocal('equipped_tool', data.equipped_tool);
+          if (data.stars) this.setLocal('stars', data.stars);
+        }
+      } catch (err) {
+        console.warn("Yandex Cloud load failed", err);
+      }
+    }
+  }
+
+  static setLocal(key, value) {
+    try {
+      localStorage.setItem(`edg_${key}`, JSON.stringify(value));
+    } catch {}
   }
 
   // Монеты
@@ -60,6 +107,24 @@ export class Storage {
 
   static getUnlockedArtifacts() {
     return this.get('unlocked_artifacts', []);
+  }
+
+  // Звезды
+  static getStarsData() {
+    return this.get('stars', {});
+  }
+
+  static setStars(artifactId, stars) {
+    const data = this.getStarsData();
+    if (!data[artifactId] || data[artifactId] < stars) {
+      data[artifactId] = stars;
+      this.set('stars', data);
+    }
+  }
+
+  static getStars(artifactId) {
+    const data = this.getStarsData();
+    return data[artifactId] || 0;
   }
 
   // Инструменты
