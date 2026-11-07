@@ -16,6 +16,7 @@ export class Storage {
     }
   }
 
+  // Монеты
   static getCoins() {
     return this.get('coins', 0);
   }
@@ -27,6 +28,16 @@ export class Storage {
     return updated;
   }
 
+  static spendCoins(amount) {
+    const current = this.getCoins();
+    if (current >= amount) {
+      this.set('coins', current - amount);
+      return true;
+    }
+    return false;
+  }
+
+  // Уровни
   static getCurrentLevelIndex() {
     return this.get('level_index', 0);
   }
@@ -38,7 +49,7 @@ export class Storage {
     return next;
   }
 
-  // Коллекция открытых артефактов
+  // Музей
   static unlockArtifact(id) {
     const unlocked = this.get('unlocked_artifacts', []);
     if (!unlocked.includes(id)) {
@@ -51,7 +62,33 @@ export class Storage {
     return this.get('unlocked_artifacts', []);
   }
 
-  // Состояние звука
+  // Инструменты
+  static getOwnedTools() {
+    return this.get('owned_tools', ['tool_basic']);
+  }
+
+  static getEquippedTool() {
+    return this.get('equipped_tool', 'tool_basic');
+  }
+
+  static equipTool(id) {
+    this.set('equipped_tool', id);
+  }
+
+  static buyTool(id, price) {
+    if (this.spendCoins(price)) {
+      const owned = this.getOwnedTools();
+      if (!owned.includes(id)) {
+        owned.push(id);
+        this.set('owned_tools', owned);
+      }
+      this.equipTool(id);
+      return true;
+    }
+    return false;
+  }
+
+  // Звук
   static isMuted() {
     return this.get('sound_muted', false);
   }
