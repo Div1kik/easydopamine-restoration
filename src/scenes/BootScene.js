@@ -63,12 +63,9 @@ export class BootScene extends Phaser.Scene {
     shield.destroy();
 
     // 4. Текстуры кистей и масок
-    // Базовая кисть (радиус 35)
-    this.createBrushAsset('basic', 0x8e5d34, 0xbdc3c7, 0xecd8a5, 35);
-    // Широкая кисть (радиус 50)
-    this.createBrushAsset('wide', 0x2c3e50, 0x95a5a6, 0xdfe6e9, 50);
-    // Золотая кисть (радиус 65)
-    this.createBrushAsset('gold', 0xd4af37, 0xf39c12, 0xfff9d2, 65);
+    this.buildBrush('basic', 0x8e5d34, 0xbdc3c7, 0xecd8a5, 35);
+    this.buildBrush('wide', 0x2c3e50, 0x95a5a6, 0xdfe6e9, 50);
+    this.buildBrush('gold', 0xd4af37, 0xf39c12, 0xfff9d2, 65);
 
     // 5. Частицы пыли
     const dust = this.make.graphics({ x: 0, y: 0, add: false });
@@ -91,7 +88,7 @@ export class BootScene extends Phaser.Scene {
     speaker.generateTexture('icon_speaker', 40, 40);
     speaker.destroy();
 
-    // 7. Иконка "Домой" (стрелка назад / меню)
+    // 7. Иконка "Домой"
     const home = this.make.graphics({ x: 0, y: 0, add: false });
     home.fillStyle(0xffffff, 1);
     home.beginPath();
@@ -107,15 +104,13 @@ export class BootScene extends Phaser.Scene {
     this.scene.start('MenuScene');
   }
 
-  createBrushAsset(id, handleColor, ferruleColor, bristleColor, radius) {
-    // Маска стирания
+  buildBrush(id, handleColor, ferruleColor, bristleColor, radius) {
     const mask = this.make.graphics({ x: 0, y: 0, add: false });
     mask.fillStyle(0xffffff, 1);
     mask.fillCircle(radius, radius, radius);
     mask.generateTexture(`brush_mask_${id}`, radius * 2, radius * 2);
     mask.destroy();
 
-    // Визуальный инструмент
     const tool = this.make.graphics({ x: 0, y: 0, add: false });
     tool.fillStyle(handleColor, 1);
     tool.fillRoundedRect(32, 0, 16, 75, 6);
