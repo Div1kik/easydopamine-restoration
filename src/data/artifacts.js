@@ -6,10 +6,15 @@ export const REGIONS = [
   { id: 'mesoamerica', name: 'Мезоамерика (Майя)', accentColor: '#1abc9c', location: 'Сельва Юкатана' }
 ];
 
+// Алиас для обратной совместимости
+export const ERAS = REGIONS;
+
 export const ARTIFACT_TEMPLATES = [
   // --- ЕГИПЕТ ---
   {
+    id: 'egypt_scarab',
     templateId: 'egypt_scarab',
+    eraId: 'egypt',
     regionId: 'egypt',
     name: 'Золотой скарабей',
     museumDesc: 'Священный амулет возрождения с лазуритом.',
@@ -20,7 +25,9 @@ export const ARTIFACT_TEMPLATES = [
     breakTitle: 'Припаять отломанное золотое крыло'
   },
   {
+    id: 'egypt_mask',
     templateId: 'egypt_mask',
+    eraId: 'egypt',
     regionId: 'egypt',
     name: 'Маска Тутанхамона',
     museumDesc: 'Чеканный царский венец из золота и бирюзы.',
@@ -28,10 +35,12 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 240,
     canBreak: true,
     breakType: 'shard_mask_beard',
-    breakTitle: 'Склеить отколотую ритуальную бородку'
+    breakTitle: 'Склеить отколотую бородку'
   },
   {
+    id: 'egypt_ankh',
     templateId: 'egypt_ankh',
+    eraId: 'egypt',
     regionId: 'egypt',
     name: 'Обрядовый Анкх',
     museumDesc: 'Бронзовый крест вечной жизни жрецов Амона.',
@@ -39,12 +48,14 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 190,
     canBreak: true,
     breakType: 'shard_ankh_loop',
-    breakTitle: 'Соединить расколотую петлю жизни'
+    breakTitle: 'Соединить расколотую петлю'
   },
 
   // --- ГРЕЦИЯ ---
   {
+    id: 'greece_amphora',
     templateId: 'greece_amphora',
+    eraId: 'greece',
     regionId: 'greece',
     name: 'Аттическая амфора',
     museumDesc: 'Чернофигурный сосуд для оливкового масла.',
@@ -55,7 +66,9 @@ export const ARTIFACT_TEMPLATES = [
     breakTitle: 'Склеить отколотую ручку горлышка'
   },
   {
+    id: 'greece_helmet',
     templateId: 'greece_helmet',
+    eraId: 'greece',
     regionId: 'greece',
     name: 'Коринфский шлем',
     museumDesc: 'Боевое бронзовое наголовье спартанца.',
@@ -63,10 +76,12 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 250,
     canBreak: true,
     breakType: 'shard_helmet_cheek',
-    breakTitle: 'Установить выбитую нащечную пластину'
+    breakTitle: 'Установить нащечную пластину'
   },
   {
+    id: 'greece_coin',
     templateId: 'greece_coin',
+    eraId: 'greece',
     regionId: 'greece',
     name: 'Афинская тетрадрахма',
     museumDesc: 'Массивная серебряная монета с совой.',
@@ -77,7 +92,9 @@ export const ARTIFACT_TEMPLATES = [
 
   // --- ЕВРОПА ---
   {
+    id: 'europe_shield',
     templateId: 'europe_shield',
+    eraId: 'europe',
     regionId: 'europe',
     name: 'Рыцарский тарч',
     museumDesc: 'Турнирный щит с геральдическим крестом.',
@@ -86,7 +103,9 @@ export const ARTIFACT_TEMPLATES = [
     canBreak: false
   },
   {
+    id: 'europe_sword',
     templateId: 'europe_sword',
+    eraId: 'europe',
     regionId: 'europe',
     name: 'Меч крестоносца',
     museumDesc: 'Полуторный меч с дисковидным навершием.',
@@ -94,10 +113,12 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 260,
     canBreak: true,
     breakType: 'shard_sword_tip',
-    breakTitle: 'Припаять отломанное острие клинка'
+    breakTitle: 'Припаять острие клинка'
   },
   {
+    id: 'europe_chalice',
     templateId: 'europe_chalice',
+    eraId: 'europe',
     regionId: 'europe',
     name: 'Готический потир',
     museumDesc: 'Золоченый кубок с рубинами и филигранью.',
@@ -105,12 +126,14 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 230,
     canBreak: true,
     breakType: 'shard_chalice_gem',
-    breakTitle: 'Вклеить выпавший в бою гранат'
+    breakTitle: 'Вклеить выпавший гранат'
   },
 
   // --- ЯПОНИЯ ---
   {
+    id: 'japan_katana',
     templateId: 'japan_katana',
+    eraId: 'japan',
     regionId: 'japan',
     name: 'Катана самурая',
     museumDesc: 'Боевой клинок Бидзэн с волнообразным хамоном.',
@@ -118,10 +141,12 @@ export const ARTIFACT_TEMPLATES = [
     baseValue: 280,
     canBreak: true,
     breakType: 'shard_katana_tsuba',
-    breakTitle: 'Закрепить отколотый сегмент цубы'
+    breakTitle: 'Закрепить сегмент цубы'
   },
   {
+    id: 'japan_mask',
     templateId: 'japan_mask',
+    eraId: 'japan',
     regionId: 'japan',
     name: 'Маска Мэнгу',
     museumDesc: 'Алый лак уруси и клыки демона Они.',
@@ -132,7 +157,9 @@ export const ARTIFACT_TEMPLATES = [
     breakTitle: 'Вклеить выбитый клык Они'
   },
   {
+    id: 'japan_netsuke',
     templateId: 'japan_netsuke',
+    eraId: 'japan',
     regionId: 'japan',
     name: 'Нэцкэ «Дракон»',
     museumDesc: 'Миниатюра из моржовой кости с янтарем.',
@@ -141,12 +168,14 @@ export const ARTIFACT_TEMPLATES = [
     canBreak: false
   },
 
-  // --- МЕЗОАМЕРИКА (НОВАЯ ЗОНА) ---
+  // --- МЕЗОАМЕРИКА ---
   {
+    id: 'meso_mask',
     templateId: 'meso_mask',
+    eraId: 'mesoamerica',
     regionId: 'mesoamerica',
     name: 'Нефритовая маска Пакаля',
-    museumDesc: 'Мозаика из пластин императорского нефрита и раковин.',
+    museumDesc: 'Мозаика из пластин императорского нефрита.',
     textureKey: 'art_meso_mask',
     baseValue: 310,
     canBreak: true,
@@ -154,28 +183,35 @@ export const ARTIFACT_TEMPLATES = [
     breakTitle: 'Вставить расколотую нефритовую мозаику'
   },
   {
+    id: 'meso_disk',
     templateId: 'meso_disk',
+    eraId: 'mesoamerica',
     regionId: 'mesoamerica',
     name: 'Солярный диск Тонатиу',
-    museumDesc: 'Базальтовый календарный диск с ликом бога солнца.',
+    museumDesc: 'Базальтовый календарный диск бога солнца.',
     textureKey: 'art_meso_disk',
     baseValue: 290,
     canBreak: false
   },
   {
-    templateId: 'meso:dagger',
+    id: 'meso_dagger',
+    templateId: 'meso_dagger',
+    eraId: 'mesoamerica',
     regionId: 'mesoamerica',
     name: 'Кинжал из обсидиана',
-    museumDesc: 'Жертвенный нож с рукоятью в виде крадущегося ягуара.',
+    museumDesc: 'Жертвенный нож с рукоятью ягуара.',
     textureKey: 'art_meso_dagger',
     baseValue: 260,
     canBreak: true,
     breakType: 'shard_dagger_blade',
-    breakTitle: 'Склеить расколотый вулканический скол'
+    breakTitle: 'Склеить вулканический скол'
   }
 ];
 
-// Генератор уникального процедурного заказа с рандомизацией дефектов
+// Алиас для старых версий сцен, требующих ARTIFACTS
+export const ARTIFACTS = ARTIFACT_TEMPLATES;
+
+// Процедурный генератор заказов с защитой от повторов
 export function generateArtifactOrder(preferredRegionId = null, excludeTemplateIds = []) {
   let pool = ARTIFACT_TEMPLATES.filter(t => !excludeTemplateIds.includes(t.templateId));
   if (preferredRegionId) {
@@ -185,47 +221,40 @@ export function generateArtifactOrder(preferredRegionId = null, excludeTemplateI
   if (pool.length === 0) pool = ARTIFACT_TEMPLATES;
 
   const t = pool[Math.floor(Math.random() * pool.length)];
-  const region = REGIONS.find(r => r.id === t.regionId);
+  const region = REGIONS.find(r => r.id === t.regionId) || REGIONS[0];
 
-  // Рандомизация степени загрязнения
-  const dirtSeverity = 0.8 + Math.random() * 0.7; // 80% .. 150%
-  const hasBreakage = t.canBreak && (Math.random() < 0.65); // 65% шанс поломки
+  const dirtSeverity = 0.8 + Math.random() * 0.7;
+  const hasBreakage = Boolean(t.canBreak && (Math.random() < 0.65));
 
-  // Процедурные задачи под конкретное состояние
-  const tasks = [];
+  const tasks = [
+    {
+      type: 'clean',
+      name: 'Снять пласт окаменевшей породы',
+      requiredTool: 'tool_scraper',
+      hint: 'Используйте СКРЕБОК против грубого панциря',
+      color: 0x826d4b,
+      target: Math.round(200 * dirtSeverity)
+    },
+    {
+      type: 'clean',
+      name: 'Нейтрализовать окислы и нагар',
+      requiredTool: 'tool_solvent',
+      hint: 'Используйте РАСТВОРИТЕЛЬ для микропор',
+      color: 0x3d473d,
+      target: Math.round(170 * dirtSeverity)
+    }
+  ];
 
-  // Задача 1: Грубая зачистка
-  tasks.push({
-    type: 'clean',
-    name: 'Снять пласт окаменевшей породы',
-    requiredTool: 'tool_scraper',
-    hint: 'Используйте СКРЕБОК против грубого панциря',
-    color: 0x826d4b,
-    target: Math.round(200 * dirtSeverity)
-  });
-
-  // Задача 2: Химическая ванна / растворение
-  tasks.push({
-    type: 'clean',
-    name: 'Нейтрализовать окислы и нагар',
-    requiredTool: 'tool_solvent',
-    hint: 'Используйте РАСТВОРИТЕЛЬ для микропор',
-    color: 0x3d473d,
-    target: Math.round(170 * dirtSeverity)
-  });
-
-  // Задача 3 (Опционально): Склейка реального отломанного фрагмента
-  if (hasBreakage) {
+  if (hasBreakage && t.breakType) {
     tasks.push({
       type: 'assemble',
       name: t.breakTitle,
       requiredTool: 'tool_glue',
-      hint: 'Нанесите КЛЕЙ по контуру, затем совместите осколок в паз',
+      hint: 'Нанесите КЛЕЙ по контуру, затем совместите деталь',
       shardTexture: t.breakType
     });
   }
 
-  // Задача 4: Финишная полировка
   tasks.push({
     type: 'clean',
     name: 'Зеркальная полировка поверхности',
