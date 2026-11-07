@@ -1,4 +1,5 @@
 import { YandexSDK } from '../utils/YandexSDK.js';
+import { Storage } from '../utils/Storage.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -6,8 +7,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create() {
-    // Инициализируем Яндекс SDK в фоновом режиме
+    // Инициализация Yandex SDK и загрузка облачных сохранений
     await YandexSDK.init();
+    await Storage.loadFromYandexCloud();
 
     // 1. ЕГИПЕТ
     const scarab = this.make.graphics({ x: 0, y: 0, add: false });
@@ -67,12 +69,12 @@ export class BootScene extends Phaser.Scene {
     shield.generateTexture('art_europe_shield', 300, 400);
     shield.destroy();
 
-    // 4. Текстуры кистей магазина
+    // 4. Кисти
     this.buildBrush('basic', 0x8e5d34, 0xbdc3c7, 0xecd8a5, 35);
     this.buildBrush('wide', 0x2c3e50, 0x95a5a6, 0xdfe6e9, 50);
     this.buildBrush('gold', 0xd4af37, 0xf39c12, 0xfff9d2, 65);
 
-    // 5. Инструмент Фазы 2: Влажная губка
+    // 5. Фазы 2 и 3
     const sponge = this.make.graphics({ x: 0, y: 0, add: false });
     sponge.fillStyle(0x27ae60, 1);
     sponge.fillRoundedRect(10, 20, 60, 45, 12);
@@ -83,7 +85,6 @@ export class BootScene extends Phaser.Scene {
     sponge.generateTexture('tool_sponge', 80, 80);
     sponge.destroy();
 
-    // 6. Инструмент Фазы 3: Замшевая салфетка для полировки
     const cloth = this.make.graphics({ x: 0, y: 0, add: false });
     cloth.fillStyle(0x9b59b6, 1);
     cloth.fillRoundedRect(15, 15, 50, 50, 8);
@@ -92,21 +93,57 @@ export class BootScene extends Phaser.Scene {
     cloth.generateTexture('tool_cloth', 80, 80);
     cloth.destroy();
 
-    // 7. Конфетти
+    // 6. Иконка Звезды
+    const star = this.make.graphics({ x: 0, y: 0, add: false });
+    star.fillStyle(0xf1c40f, 1);
+    star.beginPath();
+    const points = 5;
+    const outerR = 16;
+    const innerR = 7;
+    for (let i = 0; i < points * 2; i++) {
+      const r = (i % 2 === 0) ? outerR : innerR;
+      const angle = (i * Math.PI) / points - Math.PI / 2;
+      const x = 20 + r * Math.cos(angle);
+      const y = 20 + r * Math.sin(angle);
+      if (i === 0) star.moveTo(x, y);
+      else star.lineTo(x, y);
+    }
+    star.closePath();
+    star.fillPath();
+    star.generateTexture('icon_star', 40, 40);
+    star.destroy();
+
+    // 7. Иконка Ультразвукового Бустера (Молния)
+    const booster = this.make.graphics({ x: 0, y: 0, add: false });
+    booster.fillStyle(0x9b59b6, 1);
+    booster.fillCircle(24, 24, 22);
+    booster.fillStyle(0xffffff, 1);
+    booster.beginPath();
+    booster.moveTo(25, 8);
+    booster.lineTo(14, 24);
+    booster.lineTo(23, 24);
+    booster.lineTo(21, 38);
+    booster.lineTo(34, 20);
+    booster.lineTo(26, 20);
+    booster.closePath();
+    booster.fillPath();
+    booster.generateTexture('icon_booster', 48, 48);
+    booster.destroy();
+
+    // Конфетти и пыль
     const conf = this.make.graphics({ x: 0, y: 0, add: false });
     conf.fillStyle(0xffffff, 1);
     conf.fillRect(0, 0, 8, 8);
     conf.generateTexture('particle_confetti', 8, 8);
     conf.destroy();
 
-    // 8. Пыль
     const dust = this.make.graphics({ x: 0, y: 0, add: false });
     dust.fillStyle(0xffffff, 1);
     dust.fillCircle(4, 4, 4);
     dust.generateTexture('particle_dust', 8, 8);
     dust.destroy();
 
-    // 9. Иконка звука
+    // Системные иконки
     const speaker = this.make.graphics({ x: 0, y: 0, add: false });
     speaker.fillStyle(0xffffff, 1);
     speaker.fillRect(6, 14, 8, 12);
@@ -120,7 +157,6 @@ export class BootScene extends Phaser.Scene {
     speaker.generateTexture('icon_speaker', 40, 40);
     speaker.destroy();
 
-    // 10. Иконка "Домой"
     const home = this.make.graphics({ x: 0, y: 0, add: false });
     home.fillStyle(0xffffff, 1);
     home.beginPath();
