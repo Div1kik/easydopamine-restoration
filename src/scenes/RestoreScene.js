@@ -2,6 +2,7 @@ import { ARTIFACTS } from '../data/artifacts.js';
 import { TOOLS } from '../data/tools.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -15,9 +16,14 @@ export class RestoreScene extends Phaser.Scene {
 
     this.currentPhaseIndex = 0;
     this.startTime = performance.now();
+    this.lastTouchPos = null;
+
+    // Энергия бустера: 0..100%
+    this.boosterEnergy = 0;
+    this.maxBoosterEnergy = 100;
 
     // Фон рабочей зоны
-    this.add.rectangle(width / 2, height / 2, width, height, 0x1a1614);
+    this.add.rectangle(width / 2, height / 2, width, height, 0x141210);
 
     // Домой
     const homeBtn = this.add.image(36, 36, 'icon_home').setInteractive({ useHandCursor: true });
@@ -57,7 +63,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    // Габариты холста
+    // Габариты холста (HD 300x400)
     this.artW = 300;
     this.artH = 400;
     this.centerX = width / 2;
@@ -81,20 +87,34 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setOrigin(0.5, 0.95);
     this.toolSprite.setAlpha(0);
 
-    // Прогресс-бар без раздражающих цифр
+    // Прогресс-бар внизу
     const barWidth = width * 0.7;
     this.add.rectangle(width / 2, height - 55, barWidth, 14, 0x111111);
     this.progressBar = this.add.rectangle(width / 2 - barWidth / 2, height - 55, 0, 14, 0x2ecc71).setOrigin(0, 0.5);
 
-    // Ультразвуковой бустер
-    this.createBoosterButton(width - 45, height - 120);
+    // Кнопка Ультразвукового Бустера с шкалой энергии вокруг
+    this.createBoosterUI(width - 45, height - 120);
 
-    // Инициализация первой фазы
+    // Инициализация фазы
     this.startPhase(0);
 
-    // Стирание пальцем/курсором
+    // Стирание: ТОЛЬКО ПРИ ДВИЖЕНИИ (устраняет чит с удержанием пальца)
     const processScrubbing = (pointer) => {
       if (!pointer.isDown || this.isPhaseTransition) return;
+
+      if (!this.lastTouchPos) {
+        this.lastTouchPos = { x: pointer.x, y: pointer.y };
+        return;
+      }
+
+      // Вычисляем пройденную дистанцию
+      const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.lastTouchPos.x, this.lastTouchPos.y);
+      if (dist < 6) {
+        // Палец почти на месте — прогресс не начисляется
+        return;
+      }
+
+      this.lastTouchPos = { x: pointer.x, y: pointer.y };
 
       this.toolSprite.setPosition(pointer.x, pointer.y - 15);
       this.toolSprite.setAlpha(1);
@@ -109,11 +129,17 @@ export class RestoreScene extends Phaser.Scene {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
         this.cleanedPixels += this.stepWeight;
 
+        // Накопление заряда энергии бустера от реального труда
+        if (this.boosterEnergy < this.maxBoosterEnergy) {
+          this.boosterEnergy = Math.min(this.boosterEnergy + 0.35, this.maxBoosterEnergy);
+          this.updateBoosterUI();
+        }
+
         if (this.currentPhaseIndex === 0) AudioManager.playScrub();
         else if (this.currentPhaseIndex === 1) AudioManager.playWash();
         else AudioManager.playCloth();
 
-        if (navigator.vibrate && Math.random() < 0.25) {
+        if (navigator.vibrate && Math.random() < 0.2) {
           navigator.vibrate(8);
         }
 
@@ -122,52 +148,111 @@ export class RestoreScene extends Phaser.Scene {
       }
     };
 
-    this.input.on('pointerdown', processScrubbing);
+    this.input.on('pointerdown', (p) => {
+      this.lastTouchPos = { x: p.x, y: p.y };
+      processScrubbing(p);
+    });
+
     this.input.on('pointermove', processScrubbing);
-    this.input.on('pointerup', () => this.toolSprite.setAlpha(0));
+    this.input.on('pointerup', () => {
+      this.lastTouchPos = null;
+      this.toolSprite.setAlpha(0);
+    });
   }
 
-  createBoosterButton(x, y) {
-    const btn = this.add.image(x, y, 'icon_booster').setInteractive({ useHandCursor: true });
-    this.tweens.add({
-      targets: btn,
-      scale: 1.1,
-      duration: 800,
-      yoyo: true,
-      repeat: -1
-    });
+  createBoosterUI(x, y) {
+    this.boosterBg = this.add.circle(x, y, 26, 0x221d19).setStrokeStyle(3, 0x444444);
+    this.boosterBtn = this.add.image(x, y, 'icon_booster').setScale(0.85).setInteractive({ useHandCursor: true });
+    this.boosterEnergyGfx = this.add.graphics();
+    this.boosterEnergyText = this.add.text(x, y + 36, '0%', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#bdc3c7',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
 
-    btn.on('pointerdown', () => {
+    this.updateBoosterUI();
+
+    this.boosterBtn.on('pointerdown', () => {
       if (this.isPhaseTransition) return;
 
-      AudioManager.playPulse();
-      if (navigator.vibrate) navigator.vibrate([30, 50, 60]);
-
-      const wave = this.add.circle(this.centerX, this.centerY, 20, 0x9b59b6, 0.7);
-      wave.setBlendMode(Phaser.BlendModes.ADD);
-
-      this.tweens.add({
-        targets: wave,
-        radius: 220,
-        alpha: 0,
-        duration: 450,
-        ease: 'Cubic.easeOut',
-        onComplete: () => wave.destroy()
-      });
-
-      const boostAmount = Math.round(this.totalStepsTarget * 0.45);
-      this.cleanedPixels += boostAmount;
-
-      for (let i = 0; i < 8; i++) {
-        this.dirtLayer.erase(
-          'brush_mask_gold',
-          Phaser.Math.Between(30, this.artW - 30),
-          Phaser.Math.Between(30, this.artH - 30)
-        );
+      // Если заряжен — применяем
+      if (this.boosterEnergy >= this.maxBoosterEnergy) {
+        this.activateBooster();
+      } else {
+        // Если энергии мало — предлагаем зарядить за просмотр рекламы
+        YandexSDK.showRewardedVideo({
+          onRewarded: () => {
+            this.boosterEnergy = this.maxBoosterEnergy;
+            this.activateBooster();
+          }
+        });
       }
-
-      this.updateProgress();
     });
+  }
+
+  updateBoosterUI() {
+    const pct = Math.floor((this.boosterEnergy / this.maxBoosterEnergy) * 100);
+    this.boosterEnergyText.setText(pct >= 100 ? 'ГОТОВ' : `${pct}%`);
+    this.boosterEnergyText.setColor(pct >= 100 ? '#2ecc71' : '#bdc3c7');
+
+    this.boosterEnergyGfx.clear();
+    const x = this.boosterBtn.x;
+    const y = this.boosterBtn.y;
+
+    if (pct >= 100) {
+      this.boosterBg.setStrokeStyle(3, 0x2ecc71);
+      this.boosterBtn.setAlpha(1);
+    } else {
+      this.boosterBg.setStrokeStyle(3, 0x444444);
+      this.boosterBtn.setAlpha(0.6);
+
+      // Дуга заполнения энергии вокруг кнопки
+      this.boosterEnergyGfx.lineStyle(3, 0x9b59b6, 1);
+      this.boosterEnergyGfx.beginPath();
+      this.boosterEnergyGfx.arc(
+        x,
+        y,
+        26,
+        Phaser.Math.DegToRad(-90),
+        Phaser.Math.DegToRad(-90 + (360 * (this.boosterEnergy / this.maxBoosterEnergy))),
+        false
+      );
+      this.boosterEnergyGfx.strokePath();
+    }
+  }
+
+  activateBooster() {
+    this.boosterEnergy = 0;
+    this.updateBoosterUI();
+
+    AudioManager.playPulse();
+    if (navigator.vibrate) navigator.vibrate([40, 60, 80]);
+
+    const wave = this.add.circle(this.centerX, this.centerY, 20, 0x9b59b6, 0.7);
+    wave.setBlendMode(Phaser.BlendModes.ADD);
+
+    this.tweens.add({
+      targets: wave,
+      radius: 240,
+      alpha: 0,
+      duration: 450,
+      ease: 'Cubic.easeOut',
+      onComplete: () => wave.destroy()
+    });
+
+    const boostAmount = Math.round(this.totalStepsTarget * 0.40);
+    this.cleanedPixels += boostAmount;
+
+    for (let i = 0; i < 10; i++) {
+      this.dirtLayer.erase(
+        'brush_mask_gold',
+        Phaser.Math.Between(25, this.artW - 25),
+        Phaser.Math.Between(25, this.artH - 25)
+      );
+    }
+
+    this.updateProgress();
   }
 
   startPhase(phaseIdx) {
@@ -179,17 +264,21 @@ export class RestoreScene extends Phaser.Scene {
     this.phaseText.setText(`ЭТАП ${phaseIdx + 1}/3: ${phase.name.toUpperCase()}`);
     this.totalStepsTarget = phase.targetSteps;
 
+    // Скорость и вес шагов под каждую фазу
     if (phaseIdx === 0) {
+      // Фаза 1: грубая, вязкая очистка
       const equippedToolId = Storage.getEquippedTool();
       const tool = TOOLS.find(t => t.id === equippedToolId) || TOOLS[0];
       this.toolSprite.setTexture(tool.textureKey);
       this.activeMaskKey = tool.maskKey;
-      this.stepWeight = Math.round(tool.brushRadius / 25);
+      this.stepWeight = Math.max(1, Math.round(tool.brushRadius / 35));
     } else if (phaseIdx === 1) {
+      // Фаза 2: губка — средняя скорость
       this.toolSprite.setTexture('tool_sponge');
       this.activeMaskKey = 'brush_mask_wide';
       this.stepWeight = 2;
     } else {
+      // Фаза 3: финишная замша — быстрая полировка
       this.toolSprite.setTexture('tool_cloth');
       this.activeMaskKey = 'brush_mask_gold';
       this.stepWeight = 3;
@@ -197,15 +286,15 @@ export class RestoreScene extends Phaser.Scene {
 
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
-    dirtGfx.fillStyle(phase.color, phaseIdx === 2 ? 0.75 : 0.95);
+    dirtGfx.fillStyle(phase.color, phaseIdx === 2 ? 0.75 : 0.96);
     dirtGfx.fillRect(0, 0, this.artW, this.artH);
 
-    dirtGfx.fillStyle(phase.spots, 0.9);
-    for (let i = 0; i < 22; i++) {
+    dirtGfx.fillStyle(phase.spots, 0.92);
+    for (let i = 0; i < 24; i++) {
       dirtGfx.fillCircle(
-        Phaser.Math.Between(25, this.artW - 25),
-        Phaser.Math.Between(25, this.artH - 25),
-        Phaser.Math.Between(15, 50)
+        Phaser.Math.Between(20, this.artW - 20),
+        Phaser.Math.Between(20, this.artH - 20),
+        Phaser.Math.Between(15, 55)
       );
     }
     this.dirtLayer.draw(dirtGfx, 0, 0);
@@ -252,13 +341,12 @@ export class RestoreScene extends Phaser.Scene {
               this.startPhase(this.currentPhaseIndex + 1);
             });
           } else {
-            // Финишный блеск с чистым хрустальным звуком
             AudioManager.playShine();
 
             const elapsedSeconds = (performance.now() - this.startTime) / 1000;
             let stars = 3;
-            if (elapsedSeconds > 45) stars = 1;
-            else if (elapsedSeconds > 28) stars = 2;
+            if (elapsedSeconds > 60) stars = 1;
+            else if (elapsedSeconds > 35) stars = 2;
 
             this.time.delayedCall(350, () => {
               this.scene.start('VictoryScene', { 
