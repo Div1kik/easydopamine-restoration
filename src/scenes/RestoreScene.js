@@ -18,45 +18,30 @@ export class RestoreScene extends Phaser.Scene {
     if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
       this.artifactData = ArtifactsModule.generateArtifactOrder(preferredRegion, history.slice(-3));
     } else {
-      const templates = ArtifactsModule.ARTIFACT_TEMPLATES || ArtifactsModule.ARTIFACTS || [];
-      const t = templates[0] || {
-        templateId: 'egypt_scarab',
-        regionId: 'egypt',
-        regionName: 'Древний Египет',
-        name: 'Золотой скарабей',
-        museumDesc: 'Священный амулет возрождения.',
-        textureKey: 'art_egypt_scarab',
-        marketValue: 180,
-        tasks: [
-          { type: 'clean', name: 'Снять пласт окаменевшей породы', requiredTool: 'tool_scraper', color: 0x78562d },
-          { type: 'clean', name: 'Смести вековую пыль кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
-          { type: 'clean', name: 'Финишная полировка замшей', requiredTool: 'tool_polish', color: 0x181818 }
-        ]
-      };
+      const templates = ArtifactsModule.ARTIFACT_TEMPLATES || [];
       this.artifactData = {
-        ...t,
+        ...templates[0],
         instanceId: `art_${Date.now()}`
       };
     }
 
-    if (AudioManager.playEraMusic) {
-      AudioManager.playEraMusic(this.artifactData.regionId);
-    }
+    // Запускаем музыку выбранного региона
+    AudioManager.playEraMusic(this.artifactData.regionId);
 
     this.currentTaskIndex = 0;
-    this.activeTool = 'tool_scraper';
-    this.activeMaskKey = 'mask_scraper';
+    this.activeTool = 'tool_brush';
+    this.activeMaskKey = 'mask_brush';
     this.lastTouchPos = null;
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    const tier = (Storage.getWorkshopTier && typeof Storage.getWorkshopTier === 'function') ? Storage.getWorkshopTier() : 1;
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
     const homeBtn = this.add.image(36, 36, 'icon_home')
       .setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
-      if (AudioManager.stopMusic) AudioManager.stopMusic();
+      AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
     });
 
@@ -71,7 +56,7 @@ export class RestoreScene extends Phaser.Scene {
     this.createMuteButton(width - 36, 36);
 
     this.add.text(width / 2, 58, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
-      fontSize: '12px',
+      fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#c5a059',
       fontStyle: 'bold',
@@ -79,7 +64,7 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(25);
 
     this.add.text(width / 2, 80, this.artifactData.name, {
-      fontSize: '19px',
+      fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
@@ -108,10 +93,15 @@ export class RestoreScene extends Phaser.Scene {
 
     this.add.ellipse(this.centerX, this.centerY + 165, 270, 48, 0x000000, 0.6).setDepth(1);
 
+    // Чистый артефакт
     this.cleanArt = this.add.image(this.centerX, this.centerY, this.artifactData.textureKey).setDepth(2);
 
+    // Графика обнажившегося зубчатого скола
+    this.breakHoleGfx = this.add.graphics().setDepth(3).setVisible(false);
+
+    // Слой грязи
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
-      .setOrigin(0, 0).setDepth(3);
+      .setOrigin(0, 0).setDepth(4);
 
     const maskImage = this.make.image({
       x: this.centerX,
@@ -128,7 +118,7 @@ export class RestoreScene extends Phaser.Scene {
       emitting: false
     }).setDepth(5);
 
-    this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_scraper')
+    this.toolSprite = this.add.image(this.centerX, this.centerY, 'slot_brush_soft')
       .setOrigin(0.5, 0.95).setScale(0.72).setAlpha(0).setDepth(15);
 
     this.assemblyContainer = this.add.container(0, 0).setDepth(14).setVisible(false);
@@ -143,7 +133,7 @@ export class RestoreScene extends Phaser.Scene {
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
 
-      if (currentTask.type === 'assemble') {
+      if (currentTask.type === 'break_and_assemble') {
         this.processGlueAction(pointer);
         return;
       }
@@ -163,12 +153,10 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
       this.toolSprite.setAlpha(1);
 
-      if (this.activeTool === 'tool_scraper') {
-        const targetAngle = Phaser.Math.Clamp(dx * 1.5, -25, 25);
-        this.toolSprite.angle = targetAngle + (Math.random() * 4 - 2);
-      } else if (this.activeTool === 'tool_brush') {
-        const bend = Phaser.Math.Clamp(-dx * 1.8, -20, 20);
-        this.toolSprite.angle = bend;
+      if (this.activeTool === 'tool_brush') {
+        this.toolSprite.angle = Phaser.Math.Clamp(-dx * 1.8, -20, 20);
+      } else if (this.activeTool === 'tool_scraper') {
+        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.5, -25, 25) + (Math.random() * 4 - 2);
       } else if (this.activeTool === 'tool_polish') {
         this.toolSprite.angle = Math.sin(this.time.now * 0.02) * 12;
       } else {
@@ -187,24 +175,10 @@ export class RestoreScene extends Phaser.Scene {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
         this.markPointsCleaned(localX, localY);
 
-        if (this.activeTool === 'tool_scraper') {
-          AudioManager.playScrub();
-        } else if (this.activeTool === 'tool_brush') {
-          if (AudioManager.playBrush) AudioManager.playBrush();
-          else AudioManager.playCloth();
-        } else if (this.activeTool === 'tool_solvent') {
-          const equipped = (Storage.getEquippedTools && typeof Storage.getEquippedTools === 'function') 
-            ? Storage.getEquippedTools() 
-            : {};
-          if (equipped.tool_solvent === 'solvent_2' || equipped.tool_solvent === 'solvent_3') {
-            if (AudioManager.playSpray) AudioManager.playSpray();
-            else AudioManager.playWash();
-          } else {
-            AudioManager.playWash();
-          }
-        } else if (this.activeTool === 'tool_polish') {
-          AudioManager.playCloth();
-        }
+        if (this.activeTool === 'tool_brush') AudioManager.playBrush();
+        else if (this.activeTool === 'tool_solvent') AudioManager.playSpray();
+        else if (this.activeTool === 'tool_scraper') AudioManager.playScrub();
+        else if (this.activeTool === 'tool_polish') AudioManager.playCloth();
 
         if (navigator.vibrate && Math.random() < 0.2) navigator.vibrate(8);
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
@@ -274,6 +248,82 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
+  // МЕХАНИКА ОТЛАМЫВАНИЯ И СКЛЕЙКИ
+  setupBreakAndAssembleStage(task) {
+    const { width } = this.scale;
+    this.assemblyContainer.removeAll(true);
+    this.assemblyContainer.setVisible(true);
+    this.glueApplied = false;
+
+    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
+
+    // 1. Место скола на артефакте
+    const targetX = this.centerX + 35;
+    const targetY = this.centerY - 20;
+
+    this.breakHoleGfx.clear();
+    this.breakHoleGfx.setVisible(true);
+    // Темная дыра скола на самом предмете
+    this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
+    this.breakHoleGfx.fillCircle(targetX, targetY, 26);
+    this.breakHoleGfx.lineStyle(3, 0x8a7238, 0.7);
+    this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+
+    // 2. Деталь сидит на предмете, а затем со звуком ОТЛАМЫВАЕТСЯ и падает на верстак!
+    this.brokenPiece = this.add.image(targetX, targetY, shardTex).setDepth(16);
+
+    AudioManager.playBreakSnap();
+    if (navigator.vibrate) navigator.vibrate([40, 60]);
+
+    // Анимация падения отломившейся детали на верстак рядом
+    this.tweens.add({
+      targets: this.brokenPiece,
+      x: width * 0.20,
+      y: this.centerY + 85,
+      angle: 35,
+      duration: 650,
+      ease: 'Bounce.easeOut',
+      onComplete: () => {
+        this.brokenPiece.setInteractive({ draggable: true });
+        this.taskNotice.setText('ДЕТАЛЬ ОТЛОМИЛАСЬ! НАНЕСИТЕ КЛЕЙ НА СКОЛ');
+        this.selectTool('tool_glue', 'slot_glue', 'mask_glue');
+      }
+    });
+
+    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
+      if (!this.glueApplied) {
+        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ НА МЕСТО СКОЛА!');
+        return;
+      }
+      this.brokenPiece.setPosition(dragX, dragY);
+    });
+
+    this.brokenPiece.on('dragend', () => {
+      const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
+      if (d < 45 && this.glueApplied) {
+        // Успешная установка на место
+        this.brokenPiece.setPosition(targetX, targetY);
+        this.brokenPiece.setAngle(0);
+        this.brokenPiece.disableInteractive();
+
+        this.breakHoleGfx.clear();
+        this.breakHoleGfx.lineStyle(4, 0x22c55e, 1);
+        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+
+        AudioManager.playCoin();
+        if (navigator.vibrate) navigator.vibrate([25, 30]);
+
+        this.time.delayedCall(500, () => {
+          this.breakHoleGfx.setVisible(false);
+          this.assemblyContainer.setVisible(false);
+          this.completeTaskTransition();
+        });
+      }
+    });
+
+    this.assemblyContainer.add([this.brokenPiece]);
+  }
+
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('Выберите КЛЕЙ в лотке!');
@@ -283,15 +333,16 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setPosition(pointer.x, pointer.y - 12);
     this.toolSprite.setAlpha(1);
 
-    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.centerX, this.centerY + 15);
-    if (d < 60 && !this.glueApplied) {
-      this.glueApplied = true;
-      this.seamGfx.clear();
-      this.seamGfx.lineStyle(6, 0xf39c12, 1);
-      this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
+    const targetX = this.centerX + 35;
+    const targetY = this.centerY - 20;
+    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, targetX, targetY);
 
+    if (d < 45 && !this.glueApplied) {
+      this.glueApplied = true;
+      this.breakHoleGfx.fillStyle(0xf59e0b, 0.7);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 24);
       AudioManager.playWash();
-      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ПЕРЕТАЩИТЕ ОСКОЛОК В ПАЗ');
+      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ОТКОЛОТУЮ ДЕТАЛЬ В ПАЗ');
       this.toolWarning.setText('');
     }
   }
@@ -299,9 +350,9 @@ export class RestoreScene extends Phaser.Scene {
   createToolsTray(trayY) {
     const { width } = this.scale;
     const tools = [
-      { id: 'tool_scraper', icon: 'slot_scraper', mask: 'mask_scraper', label: 'Скребок' },
       { id: 'tool_brush', icon: 'slot_brush_soft', mask: 'mask_brush', label: 'Кисть' },
-      { id: 'tool_solvent', icon: 'slot_solvent', mask: 'mask_solvent', label: 'Растворитель' },
+      { id: 'tool_scraper', icon: 'slot_scraper', mask: 'mask_scraper', label: 'Скребок' },
+      { id: 'tool_solvent', icon: 'slot_solvent', mask: 'mask_solvent', label: 'Спрей' },
       { id: 'tool_glue', icon: 'slot_glue', mask: 'mask_glue', label: 'Клей' },
       { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
     ];
@@ -369,34 +420,24 @@ export class RestoreScene extends Phaser.Scene {
     const task = this.artifactData.tasks[taskIdx];
     this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
 
-    if (task.type === 'assemble') {
+    if (task.type === 'break_and_assemble') {
       this.dirtLayer.clear();
-      this.setupAssembleStage(task);
+      this.setupBreakAndAssembleStage(task);
       return;
     }
 
     this.assemblyContainer.setVisible(false);
+    this.breakHoleGfx.setVisible(false);
     this.initCoverageGrid();
 
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
 
-    if (task.requiredTool === 'tool_scraper') {
-      dirtGfx.fillStyle(0x78562d, 0.98);
+    if (task.requiredTool === 'tool_brush') {
+      dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x4a2e12, 0.85);
+      dirtGfx.fillStyle(0x6b634d, 0.7);
       for (let i = 0; i < 28; i++) {
-        dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(15, 45)
-        );
-      }
-    } else if (task.requiredTool === 'tool_brush') {
-      dirtGfx.fillStyle(0xa89f81, 0.92);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x736c53, 0.7);
-      for (let i = 0; i < 25; i++) {
         dirtGfx.fillCircle(
           Phaser.Math.Between(20, this.artW - 20),
           Phaser.Math.Between(20, this.artH - 20),
@@ -434,55 +475,6 @@ export class RestoreScene extends Phaser.Scene {
     this.particles.setParticleTint(task.color || 0xc5a059);
   }
 
-  setupAssembleStage(task) {
-    const { width } = this.scale;
-    this.assemblyContainer.removeAll(true);
-    this.assemblyContainer.setVisible(true);
-    this.glueApplied = false;
-
-    this.seamGfx = this.add.graphics();
-    this.seamGfx.lineStyle(6, 0xc5a059, 0.4);
-    this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
-
-    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
-    this.brokenPiece = this.add.image(width * 0.18, this.centerY + 60, shardTex)
-      .setInteractive({ draggable: true });
-
-    const targetX = this.centerX;
-    const targetY = this.centerY + 25;
-
-    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
-      if (!this.glueApplied) {
-        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ НА ШОВ!');
-        return;
-      }
-      this.brokenPiece.setPosition(dragX, dragY);
-    });
-
-    this.brokenPiece.on('dragend', () => {
-      const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
-      if (d < 50 && this.glueApplied) {
-        this.brokenPiece.setPosition(targetX, targetY);
-        this.brokenPiece.disableInteractive();
-
-        this.seamGfx.clear();
-        this.seamGfx.lineStyle(4, 0x22c55e, 0.9);
-        this.seamGfx.strokeLineShape(new Phaser.Geom.Line(this.centerX - 25, this.centerY - 15, this.centerX + 25, this.centerY + 60));
-
-        AudioManager.playCoin();
-        if (navigator.vibrate) navigator.vibrate([30, 40]);
-
-        this.time.delayedCall(450, () => {
-          this.assemblyContainer.setVisible(false);
-          this.completeTaskTransition();
-        });
-      }
-    });
-
-    this.assemblyContainer.add([this.seamGfx, this.brokenPiece]);
-    this.selectTool('tool_glue', 'slot_glue', 'mask_glue');
-  }
-
   completeTaskTransition() {
     AudioManager.playCoin();
 
@@ -512,20 +504,18 @@ export class RestoreScene extends Phaser.Scene {
           });
         } else {
           AudioManager.playShine();
-          if (AudioManager.stopMusic) AudioManager.stopMusic();
+          AudioManager.stopMusic();
 
           try {
-            if (Storage.addArtifactToInventory) {
-              Storage.addArtifactToInventory({
-                instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
-                templateId: this.artifactData.templateId || this.artifactData.id || 'egypt_scarab',
-                regionName: this.artifactData.regionName || 'Древний Египет',
-                name: this.artifactData.name || 'Отреставрированный артефакт',
-                museumDesc: this.artifactData.museumDesc || '',
-                textureKey: this.artifactData.textureKey || 'art_egypt_scarab',
-                marketValue: this.artifactData.marketValue || 180
-              });
-            }
+            Storage.addArtifactToInventory({
+              instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
+              templateId: this.artifactData.templateId || 'egypt_scarab',
+              regionName: this.artifactData.regionName || 'Древний Египет',
+              name: this.artifactData.name || 'Отреставрированный артефакт',
+              museumDesc: this.artifactData.museumDesc || '',
+              textureKey: this.artifactData.textureKey || 'art_egypt_scarab',
+              marketValue: this.artifactData.marketValue || 200
+            });
           } catch (e) {
             console.warn('Inventory save error:', e);
           }
@@ -555,7 +545,7 @@ export class RestoreScene extends Phaser.Scene {
     updateIcon();
 
     btn.on('pointerdown', () => {
-      if (AudioManager.toggleMute) AudioManager.toggleMute();
+      AudioManager.toggleMute();
       updateIcon();
     });
   }
