@@ -41,7 +41,7 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    // 1. Детальный верстак
+    // 1. Атмосферный детальный верстак
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
@@ -80,7 +80,7 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('ShopScene', { returnToRestore: true });
     });
 
-    // 3. Шапка задачи
+    // 3. Информационная панель артефакта
     this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -121,7 +121,7 @@ export class RestoreScene extends Phaser.Scene {
       resolution: 2
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. Артефакт и привязка к телу фигуры
+    // 4. Артефакт и точный слой грязи
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -167,7 +167,6 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка покрытия строго по силуэту
     this.gridCols = 20;
     this.gridRows = 26;
     this.totalCells = this.gridCols * this.gridRows;
@@ -177,7 +176,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Взаимодействие
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -464,19 +462,18 @@ export class RestoreScene extends Phaser.Scene {
       const slotX = startX + i * stepX;
       const isSelected = (t.id === this.activeTool);
 
-      const slotBg = this.add.rectangle(slotX, trayY + 8, 52, 60, 0x161e2c, 0.95)
-        .setStrokeStyle(2, isSelected ? 0x10b981 : 0x2c3b52, isSelected ? 1 : 0.6)
+      const slotBg = this.add.rectangle(slotX, trayY + 8, 48, 56, 0x1a212b, 0.95)
+        .setStrokeStyle(1.5, isSelected ? 0x10b981 : 0x334155, isSelected ? 1 : 0.4)
         .setInteractive({ useHandCursor: true })
         .setDepth(23);
 
       this.add.image(slotX, trayY + 4, t.icon).setScale(0.56).setDepth(24);
 
       const lbl = this.add.text(slotX, trayY + 44, t.label, {
-        fontSize: '9.5px',
+        fontSize: '9px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: isSelected ? '#10b981' : '#64748b',
-        fontStyle: 'bold',
-        resolution: 2
+        fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(24);
 
       slotBg.on('pointerdown', () => {
@@ -495,7 +492,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.traySlots.forEach(slot => {
       const active = (slot.id === toolId);
-      slot.bg.setStrokeStyle(2, active ? 0x10b981 : 0x2c3b52, active ? 1 : 0.6);
+      slot.bg.setStrokeStyle(1.5, active ? 0x10b981 : 0x334155, active ? 1 : 0.4);
       slot.label.setColor(active ? '#10b981' : '#64748b');
     });
   }
