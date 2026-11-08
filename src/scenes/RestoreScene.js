@@ -24,8 +24,6 @@ export class RestoreScene extends Phaser.Scene {
     AudioManager.playEraMusic(this.artifactData.regionId);
 
     this.currentTaskIndex = 0;
-    
-    // Стартовый инструмент определяется первым шагом
     const firstTask = this.artifactData.tasks[0];
     this.activeTool = firstTask.requiredTool || 'tool_scraper';
     this.activeMaskKey = this.activeTool.replace('tool_', 'mask_');
@@ -36,66 +34,71 @@ export class RestoreScene extends Phaser.Scene {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    const homeBtn = this.add.image(36, 36, 'icon_home')
-      .setInteractive({ useHandCursor: true }).setDepth(25);
+    // ВЕРХНЯЯ ШАПКА ВЫСОКОЙ ЧЕТКОСТИ
+    const homeBtn = this.add.image(90, 90, 'icon_home')
+      .setScale(0.85).setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
       AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
     });
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.add.text(70, 26, `${coins}`, {
-      fontSize: '20px',
+    this.add.text(150, 70, `${coins} 💰`, {
+      fontSize: '36px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#f1c40f',
+      color: '#facc15',
       fontStyle: 'bold'
     }).setDepth(25);
 
-    this.createMuteButton(width - 36, 36);
+    this.createMuteButton(width - 90, 90);
 
-    this.add.text(width / 2, 58, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
-      fontSize: '11px',
+    this.add.text(width / 2, 130, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
+      fontSize: '24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#c5a059',
       fontStyle: 'bold',
-      letterSpacing: 2
+      letterSpacing: 4
     }).setOrigin(0.5).setDepth(25);
 
-    this.add.text(width / 2, 80, this.artifactData.name, {
-      fontSize: '18px',
+    this.add.text(width / 2, 175, this.artifactData.name, {
+      fontSize: '40px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    this.taskNotice = this.add.text(width / 2, 105, '', {
-      fontSize: '13px',
+    // ЧИСТЫЙ СЕГМЕНТНЫЙ ИНДИКАТОР ПРОГРЕССА (БЕЗ РАЗНОЦВЕТНЫХ ПОЛОС)
+    this.taskNotice = this.add.text(width / 2, 230, '', {
+      fontSize: '26px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#22c55e',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    this.toolWarning = this.add.text(width / 2, 126, '', {
-      fontSize: '12px',
+    this.toolWarning = this.add.text(width / 2, 275, '', {
+      fontSize: '24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    this.artW = 300;
-    this.artH = 400;
+    // ГЕОМЕТРИЯ АРТЕФАКТА (Масштаб 600x800)
+    this.artW = 600;
+    this.artH = 800;
     this.centerX = Math.round(width / 2);
     this.centerY = Math.round(height * 0.44);
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 165, 270, 48, 0x000000, 0.6).setDepth(1);
+    // Мягкая рассеянная тень на мате под артефактом
+    this.add.ellipse(this.centerX, this.centerY + 340, 540, 90, 0x000000, 0.65).setDepth(1);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(2);
 
     this.breakHoleGfx = this.add.graphics().setDepth(3).setVisible(false);
 
+    // Слой загрязнения в полном разрешении
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0).setDepth(4);
 
@@ -109,25 +112,25 @@ export class RestoreScene extends Phaser.Scene {
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 250, max: 450 },
-      speed: { min: 60, max: 140 },
+      speed: { min: 80, max: 200 },
       scale: { start: 1.2, end: 0 },
       emitting: false
     }).setDepth(5);
 
     const toolTex = (this.activeTool === 'tool_scraper') ? 'slot_scraper' : 'slot_brush_soft';
     this.toolSprite = this.add.image(this.centerX, this.centerY, toolTex)
-      .setOrigin(0.5, 0.95).setScale(0.72).setAlpha(0).setDepth(15);
+      .setOrigin(0.5, 0.95).setScale(0.85).setAlpha(0).setDepth(15);
 
     this.assemblyContainer = this.add.container(0, 0).setDepth(14).setVisible(false);
 
-    this.createToolsTray(height * 0.84);
+    this.createToolsTray(height * 0.86);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
     this.startTask(0);
 
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
-      if (pointer.y > height * 0.74) return;
+      if (pointer.y > height * 0.76) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
 
@@ -144,11 +147,11 @@ export class RestoreScene extends Phaser.Scene {
       const dx = pointer.x - this.lastTouchPos.x;
       const dy = pointer.y - this.lastTouchPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 4) return;
+      if (dist < 6) return;
 
       this.lastTouchPos = { x: pointer.x, y: pointer.y };
 
-      this.toolSprite.setPosition(pointer.x, pointer.y - 12);
+      this.toolSprite.setPosition(pointer.x, pointer.y - 25);
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool === 'tool_scraper') {
@@ -203,14 +206,14 @@ export class RestoreScene extends Phaser.Scene {
 
   initCoverageGrid() {
     this.gridPoints = [];
-    const step = 20;
+    const step = 30;
     const centerLocalX = this.artW / 2;
     const centerLocalY = this.artH / 2;
     const rx = this.artW * 0.38;
     const ry = this.artH * 0.42;
 
-    for (let x = 30; x < this.artW - 30; x += step) {
-      for (let y = 30; y < this.artH - 30; y += step) {
+    for (let x = 40; x < this.artW - 40; x += step) {
+      for (let y = 40; y < this.artH - 40; y += step) {
         const normX = (x - centerLocalX) / rx;
         const normY = (y - centerLocalY) / ry;
         if ((normX * normX + normY * normY) <= 1.0) {
@@ -223,7 +226,7 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   markPointsCleaned(localX, localY) {
-    const radius = 38;
+    const radius = 75;
     for (let i = 0; i < this.gridPoints.length; i++) {
       const p = this.gridPoints[i];
       if (!p.cleaned) {
@@ -253,15 +256,15 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
 
     const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY - 20;
+    const targetX = this.centerX + 70;
+    const targetY = this.centerY - 40;
 
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
     this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
-    this.breakHoleGfx.fillCircle(targetX, targetY, 26);
-    this.breakHoleGfx.lineStyle(3, 0x8a7238, 0.7);
-    this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+    this.breakHoleGfx.fillCircle(targetX, targetY, 52);
+    this.breakHoleGfx.lineStyle(6, 0x8a7238, 0.7);
+    this.breakHoleGfx.strokeCircle(targetX, targetY, 52);
 
     this.brokenPiece = this.add.image(targetX, targetY, shardTex).setDepth(16);
 
@@ -270,8 +273,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: this.brokenPiece,
-      x: width * 0.20,
-      y: this.centerY + 85,
+      x: width * 0.22,
+      y: this.centerY + 180,
       angle: 35,
       duration: 650,
       ease: 'Bounce.easeOut',
@@ -292,14 +295,14 @@ export class RestoreScene extends Phaser.Scene {
 
     this.brokenPiece.on('dragend', () => {
       const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
-      if (d < 45 && this.glueApplied) {
+      if (d < 80 && this.glueApplied) {
         this.brokenPiece.setPosition(targetX, targetY);
         this.brokenPiece.setAngle(0);
         this.brokenPiece.disableInteractive();
 
         this.breakHoleGfx.clear();
-        this.breakHoleGfx.lineStyle(4, 0x22c55e, 1);
-        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+        this.breakHoleGfx.lineStyle(6, 0x22c55e, 1);
+        this.breakHoleGfx.strokeCircle(targetX, targetY, 52);
 
         AudioManager.playCoin();
         if (navigator.vibrate) navigator.vibrate([25, 30]);
@@ -321,17 +324,17 @@ export class RestoreScene extends Phaser.Scene {
       return;
     }
 
-    this.toolSprite.setPosition(pointer.x, pointer.y - 12);
+    this.toolSprite.setPosition(pointer.x, pointer.y - 25);
     this.toolSprite.setAlpha(1);
 
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY - 20;
+    const targetX = this.centerX + 70;
+    const targetY = this.centerY - 40;
     const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, targetX, targetY);
 
-    if (d < 45 && !this.glueApplied) {
+    if (d < 80 && !this.glueApplied) {
       this.glueApplied = true;
       this.breakHoleGfx.fillStyle(0xf59e0b, 0.7);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 24);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 48);
       AudioManager.playWash();
       this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ОТКОЛОТУЮ ДЕТАЛЬ В ПАЗ');
       this.toolWarning.setText('');
@@ -348,8 +351,8 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
     ];
 
-    this.add.rectangle(width / 2, trayY + 12, width * 0.92, 88, 0x12161f, 0.92)
-      .setStrokeStyle(1, 0xffffff, 0.1)
+    this.add.rectangle(width / 2, trayY + 20, width * 0.92, 160, 0x12161f, 0.94)
+      .setStrokeStyle(2, 0xffffff, 0.12)
       .setDepth(15);
 
     const stepX = (width * 0.88) / tools.length;
@@ -361,17 +364,17 @@ export class RestoreScene extends Phaser.Scene {
       const slotX = startX + i * stepX;
       const isSelected = (t.id === this.activeTool);
 
-      const slotBg = this.add.rectangle(slotX, trayY + 8, 48, 56, 0x1a212b, 0.95)
-        .setStrokeStyle(1.5, isSelected ? 0x10b981 : 0x334155, isSelected ? 1 : 0.4)
+      const slotBg = this.add.rectangle(slotX, trayY + 14, 110, 125, 0x1a212b, 0.95)
+        .setStrokeStyle(2.5, isSelected ? 0x10b981 : 0x334155, isSelected ? 1 : 0.45)
         .setInteractive({ useHandCursor: true })
         .setDepth(16);
 
-      this.add.image(slotX, trayY + 4, t.icon).setScale(0.52).setDepth(17);
+      this.add.image(slotX, trayY + 6, t.icon).setScale(0.55).setDepth(17);
 
-      const lbl = this.add.text(slotX, trayY + 42, t.label, {
-        fontSize: '9px',
+      const lbl = this.add.text(slotX, trayY + 80, t.label, {
+        fontSize: '20px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: isSelected ? '#10b981' : '#64748b',
+        color: isSelected ? '#10b981' : '#94a3b8',
         fontStyle: 'bold'
       }).setOrigin(0.5).setDepth(17);
 
@@ -398,8 +401,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.traySlots.forEach(slot => {
       const active = (slot.id === toolId);
-      slot.bg.setStrokeStyle(1.5, active ? 0x10b981 : 0x334155, active ? 1 : 0.4);
-      slot.label.setColor(active ? '#10b981' : '#64748b');
+      slot.bg.setStrokeStyle(2.5, active ? 0x10b981 : 0x334155, active ? 1 : 0.45);
+      slot.label.setColor(active ? '#10b981' : '#94a3b8');
     });
   }
 
@@ -411,7 +414,6 @@ export class RestoreScene extends Phaser.Scene {
     const task = this.artifactData.tasks[taskIdx];
     this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
 
-    // Автовыбор нужного инструмента в начале шага
     const toolIcons = {
       tool_scraper: 'slot_scraper',
       tool_brush: 'slot_brush_soft',
@@ -438,45 +440,45 @@ export class RestoreScene extends Phaser.Scene {
       dirtGfx.fillStyle(0x78562d, 0.98);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x4a2e12, 0.85);
-      for (let i = 0; i < 28; i++) {
+      for (let i = 0; i < 35; i++) {
         dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(15, 45)
+          Phaser.Math.Between(40, this.artW - 40),
+          Phaser.Math.Between(40, this.artH - 40),
+          Phaser.Math.Between(30, 90)
         );
       }
     } else if (task.requiredTool === 'tool_brush') {
       dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x6b634d, 0.7);
-      for (let i = 0; i < 28; i++) {
+      dirtGfx.fillStyle(0x6b634d, 0.75);
+      for (let i = 0; i < 35; i++) {
         dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(10, 30)
+          Phaser.Math.Between(40, this.artW - 40),
+          Phaser.Math.Between(40, this.artH - 40),
+          Phaser.Math.Between(20, 60)
         );
       }
     } else if (task.requiredTool === 'tool_solvent') {
       dirtGfx.fillStyle(0x2a593f, 0.92);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x438a63, 0.75);
-      for (let i = 0; i < 22; i++) {
+      for (let i = 0; i < 30; i++) {
         dirtGfx.fillEllipse(
-          Phaser.Math.Between(30, this.artW - 30),
-          Phaser.Math.Between(30, this.artH - 30),
-          Phaser.Math.Between(30, 80),
-          Phaser.Math.Between(20, 50)
+          Phaser.Math.Between(50, this.artW - 50),
+          Phaser.Math.Between(50, this.artH - 50),
+          Phaser.Math.Between(60, 160),
+          Phaser.Math.Between(40, 100)
         );
       }
     } else {
       dirtGfx.fillStyle(0x181818, 0.55);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x333333, 0.40);
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < 25; i++) {
         dirtGfx.fillCircle(
-          Phaser.Math.Between(25, this.artW - 25),
-          Phaser.Math.Between(25, this.artH - 25),
-          Phaser.Math.Between(20, 60)
+          Phaser.Math.Between(50, this.artW - 50),
+          Phaser.Math.Between(50, this.artH - 50),
+          Phaser.Math.Between(40, 120)
         );
       }
     }
@@ -546,8 +548,8 @@ export class RestoreScene extends Phaser.Scene {
 
   createMuteButton(x, y) {
     const btn = this.add.image(x, y, 'icon_speaker')
-      .setInteractive({ useHandCursor: true }).setDepth(25);
-    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xef4444, 3)
+      .setScale(0.85).setInteractive({ useHandCursor: true }).setDepth(25);
+    const line = this.add.line(0, 0, x - 25, y - 25, x + 25, y + 25, 0xef4444, 5)
       .setOrigin(0).setDepth(26);
 
     const updateIcon = () => {
