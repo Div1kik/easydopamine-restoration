@@ -8,14 +8,14 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
 
     AudioManager.playMenuMusic();
 
-    this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
+    // Свой монолитный фон кабинета (никаких миллиметровок и банок с верстака)
+    this.add.image(width / 2, height / 2, 'bg_main_cabinet').setDepth(0);
 
-    // Парящая карточка бренда (Dark Glassmorphism)
-    const brandCard = this.add.rectangle(width / 2, height * 0.20, width * 0.88, 140, 0x141820, 0.75)
+    // Парящая карточка бренда
+    this.add.rectangle(width / 2, height * 0.20, width * 0.88, 140, 0x141820, 0.75)
       .setStrokeStyle(1.5, 0xffffff, 0.1)
       .setDepth(1);
 
@@ -46,6 +46,7 @@ export class MenuScene extends Phaser.Scene {
     const neededLvlXP = nextBase - currentBase;
     const progressRatio = Math.min(Math.max(currentLvlXP / neededLvlXP, 0), 1);
 
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const tierNames = ['', 'Базовая мастерская', 'Лавка древностей', 'Гильдия реставраторов', 'Императорская галерея'];
 
     this.add.text(width / 2, height * 0.33, `МАСТЕР ${lvl} РАНГА  •  ${tierNames[tier].toUpperCase()}`, {
@@ -56,14 +57,11 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 1.5
     }).setOrigin(0.5).setDepth(2);
 
-    // Минималистичный гладкий прогресс-бар XP
+    // Прогресс-бар XP
     const barW = width * 0.74;
-    this.add.rectangle(width / 2, height * 0.365, barW, 8, 0x1e2430)
-      .setDepth(2);
-
+    this.add.rectangle(width / 2, height * 0.365, barW, 8, 0x1e2430).setDepth(2);
     this.add.rectangle(width / 2 - barW / 2, height * 0.365, barW * progressRatio, 8, 0xf59e0b)
-      .setOrigin(0, 0.5)
-      .setDepth(3);
+      .setOrigin(0, 0.5).setDepth(3);
 
     this.add.text(width / 2, height * 0.395, `${xp} / ${nextBase} XP`, {
       fontSize: '11px',
@@ -71,7 +69,6 @@ export class MenuScene extends Phaser.Scene {
       color: '#64748b'
     }).setOrigin(0.5).setDepth(2);
 
-    // Монеты
     const coins = Storage.getCoins();
     this.add.text(width / 2, height * 0.44, `${coins} ЗОЛОТА`, {
       fontSize: '20px',
@@ -81,7 +78,7 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(2);
 
-    // Кнопки навигации с мягким пружинящим эффектом (Spring feedback)
+    // Кнопки навигации с физическим отскоком
     this.createModernButton(width / 2, height * 0.54, 'ВЕРСТАК МАСТЕРА', 0x10b981, () => {
       AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
