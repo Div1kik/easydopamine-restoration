@@ -41,15 +41,15 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    // 1. Детальный верстак
+    // Детальный верстак
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
-    // 2. Верхняя панель
+    // Верхняя панель (четкая векторная стрелка домой вместо квадратика)
     const homeBtnBg = this.add.circle(32, 34, 18, 0x141a24)
       .setStrokeStyle(1.5, 0x334155, 0.8)
       .setInteractive({ useHandCursor: true }).setDepth(30);
-    this.add.text(32, 34, '⮌', { fontSize: '16px', color: '#cbd5e1' }).setOrigin(0.5).setDepth(31);
+    this.add.image(32, 34, 'icon_home').setScale(0.6).setDepth(31);
 
     homeBtnBg.on('pointerdown', () => {
       if (AudioManager.stopMusic) AudioManager.stopMusic();
@@ -58,50 +58,50 @@ export class RestoreScene extends Phaser.Scene {
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.coinsText = this.add.text(60, 24, `${coins} 💰`, {
-      fontSize: '28px',
+      fontSize: '15px',
       fontFamily: 'sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
-    }).setScale(0.5).setDepth(30);
+    }).setDepth(30);
 
     const shopBtn = this.add.rectangle(width - 50, 34, 76, 32, 0x181e2b)
       .setStrokeStyle(1.5, 0xd4af37, 0.9)
       .setInteractive({ useHandCursor: true }).setDepth(30);
     this.add.text(width - 50, 34, '🛒 Лавка', {
-      fontSize: '22px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#fef08a',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(31);
+    }).setOrigin(0.5).setDepth(31);
 
     shopBtn.on('pointerdown', () => {
       this.scene.start('ShopScene', { returnToRestore: true });
     });
 
-    // 3. Шапка задачи
+    // Инфо-панель задачи
     this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
-      fontSize: '22px',
+      fontSize: '11px',
       fontFamily: 'sans-serif',
       color: '#c5a059',
       fontStyle: 'bold',
       letterSpacing: 2
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+    }).setOrigin(0.5).setDepth(30);
 
     this.add.text(width / 2, 76, this.artifactData.name, {
-      fontSize: '34px',
+      fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+    }).setOrigin(0.5).setDepth(30);
 
     this.taskNotice = this.add.text(width / 2, 98, '', {
-      fontSize: '24px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: width * 1.7 }
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+      wordWrap: { width: width * 0.88 }
+    }).setOrigin(0.5).setDepth(30);
 
     const barWidth = width * 0.65;
     this.progressBarBg = this.add.rectangle(width / 2, 118, barWidth, 7, 0x0f141d).setDepth(30);
@@ -109,13 +109,13 @@ export class RestoreScene extends Phaser.Scene {
       .setOrigin(0, 0.5).setDepth(31);
 
     this.toolWarning = this.add.text(width / 2, 134, '', {
-      fontSize: '22px',
+      fontSize: '11.5px',
       fontFamily: 'sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+    }).setOrigin(0.5).setDepth(30);
 
-    // 4. Артефакт и привязка к телу фигуры
+    // Рабочая зона верстака
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -161,7 +161,7 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка покрытия строго по силуэту
+    // Сетка очистки строго по силуэту
     this.gridCols = 20;
     this.gridRows = 26;
     this.totalCells = this.gridCols * this.gridRows;
@@ -171,7 +171,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Взаимодействие
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -466,11 +465,11 @@ export class RestoreScene extends Phaser.Scene {
       this.add.image(slotX, trayY + 4, t.icon).setScale(0.56).setDepth(24);
 
       const lbl = this.add.text(slotX, trayY + 44, t.label, {
-        fontSize: '19px',
+        fontSize: '10px',
         fontFamily: 'sans-serif',
         color: isSelected ? '#10b981' : '#64748b',
         fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5).setDepth(24);
+      }).setOrigin(0.5).setDepth(24);
 
       slotBg.on('pointerdown', () => {
         this.selectTool(t.id, t.icon, t.mask);
