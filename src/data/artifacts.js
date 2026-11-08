@@ -176,4 +176,3 @@ export function generateArtifactOrder(preferredRegion, recentHistory = [], reque
   const pool = regionItems.length > 0 ? regionItems : ARTIFACT_TEMPLATES;
   const item = pool[Math.floor(Math.random() * pool.length)];
   return { ...item, instanceId: `art_${Date.now()}` };
-}
