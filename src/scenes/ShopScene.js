@@ -15,36 +15,41 @@ export class ShopScene extends Phaser.Scene {
 
     // Шапка
     this.add.text(width / 2, 34, 'ЛАВКА МАСТЕРА', {
-      fontSize: '28px',
-      fontFamily: 'sans-serif',
+      fontSize: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(10);
+      fontStyle: 'bold',
+      letterSpacing: 2,
+      resolution: 2
+    }).setOrigin(0.5).setDepth(10);
 
     this.coinsText = this.add.text(width / 2, 58, '', {
-      fontSize: '22px',
-      fontFamily: 'sans-serif',
+      fontSize: '14px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(10);
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(10);
     this.updateCoinsDisplay();
 
-    // Вкладки
+    // Переключатель вкладок
     this.tabToolsBtn = this.add.rectangle(width / 2 - 76, 92, 130, 36, 0x141a26)
       .setInteractive({ useHandCursor: true }).setDepth(10);
     this.tabToolsTxt = this.add.text(width / 2 - 76, 92, 'Инструменты', {
-      fontSize: '22px',
-      fontFamily: 'sans-serif',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(11);
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(11);
 
     this.tabWorkshopBtn = this.add.rectangle(width / 2 + 76, 92, 130, 36, 0x141a26)
       .setInteractive({ useHandCursor: true }).setDepth(10);
     this.tabWorkshopTxt = this.add.text(width / 2 + 76, 92, 'Верстак', {
-      fontSize: '22px',
-      fontFamily: 'sans-serif',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(11);
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(11);
 
     this.tabToolsBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
@@ -74,11 +79,12 @@ export class ShopScene extends Phaser.Scene {
 
     const backLabel = this.returnToRestore ? 'Вернуться к артефакту' : 'В главное меню';
     this.add.text(width / 2, backBtnY, backLabel, {
-      fontSize: '26px',
-      fontFamily: 'sans-serif',
+      fontSize: '14px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(51);
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(51);
 
     backBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
@@ -139,18 +145,20 @@ export class ShopScene extends Phaser.Scene {
       const icon = this.add.image(-cardW / 2 + 42, 0, t.icon).setScale(0.65);
 
       const title = this.add.text(-cardW / 2 + 80, -22, t.name, {
-        fontSize: '26px',
-        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
-        fontStyle: 'bold'
-      }).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      });
 
       const desc = this.add.text(-cardW / 2 + 80, -2, t.desc, {
-        fontSize: '20px',
-        fontFamily: 'sans-serif',
+        fontSize: '10.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
-        wordWrap: { width: (cardW - 170) * 2 }
-      }).setScale(0.5);
+        wordWrap: { width: cardW - 170 },
+        resolution: 2
+      });
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
       const actionBg = this.add.rectangle(0, 0, 78, 34, isBought ? 0x1e293b : 0x10b981)
@@ -158,11 +166,12 @@ export class ShopScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: !isBought });
 
       const actionTxt = this.add.text(0, 0, isBought ? 'КУПЛЕНО' : `${t.price} 💰`, {
-        fontSize: '20px',
-        fontFamily: 'sans-serif',
+        fontSize: '11px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(0.5);
 
       actionBtn.add([actionBg, actionTxt]);
 
@@ -208,18 +217,20 @@ export class ShopScene extends Phaser.Scene {
         .setStrokeStyle(1.5, isCurrent ? 0xe2b35b : 0x253142, 0.8);
 
       const title = this.add.text(-cardW / 2 + 20, -22, item.name, {
-        fontSize: '26px',
-        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
-        fontStyle: 'bold'
-      }).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      });
 
       const desc = this.add.text(-cardW / 2 + 20, -2, item.desc, {
-        fontSize: '20px',
-        fontFamily: 'sans-serif',
+        fontSize: '10.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
-        wordWrap: { width: (cardW - 130) * 2 }
-      }).setScale(0.5);
+        wordWrap: { width: cardW - 130 },
+        resolution: 2
+      });
 
       const actionBtn = this.add.container(cardW / 2 - 48, 0);
       const actionBg = this.add.rectangle(0, 0, 84, 34, isCurrent ? 0x1e293b : 0x10b981)
@@ -228,11 +239,12 @@ export class ShopScene extends Phaser.Scene {
 
       let btnLabel = isCurrent ? 'АКТИВЕН' : (isOwned ? 'ОТКРЫТ' : `${item.price} 💰`);
       const actionTxt = this.add.text(0, 0, btnLabel, {
-        fontSize: '20px',
-        fontFamily: 'sans-serif',
+        fontSize: '11px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(0.5);
 
       actionBtn.add([actionBg, actionTxt]);
 
