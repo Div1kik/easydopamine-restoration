@@ -30,45 +30,71 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.selectedEraIndex = 0;
 
-    // 1. Четкая векторная шапка (HiDPI Supersampling 2x)
-    this.createText(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', 40, '#e2b35b', true, 20);
-    this.createText(width / 2, 58, `Ранг: ${rank}  •  Казна: ${coins} 💰`, 24, '#94a3b8', true, 20);
+    // 1. Верхняя панель (Header)
+    this.add.text(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', {
+      fontSize: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#e2b35b',
+      fontStyle: 'bold',
+      letterSpacing: 2,
+      resolution: 2
+    }).setOrigin(0.5).setDepth(20);
 
-    // Кнопка сброса
-    const resetBtn = this.add.rectangle(width - 36, 36, 34, 34, 0x1f1924)
+    this.add.text(width / 2, 58, `Ранг: ${rank}  •  Казна: ${coins} 💰`, {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(20);
+
+    // Кнопка сброса прогресса
+    const resetBtn = this.add.rectangle(width - 36, 36, 32, 32, 0x1f1924)
       .setStrokeStyle(1.5, 0xef4444, 0.8)
       .setInteractive({ useHandCursor: true })
       .setDepth(25);
-    this.createText(width - 36, 36, '🗑', 26, '#ffffff', false, 26);
+    this.add.text(width - 36, 36, '🗑', { fontSize: '13px' }).setOrigin(0.5).setDepth(26);
     resetBtn.on('pointerdown', () => this.showResetModal());
 
-    // 2. Горизонтальные табы эпох со свободным drag-скроллом
-    this.createScrollableTabs(width, 86);
+    // 2. Горизонтальный скролл вкладок эпох
+    this.createScrollableTabs(width, 88);
 
-    // 3. Рабочая область карточек артефактов
+    // 3. Зона вертикального скролла артефактов
     this.listTopY = 138;
     this.listBottomY = height - 68;
     this.listHeight = this.listBottomY - this.listTopY;
 
-    this.listContainer = this.add.container(0, this.listTopY).setDepth(5);
+    // Контейнер элементов списка
+    this.listContainer = this.add.container(0, this.listTopY).setDepth(10);
 
+    // Ограничительная маска: карточки не выползают за пределы рабочей зоны
     const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
     maskShape.fillStyle(0xffffff);
     maskShape.fillRect(0, this.listTopY, width, this.listHeight);
     this.listContainer.setMask(maskShape.createGeometryMask());
 
+    // Зона обработки свайпа и перетаскивания списка по вертикали
     this.setupVerticalScroll(width);
+
+    // Отрисовка текущего набора артефактов
     this.renderArtifactsList();
 
-    // 4. Нижняя панель с кнопкой возврата
-    const bottomBg = this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e).setDepth(30);
+    // 4. Нижняя плашка с кнопкой возврата
+    const bottomBg = this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e)
+      .setDepth(30);
 
-    const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 48, 0x131924)
+    const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 46, 0x131924)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
 
-    this.createText(width / 2, height - 34, 'В главное меню', 30, '#ffffff', true, 32);
+    this.add.text(width / 2, height - 34, 'В главное меню', {
+      fontSize: '14.5px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5).setDepth(32);
 
     backBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
@@ -76,83 +102,82 @@ export class EraSelectScene extends Phaser.Scene {
     });
   }
 
-  createText(x, y, text, sizePx, color = '#ffffff', isBold = false, depth = 10, align = 'center') {
-    const t = this.add.text(x, y, text, {
-      fontSize: `${sizePx}px`,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: color,
-      fontStyle: isBold ? 'bold' : 'normal',
-      align: align
-    }).setOrigin(0.5).setScale(0.5).setDepth(depth);
-    return t;
-  }
-
   createScrollableTabs(width, y) {
     if (this.tabsScrollContainer) this.tabsScrollContainer.destroy();
 
     this.tabsScrollContainer = this.add.container(0, y).setDepth(20);
-    const tabWidth = 98;
+    const tabWidth = 96;
     const spacing = 8;
-    const startX = 14;
+    const startX = 16;
     const shortNames = ['Египет', 'Античность', 'Европа', 'Япония', 'Ацтеки', 'Викинги', 'Ренессанс'];
 
-    this.tabButtons = [];
+    this.tabItems = [];
     const totalTabsWidth = startX + this.eras.length * (tabWidth + spacing);
     const minScrollX = Math.min(0, width - totalTabsWidth);
-
-    let tabDragStart = 0;
-    let tabStartX = 0;
-    let didTabDrag = false;
 
     this.eras.forEach((era, i) => {
       const tabX = startX + i * (tabWidth + spacing) + tabWidth / 2;
       const isSelected = (i === this.selectedEraIndex);
 
-      const bg = this.add.rectangle(tabX, 18, tabWidth, 36, isSelected ? 0xd4af37 : 0x111622)
+      const bg = this.add.rectangle(tabX, 16, tabWidth, 34, isSelected ? 0xd4af37 : 0x111622)
         .setStrokeStyle(1.5, isSelected ? 0xfef08a : 0x222c3d, 0.9)
         .setInteractive({ useHandCursor: true });
 
       const lockPrefix = era.unlocked ? '' : '🔒 ';
       const title = `${lockPrefix}${shortNames[i] || era.name}`;
 
-      const text = this.add.text(tabX, 18, title, {
-        fontSize: '22px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      const text = this.add.text(tabX, 16, title, {
+        fontSize: '11px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: isSelected ? '#000000' : (era.unlocked ? '#94a3b8' : '#475569'),
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(0.5);
 
-      bg.on('pointerdown', (pointer) => {
-        tabDragStart = pointer.x;
-        tabStartX = this.tabsScrollContainer.x;
-        didTabDrag = false;
-      });
-
-      bg.on('pointermove', (pointer) => {
-        if (!pointer.isDown) return;
-        const dx = pointer.x - tabDragStart;
-        if (Math.abs(dx) > 8) {
-          didTabDrag = true;
-          this.tabsScrollContainer.x = Phaser.Math.Clamp(tabStartX + dx, minScrollX, 0);
-        }
-      });
-
-      bg.on('pointerup', () => {
-        if (!didTabDrag) {
-          if (AudioManager.playClick) AudioManager.playClick();
-          this.selectedEraIndex = i;
-          this.updateTabsVisual();
-          this.renderArtifactsList();
-        }
+      bg.on('pointerdown', () => {
+        if (this.isDraggingTabs) return;
+        if (AudioManager.playClick) AudioManager.playClick();
+        this.selectedEraIndex = i;
+        this.updateTabsVisual();
+        this.renderArtifactsList();
       });
 
       this.tabsScrollContainer.add([bg, text]);
-      this.tabButtons.push({ bg, text, era, index: i });
+      this.tabItems.push({ bg, text, era, index: i });
+    });
+
+    let startPointerX = 0;
+    let initialContainerX = 0;
+    this.isDraggingTabs = false;
+
+    const hitZone = this.add.zone(width / 2, y + 16, width, 40)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(19);
+
+    hitZone.on('pointerdown', (pointer) => {
+      startPointerX = pointer.x;
+      initialContainerX = this.tabsScrollContainer.x;
+      this.isDraggingTabs = false;
+    });
+
+    hitZone.on('pointermove', (pointer) => {
+      if (!pointer.isDown) return;
+      const dx = pointer.x - startPointerX;
+      if (Math.abs(dx) > 6) {
+        this.isDraggingTabs = true;
+        this.tabsScrollContainer.x = Phaser.Math.Clamp(initialContainerX + dx, minScrollX, 0);
+      }
+    });
+
+    hitZone.on('pointerup', () => {
+      this.time.delayedCall(50, () => {
+        this.isDraggingTabs = false;
+      });
     });
   }
 
   updateTabsVisual() {
-    this.tabButtons.forEach(item => {
+    this.tabItems.forEach(item => {
       const isSelected = (item.index === this.selectedEraIndex);
       item.bg.setFillStyle(isSelected ? 0xd4af37 : 0x111622)
         .setStrokeStyle(1.5, isSelected ? 0xfef08a : 0x222c3d);
@@ -165,23 +190,30 @@ export class EraSelectScene extends Phaser.Scene {
     let containerStartY = 0;
     this.isDraggingList = false;
 
-    this.input.on('pointerdown', (p) => {
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
-        startY = p.y;
-        containerStartY = this.listContainer.y;
-        this.isDraggingList = false;
+    this.scrollZone = this.add.zone(width / 2, this.listTopY + this.listHeight / 2, width, this.listHeight)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(15);
+
+    this.scrollZone.on('pointerdown', (p) => {
+      startY = p.y;
+      containerStartY = this.listContainer.y;
+      this.isDraggingList = false;
+    });
+
+    this.scrollZone.on('pointermove', (p) => {
+      if (!p.isDown) return;
+      const dy = p.y - startY;
+      if (Math.abs(dy) > 5) {
+        this.isDraggingList = true;
+        const targetY = Phaser.Math.Clamp(containerStartY + dy, this.minListY, this.listTopY);
+        this.listContainer.y = targetY;
       }
     });
 
-    this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
-        const dy = p.y - startY;
-        if (Math.abs(dy) > 8) {
-          this.isDraggingList = true;
-          this.listContainer.y = Phaser.Math.Clamp(containerStartY + dy, this.minListY, this.listTopY);
-        }
-      }
+    this.scrollZone.on('pointerup', () => {
+      this.time.delayedCall(80, () => {
+        this.isDraggingList = false;
+      });
     });
   }
 
@@ -196,19 +228,29 @@ export class EraSelectScene extends Phaser.Scene {
       this.minListY = this.listTopY;
       const lockBox = this.add.rectangle(width / 2, 100, width * 0.88, 140, 0x111520)
         .setStrokeStyle(1.5, 0xef4444, 0.6);
-      const lockTxt = this.createText(width / 2, 80, '🔒 ЭПОХА ЗАБЛОКИРОВАНА', 30, '#ef4444', true, 10);
-      const reqTxt = this.createText(width / 2, 116, `Отреставрируйте ещё предметов,\nчтобы набрать ${currentEra.needed} экспонатов в коллекции.`, 24, '#94a3b8', false, 10);
+      const lockTxt = this.add.text(width / 2, 80, '🔒 ЭПОХА ЗАБЛОКИРОВАНА', {
+        fontSize: '15px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#ef4444',
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(0.5);
+      const reqTxt = this.add.text(width / 2, 116, `Отреставрируйте ещё предметов,\nчтобы набрать ${currentEra.needed} экспонатов в коллекции.`, {
+        fontSize: '12px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#94a3b8',
+        align: 'center',
+        lineSpacing: 4,
+        resolution: 2
+      }).setOrigin(0.5);
       this.listContainer.add([lockBox, lockTxt, reqTxt]);
       return;
     }
 
     const eraArtifacts = ARTIFACT_TEMPLATES.filter(a => a.regionId === currentEra.id);
-    const cardH = 120;
+    const cardH = 118;
     const spacing = 12;
     const cardW = width * 0.90;
-
-    let touchDownTime = 0;
-    let touchDownY = 0;
 
     eraArtifacts.forEach((art, index) => {
       const cardY = index * (cardH + spacing) + cardH / 2 + 8;
@@ -222,50 +264,46 @@ export class EraSelectScene extends Phaser.Scene {
         .setDisplaySize(68, 68);
 
       const title = this.add.text(width / 2 - cardW / 2 + 92, cardY - 38, art.name, {
-        fontSize: '30px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: '15px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
-        fontStyle: 'bold'
-      }).setScale(0.5);
+        fontStyle: 'bold',
+        resolution: 2
+      });
 
       const fullDesc = art.description || 'Древняя историческая ценность, требующая бережной очистки и реставрации.';
       const desc = this.add.text(width / 2 - cardW / 2 + 92, cardY - 14, fullDesc, {
-        fontSize: '22px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: '11px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
-        lineSpacing: 4,
-        wordWrap: { width: (cardW - 104) * 2 }
-      }).setScale(0.5);
-
-      const takeBtn = this.add.text(width / 2 - cardW / 2 + 92, cardY + 34, '▶ ВЗЯТЬ НА ВЕРСТАК', {
-        fontSize: '23px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#10b981',
-        fontStyle: 'bold'
-      }).setScale(0.5);
-
-      const valueBadge = this.add.text(width / 2 + cardW / 2 - 16, cardY + 34, `${art.marketValue || 200} 💰`, {
-        fontSize: '23px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#facc15',
-        fontStyle: 'bold'
-      }).setOrigin(1, 0).setScale(0.5);
-
-      bg.on('pointerdown', (p) => {
-        touchDownTime = this.time.now;
-        touchDownY = p.y;
+        lineSpacing: 2,
+        wordWrap: { width: cardW - 104 },
+        resolution: 2
       });
 
-      bg.on('pointerup', (p) => {
-        const moveDist = Math.abs(p.y - touchDownY);
-        const elapsed = this.time.now - touchDownTime;
-        if (!this.isDraggingList && moveDist < 10 && elapsed < 400) {
-          if (AudioManager.playClick) AudioManager.playClick();
-          this.scene.start('RestoreScene', {
-            regionId: currentEra.id,
-            templateId: art.id
-          });
-        }
+      const takeBtn = this.add.text(width / 2 - cardW / 2 + 92, cardY + 34, '▶ ВЗЯТЬ НА ВЕРСТАК', {
+        fontSize: '11.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#10b981',
+        fontStyle: 'bold',
+        resolution: 2
+      });
+
+      const valueBadge = this.add.text(width / 2 + cardW / 2 - 16, cardY + 34, `${art.marketValue || 200} 💰`, {
+        fontSize: '11.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#facc15',
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(1, 0);
+
+      bg.on('pointerdown', () => {
+        if (this.isDraggingList) return;
+        if (AudioManager.playClick) AudioManager.playClick();
+        this.scene.start('RestoreScene', {
+          regionId: currentEra.id,
+          templateId: art.id
+        });
       });
 
       this.listContainer.add([bg, icon, title, desc, takeBtn, valueBadge]);
@@ -285,13 +323,32 @@ export class EraSelectScene extends Phaser.Scene {
     const box = this.add.rectangle(width / 2, height / 2, width * 0.86, 210, 0x121724)
       .setStrokeStyle(1.5, 0xef4444, 0.9);
 
-    const title = this.createText(width / 2, height / 2 - 62, 'СБРОС ПРОГРЕССА?', 34, '#ef4444', true, 105);
+    const title = this.add.text(width / 2, height / 2 - 62, 'СБРОС ПРОГРЕССА?', {
+      fontSize: '17px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ef4444',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5);
 
-    const msg = this.createText(width / 2, height / 2 - 16, 'Все отреставрированные артефакты,\nмонеты, открытые эпохи и улучшения\nбудут удалены безвозвратно.', 24, '#cbd5e1', false, 105);
+    const msg = this.add.text(width / 2, height / 2 - 16, 'Все отреставрированные артефакты,\nмонеты, открытые эпохи и улучшения\nбудут удалены безвозвратно.', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#cbd5e1',
+      align: 'center',
+      lineSpacing: 4,
+      resolution: 2
+    }).setOrigin(0.5);
 
     const confirmBtn = this.add.rectangle(width / 2 - 64, height / 2 + 56, 110, 36, 0xef4444)
-      .setInteractive({ useHandCursor: true }).setDepth(104);
-    const confirmTxt = this.createText(width / 2 - 64, height / 2 + 56, 'СБРОСИТЬ', 24, '#ffffff', true, 105);
+      .setInteractive({ useHandCursor: true });
+    const confirmTxt = this.add.text(width / 2 - 64, height / 2 + 56, 'СБРОСИТЬ', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5);
 
     confirmBtn.on('pointerdown', () => {
       localStorage.clear();
@@ -300,8 +357,14 @@ export class EraSelectScene extends Phaser.Scene {
     });
 
     const cancelBtn = this.add.rectangle(width / 2 + 64, height / 2 + 56, 110, 36, 0x334155)
-      .setInteractive({ useHandCursor: true }).setDepth(104);
-    const cancelTxt = this.createText(width / 2 + 64, height / 2 + 56, 'ОТМЕНА', 24, '#ffffff', true, 105);
+      .setInteractive({ useHandCursor: true });
+    const cancelTxt = this.add.text(width / 2 + 64, height / 2 + 56, 'ОТМЕНА', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: 2
+    }).setOrigin(0.5);
 
     cancelBtn.on('pointerdown', () => modalCont.destroy());
 
