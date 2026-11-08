@@ -21,29 +21,19 @@ export class BootScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    // 1. ФОНЫ
     this.createCinematicBackgrounds(width, height);
-
-    // 2. ИНСТРУМЕНТЫ
     this.createHDToolIcons();
 
-    // 3. МАСКИ ДЛЯ ЧИСТКИ
     this.createSmoothMask('mask_scraper', 36);
     this.createSmoothMask('mask_brush', 32);
     this.createSmoothMask('mask_solvent', 52);
     this.createSmoothMask('mask_glue', 24);
     this.createSmoothMask('mask_polish', 58);
 
-    // 4. ВСЕ 35 HD-АРТЕФАКТОВ
     this.createAll35HDArtifacts();
-
-    // 5. ОСКОЛКИ
     this.createHDShards();
-
-    // 6. UI ЭЛЕМЕНТЫ
     this.createHDUIElements();
 
-    // Безусловный переход в главное меню
     this.time.delayedCall(50, () => {
       this.scene.start('MenuScene');
     });
@@ -65,7 +55,6 @@ export class BootScene extends Phaser.Scene {
       drawCallback(ctx, width, height);
     } catch (err) {
       console.warn(`Texture generation error [${key}]:`, err);
-      // Фоллбэк: простая форма, чтобы игра никогда не падала
       ctx.fillStyle = '#c5a059';
       ctx.fillRect(width * 0.2, height * 0.2, width * 0.6, height * 0.6);
     }
@@ -115,11 +104,8 @@ export class BootScene extends Phaser.Scene {
         padGrad.addColorStop(1, '#141820');
         ctx.fillStyle = padGrad;
         ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(padX, padY, padW, padH, r);
-        } else {
-          ctx.rect(padX, padY, padW, padH);
-        }
+        if (ctx.roundRect) ctx.roundRect(padX, padY, padW, padH, r);
+        else ctx.rect(padX, padY, padW, padH);
         ctx.fill();
         ctx.restore();
 
@@ -130,11 +116,8 @@ export class BootScene extends Phaser.Scene {
         ctx.strokeStyle = strokeGrad;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(padX, padY, padW, padH, r);
-        } else {
-          ctx.rect(padX, padY, padW, padH);
-        }
+        if (ctx.roundRect) ctx.roundRect(padX, padY, padW, padH, r);
+        else ctx.rect(padX, padY, padW, padH);
         ctx.stroke();
 
         const spot = ctx.createRadialGradient(w / 2, h * 0.42, 30, w / 2, h * 0.42, 320);
@@ -159,11 +142,8 @@ export class BootScene extends Phaser.Scene {
           ctx.shadowOffsetY = 12;
           ctx.fillStyle = '#1c222d';
           ctx.beginPath();
-          if (ctx.roundRect) {
-            ctx.roundRect(22, y, w - 44, 14, 7);
-          } else {
-            ctx.rect(22, y, w - 44, 14);
-          }
+          if (ctx.roundRect) ctx.roundRect(22, y, w - 44, 14, 7);
+          else ctx.rect(22, y, w - 44, 14);
           ctx.fill();
           ctx.restore();
 
@@ -351,7 +331,10 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#c2410c';
       ctx.beginPath(); ctx.arc(150, 180, 85, 0, Math.PI, false); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#18181b'; ctx.fillRect(142, 180, 16, 90);
-      ctx.beginPath(); ctx.ellipse(150, 270, 60, 16, 0, 0, Math.PI * 2); ctx.fill();
+      // ИСПРАВЛЕНО: ellipse вместо fillEllipse
+      ctx.beginPath();
+      ctx.ellipse(150, 270, 60, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.strokeStyle = '#18181b'; ctx.lineWidth = 10;
       ctx.beginPath(); ctx.moveTo(55, 180); ctx.lineTo(25, 165); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(245, 180); ctx.lineTo(275, 165); ctx.stroke();
