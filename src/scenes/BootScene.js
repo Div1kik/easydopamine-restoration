@@ -7,15 +7,24 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create() {
-    await YandexSDK.init();
-    await Storage.loadFromYandexCloud();
+    try {
+      await Promise.race([
+        Promise.all([
+          YandexSDK && YandexSDK.init ? YandexSDK.init() : Promise.resolve(),
+          Storage && Storage.loadFromYandexCloud ? Storage.loadFromYandexCloud() : Promise.resolve()
+        ]),
+        new Promise((resolve) => setTimeout(resolve, 600))
+      ]);
+    } catch (e) {
+      console.warn('SDK init bypass:', e);
+    }
 
     const { width, height } = this.scale;
 
-    // 1. ФОНЫ ИНТЕРЬЕРОВ
+    // 1. ФОНЫ
     this.createCinematicBackgrounds(width, height);
 
-    // 2. ИНСТРУМЕНТЫ В ЛОТОК
+    // 2. ИНСТРУМЕНТЫ
     this.createHDToolIcons();
 
     // 3. МАСКИ ДЛЯ ЧИСТКИ
@@ -25,33 +34,43 @@ export class BootScene extends Phaser.Scene {
     this.createSmoothMask('mask_glue', 24);
     this.createSmoothMask('mask_polish', 58);
 
-    // 4. ВСЕ 35 HD-АРТЕФАКТОВ ПО 7 РЕГИОНАМ
+    // 4. ВСЕ 35 HD-АРТЕФАКТОВ
     this.createAll35HDArtifacts();
 
-    // 5. ОСКОЛКИ ДЛЯ СКЛЕЙКИ
+    // 5. ОСКОЛКИ
     this.createHDShards();
 
-    // 6. ИКОНКИ ИНТЕРФЕЙСА
+    // 6. UI ЭЛЕМЕНТЫ
     this.createHDUIElements();
 
-    this.scene.start('MenuScene');
+    // Безусловный переход в главное меню
+    this.time.delayedCall(50, () => {
+      this.scene.start('MenuScene');
+    });
   }
 
   createCanvasTexture(key, width, height, drawCallback) {
+    if (this.textures.exists(key)) {
+      this.textures.remove(key);
+    }
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    
+
     ctx.save();
-    drawCallback(ctx, width, height);
+    try {
+      drawCallback(ctx, width, height);
+    } catch (err) {
+      console.warn(`Texture generation error [${key}]:`, err);
+      // Фоллбэк: простая форма, чтобы игра никогда не падала
+      ctx.fillStyle = '#c5a059';
+      ctx.fillRect(width * 0.2, height * 0.2, width * 0.6, height * 0.6);
+    }
     ctx.restore();
 
-    if (this.textures.exists(key)) {
-      this.textures.remove(key);
-    }
     this.textures.addCanvas(key, canvas);
   }
 
@@ -96,7 +115,11 @@ export class BootScene extends Phaser.Scene {
         padGrad.addColorStop(1, '#141820');
         ctx.fillStyle = padGrad;
         ctx.beginPath();
-        ctx.roundRect(padX, padY, padW, padH, r);
+        if (ctx.roundRect) {
+          ctx.roundRect(padX, padY, padW, padH, r);
+        } else {
+          ctx.rect(padX, padY, padW, padH);
+        }
         ctx.fill();
         ctx.restore();
 
@@ -107,7 +130,11 @@ export class BootScene extends Phaser.Scene {
         ctx.strokeStyle = strokeGrad;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.roundRect(padX, padY, padW, padH, r);
+        if (ctx.roundRect) {
+          ctx.roundRect(padX, padY, padW, padH, r);
+        } else {
+          ctx.rect(padX, padY, padW, padH);
+        }
         ctx.stroke();
 
         const spot = ctx.createRadialGradient(w / 2, h * 0.42, 30, w / 2, h * 0.42, 320);
@@ -125,14 +152,18 @@ export class BootScene extends Phaser.Scene {
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
 
-        [135, 290, 445, 600].forEach(y => {
+        [135, 290, 445, 600].forEach((y) => {
           ctx.save();
           ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
           ctx.shadowBlur = 24;
           ctx.shadowOffsetY = 12;
           ctx.fillStyle = '#1c222d';
           ctx.beginPath();
-          ctx.roundRect(22, y, w - 44, 14, 7);
+          if (ctx.roundRect) {
+            ctx.roundRect(22, y, w - 44, 14, 7);
+          } else {
+            ctx.rect(22, y, w - 44, 14);
+          }
           ctx.fill();
           ctx.restore();
 
@@ -152,7 +183,9 @@ export class BootScene extends Phaser.Scene {
       const handle = ctx.createLinearGradient(30, 52, 50, 52);
       handle.addColorStop(0, '#2d3748'); handle.addColorStop(1, '#1a202c');
       ctx.fillStyle = handle;
-      ctx.beginPath(); ctx.roundRect(30, 50, 20, 62, 8); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(30, 50, 20, 62, 8); else ctx.rect(30, 50, 20, 62);
+      ctx.fill();
 
       const blade = ctx.createLinearGradient(18, 42, 62, 8);
       blade.addColorStop(0, '#cbd5e1'); blade.addColorStop(0.4, '#ffffff'); blade.addColorStop(1, '#94a3b8');
@@ -162,20 +195,26 @@ export class BootScene extends Phaser.Scene {
 
     this.createCanvasTexture('slot_brush_soft', 80, 120, (ctx) => {
       ctx.fillStyle = '#1e293b';
-      ctx.beginPath(); ctx.roundRect(35, 45, 10, 68, 5); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(35, 45, 10, 68, 5); else ctx.rect(35, 45, 10, 68);
+      ctx.fill();
       ctx.fillStyle = '#f59e0b'; ctx.fillRect(32, 36, 16, 9);
 
       const fur = ctx.createLinearGradient(25, 10, 55, 10);
       fur.addColorStop(0, '#b45309'); fur.addColorStop(0.5, '#fbbf24'); fur.addColorStop(1, '#78350f');
       ctx.fillStyle = fur;
-      ctx.beginPath(); ctx.roundRect(26, 10, 28, 26, 6); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(26, 10, 28, 26, 6); else ctx.rect(26, 10, 28, 26);
+      ctx.fill();
     });
 
     this.createCanvasTexture('slot_solvent', 80, 120, (ctx) => {
       const body = ctx.createLinearGradient(22, 34, 58, 34);
       body.addColorStop(0, '#047857'); body.addColorStop(0.5, '#10b981'); body.addColorStop(1, '#065f46');
       ctx.fillStyle = body;
-      ctx.beginPath(); ctx.roundRect(22, 34, 36, 72, 10); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(22, 34, 36, 72, 10); else ctx.rect(22, 34, 36, 72);
+      ctx.fill();
       ctx.fillStyle = '#0f172a'; ctx.fillRect(32, 16, 16, 18);
     });
 
@@ -191,14 +230,14 @@ export class BootScene extends Phaser.Scene {
       const pad = ctx.createRadialGradient(40, 60, 5, 40, 60, 32);
       pad.addColorStop(0, '#c084fc'); pad.addColorStop(1, '#7e22ce');
       ctx.fillStyle = pad;
-      ctx.beginPath(); ctx.roundRect(18, 36, 44, 52, 14); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(18, 36, 44, 52, 14); else ctx.rect(18, 36, 44, 52);
+      ctx.fill();
     });
   }
 
   createAll35HDArtifacts() {
-    // -------------------------------------------------------------
-    // РЕГИОН 1: ЕГИПЕТ (5 шт)
-    // -------------------------------------------------------------
+    // --- 1. ЕГИПЕТ ---
     this.createCanvasTexture('art_egypt_scarab', 300, 400, (ctx) => {
       ctx.strokeStyle = '#997300'; ctx.lineWidth = 10; ctx.lineCap = 'round';
       ctx.beginPath();
@@ -239,7 +278,15 @@ export class BootScene extends Phaser.Scene {
       bronze.addColorStop(0, '#fef08a'); bronze.addColorStop(0.4, '#d97706'); bronze.addColorStop(1, '#78350f');
       ctx.strokeStyle = bronze; ctx.lineWidth = 26; ctx.beginPath(); ctx.arc(150, 130, 48, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = bronze;
-      ctx.beginPath(); ctx.roundRect(75, 185, 150, 28, 6); ctx.roundRect(136, 185, 28, 180, 6); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(75, 185, 150, 28, 6);
+        ctx.roundRect(136, 185, 28, 180, 6);
+      } else {
+        ctx.rect(75, 185, 150, 28);
+        ctx.rect(136, 185, 28, 180);
+      }
+      ctx.fill();
     });
 
     this.createCanvasTexture('art_egypt_cat', 300, 400, (ctx) => {
@@ -264,9 +311,7 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.moveTo(150, 115); ctx.lineTo(175, 128); ctx.lineTo(150, 138); ctx.closePath(); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 2: ГРЕЦИЯ (5 шт)
-    // -------------------------------------------------------------
+    // --- 2. ГРЕЦИЯ ---
     this.createCanvasTexture('art_greece_amphora', 300, 400, (ctx) => {
       const terra = ctx.createRadialGradient(130, 170, 20, 150, 200, 140);
       terra.addColorStop(0, '#ea580c'); terra.addColorStop(0.6, '#c2410c'); terra.addColorStop(1, '#7c2d12');
@@ -305,7 +350,8 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(150, 180, 100, 0, Math.PI, false); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#c2410c';
       ctx.beginPath(); ctx.arc(150, 180, 85, 0, Math.PI, false); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#18181b'; ctx.fillRect(142, 180, 16, 90); ctx.fillEllipse(150, 270, 60, 16);
+      ctx.fillStyle = '#18181b'; ctx.fillRect(142, 180, 16, 90);
+      ctx.beginPath(); ctx.ellipse(150, 270, 60, 16, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#18181b'; ctx.lineWidth = 10;
       ctx.beginPath(); ctx.moveTo(55, 180); ctx.lineTo(25, 165); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(245, 180); ctx.lineTo(275, 165); ctx.stroke();
@@ -320,16 +366,16 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.moveTo(150, 110); ctx.lineTo(210, 230); ctx.lineTo(185, 230); ctx.lineTo(150, 160); ctx.lineTo(115, 230); ctx.lineTo(90, 230); ctx.closePath(); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 3: ЕВРОПА (5 шт)
-    // -------------------------------------------------------------
+    // --- 3. ЕВРОПА ---
     this.createCanvasTexture('art_europe_sword', 300, 400, (ctx) => {
       const blade = ctx.createLinearGradient(135, 100, 165, 100);
       blade.addColorStop(0, '#94a3b8'); blade.addColorStop(0.5, '#ffffff'); blade.addColorStop(1, '#64748b');
       ctx.fillStyle = blade;
       ctx.beginPath(); ctx.moveTo(136, 100); ctx.lineTo(164, 100); ctx.lineTo(150, 375); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#d4af37';
-      ctx.beginPath(); ctx.roundRect(80, 95, 140, 18, 5); ctx.arc(150, 40, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(80, 95, 140, 18, 5); else ctx.rect(80, 95, 140, 18);
+      ctx.arc(150, 40, 16, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#3e2723'; ctx.fillRect(142, 45, 16, 55);
     });
 
@@ -364,29 +410,33 @@ export class BootScene extends Phaser.Scene {
 
     this.createCanvasTexture('art_europe_book', 300, 400, (ctx) => {
       ctx.fillStyle = '#451a03';
-      ctx.beginPath(); ctx.roundRect(70, 90, 160, 220, 12); ctx.fill();
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4;
-      ctx.strokeRect(82, 102, 136, 196);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(70, 90, 160, 220, 12); else ctx.rect(70, 90, 160, 220);
+      ctx.fill();
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(82, 102, 136, 196);
       ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(150, 200, 24, 0, Math.PI * 2); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 4: ЯПОНИЯ (5 шт)
-    // -------------------------------------------------------------
+    // --- 4. ЯПОНИЯ ---
     this.createCanvasTexture('art_japan_katana', 300, 400, (ctx) => {
       const steel = ctx.createLinearGradient(140, 90, 160, 375);
       steel.addColorStop(0, '#f8fafc'); steel.addColorStop(0.5, '#94a3b8'); steel.addColorStop(1, '#475569');
       ctx.fillStyle = steel;
       ctx.beginPath(); ctx.moveTo(144, 90); ctx.lineTo(158, 90); ctx.lineTo(154, 355); ctx.lineTo(142, 375); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(150, 90, 24, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.roundRect(142, 35, 16, 52, 3); ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(142, 35, 16, 52, 3); else ctx.rect(142, 35, 16, 52);
+      ctx.fill();
     });
 
     this.createCanvasTexture('art_japan_mask', 300, 400, (ctx) => {
       const urushi = ctx.createRadialGradient(150, 180, 20, 150, 180, 100);
       urushi.addColorStop(0, '#ef4444'); urushi.addColorStop(0.6, '#991b1b'); urushi.addColorStop(1, '#450a0a');
       ctx.fillStyle = urushi;
-      ctx.beginPath(); ctx.roundRect(60, 140, 180, 120, 22); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(60, 140, 180, 120, 22); else ctx.rect(60, 140, 180, 120);
+      ctx.fill();
       ctx.fillStyle = '#facc15';
       ctx.beginPath(); ctx.moveTo(115, 205); ctx.lineTo(125, 205); ctx.lineTo(120, 230); ctx.moveTo(175, 205); ctx.lineTo(185, 205); ctx.lineTo(180, 230); ctx.fill();
     });
@@ -416,9 +466,7 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#065f46'; ctx.beginPath(); ctx.ellipse(150, 180, 75, 18, 0, 0, Math.PI * 2); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 5: МЕЗОАМЕРИКА (5 шт)
-    // -------------------------------------------------------------
+    // --- 5. МЕЗОАМЕРИКА ---
     this.createCanvasTexture('art_meso_mask', 300, 400, (ctx) => {
       const jade = ctx.createRadialGradient(140, 180, 20, 150, 200, 100);
       jade.addColorStop(0, '#34d399'); jade.addColorStop(0.6, '#059669'); jade.addColorStop(1, '#064e3b');
@@ -444,12 +492,16 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = obsidian;
       ctx.beginPath(); ctx.moveTo(135, 100); ctx.lineTo(165, 100); ctx.lineTo(150, 360); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#f59e0b';
-      ctx.beginPath(); ctx.roundRect(125, 45, 50, 60, 10); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(125, 45, 50, 60, 10); else ctx.rect(125, 45, 50, 60);
+      ctx.fill();
     });
 
     this.createCanvasTexture('art_meso_pipe', 300, 400, (ctx) => {
       ctx.fillStyle = '#b45309';
-      ctx.beginPath(); ctx.roundRect(100, 110, 100, 180, 18); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(100, 110, 100, 180, 18); else ctx.rect(100, 110, 100, 180);
+      ctx.fill();
       ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(150, 170, 35, 0, Math.PI * 2); ctx.fill();
     });
 
@@ -460,12 +512,12 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(150, 190, 105, 0, Math.PI, false); ctx.closePath(); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 6: ВИКИНГИ (5 шт)
-    // -------------------------------------------------------------
+    // --- 6. ВИКИНГИ ---
     this.createCanvasTexture('art_viking_axe', 300, 400, (ctx) => {
       ctx.fillStyle = '#573016';
-      ctx.beginPath(); ctx.roundRect(142, 60, 16, 300, 6); ctx.fill();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(142, 60, 16, 300, 6); else ctx.rect(142, 60, 16, 300);
+      ctx.fill();
       const blade = ctx.createLinearGradient(70, 80, 160, 170);
       blade.addColorStop(0, '#f8fafc'); blade.addColorStop(0.5, '#94a3b8'); blade.addColorStop(1, '#475569');
       ctx.fillStyle = blade;
@@ -500,9 +552,7 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(150, 145, 8, 0, Math.PI * 2); ctx.fill();
     });
 
-    // -------------------------------------------------------------
-    // РЕГИОН 7: КИТАЙ (5 шт)
-    // -------------------------------------------------------------
+    // --- 7. КИТАЙ ---
     this.createCanvasTexture('art_china_vase', 300, 400, (ctx) => {
       const celadon = ctx.createRadialGradient(130, 170, 20, 150, 210, 130);
       celadon.addColorStop(0, '#f0fdf4'); celadon.addColorStop(0.7, '#bbf7d0'); celadon.addColorStop(1, '#86efac');
@@ -582,7 +632,9 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(32, 32, 24, Math.PI * 0.2, Math.PI * 0.8, false); ctx.fill();
     });
     this.createCanvasTexture('shard_jade_piece', 65, 65, (ctx) => {
-      ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.roundRect(10, 10, 45, 45, 8); ctx.fill();
+      ctx.fillStyle = '#10b981'; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(10, 10, 45, 45, 8); else ctx.rect(10, 10, 45, 45);
+      ctx.fill();
     });
     this.createCanvasTexture('shard_dagger_blade', 60, 75, (ctx) => {
       ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(45, 10); ctx.lineTo(30, 65); ctx.closePath(); ctx.fill();
@@ -604,7 +656,9 @@ export class BootScene extends Phaser.Scene {
   createHDUIElements() {
     this.createCanvasTexture('icon_lock', 40, 40, (ctx) => {
       ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(20, 14, 9, Math.PI, 0, false); ctx.stroke();
-      ctx.fillStyle = '#475569'; ctx.beginPath(); ctx.roundRect(8, 16, 24, 20, 5); ctx.fill();
+      ctx.fillStyle = '#475569'; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(8, 16, 24, 20, 5); else ctx.rect(8, 16, 24, 20);
+      ctx.fill();
     });
     this.createCanvasTexture('icon_star', 40, 40, (ctx) => {
       ctx.fillStyle = '#facc15'; ctx.beginPath();
