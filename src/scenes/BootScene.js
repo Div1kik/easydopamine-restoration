@@ -9,28 +9,43 @@ export class BootScene extends Phaser.Scene {
   }
 
   createHiResTextures() {
-    const createHD = (key, width, height, drawFn) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width * 2;
-      canvas.height = height * 2;
-      const ctx = canvas.getContext('2d');
+    const makeTex = (key, w, h, draw) => {
+      const c = document.createElement('canvas');
+      c.width = w * 2;
+      c.height = h * 2;
+      const ctx = c.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.scale(2, 2);
-      drawFn(ctx, width, height);
+      draw(ctx, w, h);
       if (this.textures.exists(key)) this.textures.remove(key);
-      this.textures.addCanvas(key, canvas);
+      this.textures.addCanvas(key, c);
     };
 
-    // --- ИНСТРУМЕНТЫ ЛОТКА ---
-    createHD('slot_scraper', 64, 64, (ctx) => {
+    // Иконка возврата
+    makeTex('icon_home', 48, 48, (ctx) => {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(32, 10);
+      ctx.lineTo(14, 24);
+      ctx.lineTo(32, 38);
+      ctx.lineTo(32, 30);
+      ctx.lineTo(38, 30);
+      ctx.lineTo(38, 18);
+      ctx.lineTo(32, 18);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Инструменты
+    makeTex('slot_scraper', 64, 64, (ctx) => {
       ctx.fillStyle = '#334155';
       ctx.fillRect(28, 30, 8, 24);
-      const grad = ctx.createLinearGradient(14, 30, 50, 10);
-      grad.addColorStop(0, '#d97706');
-      grad.addColorStop(0.5, '#fde047');
-      grad.addColorStop(1, '#b45309');
-      ctx.fillStyle = grad;
+      const g = ctx.createLinearGradient(14, 30, 50, 10);
+      g.addColorStop(0, '#d97706');
+      g.addColorStop(0.5, '#fde047');
+      g.addColorStop(1, '#b45309');
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(14, 30);
       ctx.lineTo(50, 30);
@@ -42,15 +57,15 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    createHD('slot_brush_soft', 64, 64, (ctx) => {
+    makeTex('slot_brush_soft', 64, 64, (ctx) => {
       ctx.fillStyle = '#475569';
       ctx.fillRect(29, 32, 6, 24);
       ctx.fillStyle = '#94a3b8';
       ctx.fillRect(26, 26, 12, 6);
-      const bGrad = ctx.createLinearGradient(22, 10, 42, 26);
-      bGrad.addColorStop(0, '#f59e0b');
-      bGrad.addColorStop(1, '#b45309');
-      ctx.fillStyle = bGrad;
+      const bG = ctx.createLinearGradient(22, 10, 42, 26);
+      bG.addColorStop(0, '#f59e0b');
+      bG.addColorStop(1, '#b45309');
+      ctx.fillStyle = bG;
       ctx.beginPath();
       ctx.moveTo(26, 26);
       ctx.quadraticCurveTo(20, 14, 32, 10);
@@ -59,7 +74,7 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    createHD('slot_solvent', 64, 64, (ctx) => {
+    makeTex('slot_solvent', 64, 64, (ctx) => {
       ctx.fillStyle = '#059669';
       ctx.beginPath();
       ctx.roundRect(22, 22, 20, 34, 4);
@@ -70,11 +85,11 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(24, 11, 16, 4);
     });
 
-    createHD('slot_glue', 64, 64, (ctx) => {
-      const gGrad = ctx.createLinearGradient(20, 20, 44, 54);
-      gGrad.addColorStop(0, '#f97316');
-      gGrad.addColorStop(1, '#c2410c');
-      ctx.fillStyle = gGrad;
+    makeTex('slot_glue', 64, 64, (ctx) => {
+      const g = ctx.createLinearGradient(20, 20, 44, 54);
+      g.addColorStop(0, '#f97316');
+      g.addColorStop(1, '#c2410c');
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(24, 54);
       ctx.lineTo(40, 54);
@@ -86,22 +101,22 @@ export class BootScene extends Phaser.Scene {
       ctx.fillRect(30, 10, 4, 10);
     });
 
-    createHD('slot_polish', 64, 64, (ctx) => {
-      const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 18);
-      grad.addColorStop(0, '#f472b6');
-      grad.addColorStop(1, '#9d174d');
-      ctx.fillStyle = grad;
+    makeTex('slot_polish', 64, 64, (ctx) => {
+      const g = ctx.createRadialGradient(32, 32, 4, 32, 32, 18);
+      g.addColorStop(0, '#f472b6');
+      g.addColorStop(1, '#9d174d');
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.roundRect(16, 16, 32, 32, 8);
       ctx.fill();
     });
 
-    // --- МАСКИ СТИРАНИЯ ---
-    const createMask = (key, r) => {
-      createHD(key, r * 2, r * 2, (ctx) => {
+    // Маски стирания
+    const makeMask = (key, r) => {
+      makeTex(key, r * 2, r * 2, (ctx) => {
         const rad = ctx.createRadialGradient(r, r, 0, r, r, r);
         rad.addColorStop(0, 'rgba(0,0,0,1)');
-        rad.addColorStop(0.7, 'rgba(0,0,0,0.85)');
+        rad.addColorStop(0.75, 'rgba(0,0,0,0.85)');
         rad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rad;
         ctx.beginPath();
@@ -109,20 +124,20 @@ export class BootScene extends Phaser.Scene {
         ctx.fill();
       });
     };
-    createMask('mask_scraper', 32);
-    createMask('mask_brush', 42);
-    createMask('mask_solvent', 36);
-    createMask('mask_glue', 28);
-    createMask('mask_polish', 44);
+    makeMask('mask_scraper', 32);
+    makeMask('mask_brush', 42);
+    makeMask('mask_solvent', 36);
+    makeMask('mask_glue', 28);
+    makeMask('mask_polish', 44);
 
-    // --- АРТЕФАКТЫ ---
-    // 1. Золотой скарабей
-    createHD('art_egypt_scarab', 300, 400, (ctx) => {
+    // 1. Золотой скарабей (анатомический, с лапками и надкрыльями)
+    makeTex('art_egypt_scarab', 300, 400, (ctx) => {
       const cx = 150, cy = 205;
       ctx.strokeStyle = '#854d0e';
       ctx.lineWidth = 5;
       ctx.lineCap = 'round';
 
+      // Лапки
       ctx.beginPath();
       ctx.moveTo(cx - 35, cy - 30);
       ctx.lineTo(cx - 85, cy - 65);
@@ -146,12 +161,13 @@ export class BootScene extends Phaser.Scene {
       ctx.lineTo(cx + 90, cy + 125);
       ctx.stroke();
 
-      const gGrad = ctx.createLinearGradient(cx - 65, cy, cx + 65, cy);
-      gGrad.addColorStop(0, '#a16207');
-      gGrad.addColorStop(0.3, '#facc15');
-      gGrad.addColorStop(0.7, '#fef08a');
-      gGrad.addColorStop(1, '#854d0e');
-      ctx.fillStyle = gGrad;
+      // Панцирь
+      const g = ctx.createLinearGradient(cx - 65, cy, cx + 65, cy);
+      g.addColorStop(0, '#a16207');
+      g.addColorStop(0.3, '#facc15');
+      g.addColorStop(0.7, '#fef08a');
+      g.addColorStop(1, '#854d0e');
+      ctx.fillStyle = g;
       ctx.beginPath();
       ctx.ellipse(cx, cy + 15, 62, 78, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -166,23 +182,26 @@ export class BootScene extends Phaser.Scene {
       ctx.lineTo(cx, cy + 92);
       ctx.stroke();
 
+      // Переднеспинка
       ctx.fillStyle = '#ca8a04';
       ctx.beginPath();
       ctx.ellipse(cx, cy - 42, 45, 24, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
+      // Головной щиток
       ctx.fillStyle = '#a16207';
       ctx.beginPath();
       ctx.arc(cx, cy - 65, 22, Math.PI, 0);
       ctx.closePath();
       ctx.fill();
 
-      const lGrad = ctx.createRadialGradient(cx, cy + 10, 2, cx, cy + 10, 26);
-      lGrad.addColorStop(0, '#60a5fa');
-      lGrad.addColorStop(0.6, '#2563eb');
-      lGrad.addColorStop(1, '#1e3a8a');
-      ctx.fillStyle = lGrad;
+      // Лазуритовая вставка
+      const l = ctx.createRadialGradient(cx, cy + 10, 2, cx, cy + 10, 26);
+      l.addColorStop(0, '#60a5fa');
+      l.addColorStop(0.6, '#2563eb');
+      l.addColorStop(1, '#1e3a8a');
+      ctx.fillStyle = l;
       ctx.beginPath();
       ctx.ellipse(cx, cy + 10, 24, 32, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -191,8 +210,8 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    // 2. Маска Тутанхамона
-    createHD('art_egypt_mask', 300, 400, (ctx) => {
+    // 2. Маска Тутанхамона (закругленный правильный немес)
+    makeTex('art_egypt_mask', 300, 400, (ctx) => {
       const cx = 150, cy = 195;
       ctx.save();
       ctx.beginPath();
@@ -234,6 +253,7 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.stroke();
 
+      // Лицо
       const faceGrad = ctx.createLinearGradient(cx - 35, cy, cx + 35, cy);
       faceGrad.addColorStop(0, '#ca8a04');
       faceGrad.addColorStop(0.5, '#fef08a');
@@ -246,25 +266,29 @@ export class BootScene extends Phaser.Scene {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
+      // Глаза
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       ctx.ellipse(cx - 16, cy - 14, 8, 4, 0, 0, Math.PI * 2);
       ctx.ellipse(cx + 16, cy - 14, 8, 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Губы
       ctx.fillStyle = '#991b1b';
       ctx.beginPath();
       ctx.ellipse(cx, cy + 16, 9, 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const bGrad = ctx.createLinearGradient(cx - 7, cy, cx + 7, cy);
-      bGrad.addColorStop(0, '#1e3a8a');
-      bGrad.addColorStop(0.5, '#facc15');
-      bGrad.addColorStop(1, '#1e3a8a');
-      ctx.fillStyle = bGrad;
+      // Бородка
+      const bG = ctx.createLinearGradient(cx - 7, cy, cx + 7, cy);
+      bG.addColorStop(0, '#1e3a8a');
+      bG.addColorStop(0.5, '#facc15');
+      bG.addColorStop(1, '#1e3a8a');
+      ctx.fillStyle = bG;
       ctx.fillRect(cx - 6, cy + 30, 12, 34);
       ctx.strokeRect(cx - 6, cy + 30, 12, 34);
 
+      // Урей
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       ctx.arc(cx, cy - 54, 6, 0, Math.PI * 2);
@@ -272,28 +296,28 @@ export class BootScene extends Phaser.Scene {
     });
 
     // 3. Обрядовый Анкх
-    createHD('art_egypt_ankh', 300, 400, (ctx) => {
+    makeTex('art_egypt_ankh', 300, 400, (ctx) => {
       const cx = 150, cy = 185;
-      const bGrad = ctx.createLinearGradient(cx - 50, 0, cx + 50, 0);
-      bGrad.addColorStop(0, '#78350f');
-      bGrad.addColorStop(0.4, '#f59e0b');
-      bGrad.addColorStop(0.7, '#fef08a');
-      bGrad.addColorStop(1, '#92400e');
-      ctx.fillStyle = bGrad;
+      const bG = ctx.createLinearGradient(cx - 50, 0, cx + 50, 0);
+      bG.addColorStop(0, '#78350f');
+      bG.addColorStop(0.4, '#f59e0b');
+      bG.addColorStop(0.7, '#fef08a');
+      bG.addColorStop(1, '#92400e');
+      ctx.fillStyle = bG;
 
       ctx.fillRect(cx - 13, cy - 20, 26, 145);
       ctx.fillRect(cx - 60, cy - 12, 120, 24);
 
       ctx.lineWidth = 22;
-      ctx.strokeStyle = bGrad;
+      ctx.strokeStyle = bG;
       ctx.beginPath();
       ctx.ellipse(cx, cy - 65, 30, 44, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      const rGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 12);
-      rGrad.addColorStop(0, '#f87171');
-      rGrad.addColorStop(1, '#991b1b');
-      ctx.fillStyle = rGrad;
+      const rG = ctx.createRadialGradient(cx, cy, 2, cx, cy, 12);
+      rG.addColorStop(0, '#f87171');
+      rG.addColorStop(1, '#991b1b');
+      ctx.fillStyle = rG;
       ctx.beginPath();
       ctx.arc(cx, cy, 11, 0, Math.PI * 2);
       ctx.fill();
@@ -303,13 +327,13 @@ export class BootScene extends Phaser.Scene {
     });
 
     // 4. Статуэтка Бастет
-    createHD('art_egypt_bastet', 300, 400, (ctx) => {
+    makeTex('art_egypt_bastet', 300, 400, (ctx) => {
       const cx = 150, cy = 200;
-      const catGrad = ctx.createLinearGradient(cx - 45, cy, cx + 45, cy);
-      catGrad.addColorStop(0, '#09090b');
-      catGrad.addColorStop(0.5, '#27272a');
-      catGrad.addColorStop(1, '#18181b');
-      ctx.fillStyle = catGrad;
+      const cG = ctx.createLinearGradient(cx - 45, cy, cx + 45, cy);
+      cG.addColorStop(0, '#09090b');
+      cG.addColorStop(0.5, '#27272a');
+      cG.addColorStop(1, '#18181b');
+      ctx.fillStyle = cG;
 
       ctx.beginPath();
       ctx.moveTo(cx - 24, cy - 24);
@@ -351,14 +375,14 @@ export class BootScene extends Phaser.Scene {
     });
 
     // 5. Алебастровая канопа
-    createHD('art_egypt_canopic', 300, 400, (ctx) => {
+    makeTex('art_egypt_canopic', 300, 400, (ctx) => {
       const cx = 150, cy = 205;
-      const alabGrad = ctx.createLinearGradient(cx - 50, cy, cx + 50, cy);
-      alabGrad.addColorStop(0, '#d97706');
-      alabGrad.addColorStop(0.3, '#fef3c7');
-      alabGrad.addColorStop(0.7, '#fef9c3');
-      alabGrad.addColorStop(1, '#b45309');
-      ctx.fillStyle = alabGrad;
+      const alG = ctx.createLinearGradient(cx - 50, cy, cx + 50, cy);
+      alG.addColorStop(0, '#d97706');
+      alG.addColorStop(0.3, '#fef3c7');
+      alG.addColorStop(0.7, '#fef9c3');
+      alG.addColorStop(1, '#b45309');
+      ctx.fillStyle = alG;
 
       ctx.beginPath();
       ctx.moveTo(cx - 38, cy - 18);
@@ -377,7 +401,7 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    createHD('shard_amphora', 60, 60, (ctx) => {
+    makeTex('shard_amphora', 60, 60, (ctx) => {
       ctx.fillStyle = '#facc15';
       ctx.beginPath();
       ctx.moveTo(12, 14);
@@ -391,21 +415,7 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    createHD('icon_home', 48, 48, (ctx) => {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(32, 12);
-      ctx.lineTo(16, 24);
-      ctx.lineTo(32, 36);
-      ctx.lineTo(32, 28);
-      ctx.lineTo(38, 28);
-      ctx.lineTo(38, 20);
-      ctx.lineTo(32, 20);
-      ctx.closePath();
-      ctx.fill();
-    });
-
-    createHD('particle_dust', 8, 8, (ctx) => {
+    makeTex('particle_dust', 8, 8, (ctx) => {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(4, 4, 3.5, 0, Math.PI * 2);
