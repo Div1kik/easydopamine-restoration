@@ -28,13 +28,14 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
     this.cleaningProgress = 0;
-    this.targetProgress = 35; // Ровно 35 уверенных мазков для завершения этапа
+    // Сбалансированный порог: предмет не очищается мгновенно
+    this.targetProgress = 130;
 
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // 1. Верхняя строгая панель навигации
-    const homeBtn = this.add.image(32, 34, 'icon_home')
+    // 1. Верхняя панель: Домой, Монеты и Магазин инструментов
+    const homeBtn = this.add.image(28, 32, 'icon_home')
       .setScale(0.7).setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
       AudioManager.stopMusic();
@@ -42,16 +43,34 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.add.text(58, 24, `${coins} 💰`, {
-      fontSize: '17px',
+    this.coinsText = this.add.text(52, 22, `${coins} 💰`, {
+      fontSize: '15px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
     }).setDepth(25);
 
-    this.createMuteButton(width - 32, 34);
+    // Кнопка магазина инструментов (Лавка / Улучшения)
+    const shopBtn = this.add.container(width - 66, 32).setDepth(25);
+    const shopBg = this.add.rectangle(0, 0, 52, 26, 0x1e2430, 0.95)
+      .setStrokeStyle(1.5, 0xc5a059, 0.8)
+      .setInteractive({ useHandCursor: true });
+    const shopLabel = this.add.text(0, 0, '🛒 Лавка', {
+      fontSize: '10px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    shopBtn.add([shopBg, shopLabel]);
 
-    // 2. Иерархия заголовков без наездов друг на друга
+    shopBg.on('pointerdown', () => {
+      AudioManager.stopMusic();
+      this.scene.start('ShopScene');
+    });
+
+    this.createMuteButton(width - 20, 32);
+
+    // 2. Иерархия текстов шапки
     this.add.text(width / 2, 52, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -60,37 +79,36 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(25);
 
-    this.add.text(width / 2, 76, this.artifactData.name, {
-      fontSize: '18px',
+    this.add.text(width / 2, 74, this.artifactData.name, {
+      fontSize: '17px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // Текст текущего действия с жестким ограничением ширины строки
-    this.taskNotice = this.add.text(width / 2, 104, '', {
+    this.taskNotice = this.add.text(width / 2, 98, '', {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: width * 0.86 }
+      wordWrap: { width: width * 0.88 }
     }).setOrigin(0.5).setDepth(25);
 
-    // Наглядный прогресс-бар очистки
+    // Прогресс-бар
     const barWidth = width * 0.65;
-    this.progressBarBg = this.add.rectangle(width / 2, 124, barWidth, 6, 0x1e2430).setDepth(25);
-    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 124, 0, 6, 0x22c55e)
+    this.progressBarBg = this.add.rectangle(width / 2, 118, barWidth, 6, 0x1e2430).setDepth(25);
+    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 118, 0, 6, 0x22c55e)
       .setOrigin(0, 0.5).setDepth(26);
 
-    this.toolWarning = this.add.text(width / 2, 140, '', {
+    this.toolWarning = this.add.text(width / 2, 134, '', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // 3. Рабочая область
+    // 3. Рабочая зона артефакта
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -118,8 +136,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 250, max: 450 },
-      speed: { min: 60, max: 140 },
-      scale: { start: 1.2, end: 0 },
+      speed: { min: 50, max: 120 },
+      scale: { start: 1.1, end: 0 },
       emitting: false
     }).setDepth(5);
 
@@ -138,7 +156,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 4. Логика очистки с гарантированным завершением
+    // 4. Плавное и реалистичное накопление прогресса
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -158,7 +176,7 @@ export class RestoreScene extends Phaser.Scene {
       const dx = pointer.x - this.lastTouchPos.x;
       const dy = pointer.y - this.lastTouchPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 6) return;
+      if (dist < 8) return;
 
       this.lastTouchPos = { x: pointer.x, y: pointer.y };
 
@@ -166,9 +184,9 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool === 'tool_scraper') {
-        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.5, -25, 25);
+        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.4, -25, 25);
       } else if (this.activeTool === 'tool_brush') {
-        this.toolSprite.angle = Phaser.Math.Clamp(-dx * 1.8, -20, 20);
+        this.toolSprite.angle = Phaser.Math.Clamp(-dx * 1.6, -20, 20);
       } else if (this.activeTool === 'tool_polish') {
         this.toolSprite.angle = Math.sin(this.time.now * 0.02) * 12;
       } else {
@@ -183,7 +201,7 @@ export class RestoreScene extends Phaser.Scene {
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
-      if (localX >= 10 && localX <= this.artW - 10 && localY >= 10 && localY <= this.artH - 10) {
+      if (localX >= 8 && localX <= this.artW - 8 && localY >= 8 && localY <= this.artH - 8) {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
         if (this.activeTool === 'tool_scraper') AudioManager.playScrub();
@@ -191,10 +209,11 @@ export class RestoreScene extends Phaser.Scene {
         else if (this.activeTool === 'tool_solvent') AudioManager.playSpray();
         else if (this.activeTool === 'tool_polish') AudioManager.playCloth();
 
-        if (navigator.vibrate && Math.random() < 0.25) navigator.vibrate(8);
+        if (navigator.vibrate && Math.random() < 0.2) navigator.vibrate(8);
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        this.cleaningProgress += (dist / 14);
+        // Мягкий расчет: очистка требует плотной проработки площади
+        this.cleaningProgress += Math.min(dist * 0.22, 3.2);
         const ratio = Math.min(this.cleaningProgress / this.targetProgress, 1);
         this.progressBarFill.width = barWidth * ratio;
 
