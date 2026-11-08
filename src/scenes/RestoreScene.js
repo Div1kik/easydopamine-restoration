@@ -10,7 +10,6 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // Восстановление сессии или выбор нового артефакта
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
     let prefRegion = (data && data.regionId) ? data.regionId : null;
     let reqTemplate = (data && data.templateId) ? data.templateId : null;
@@ -42,7 +41,7 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    // 1. Атмосферный детальный верстак
+    // 1. Детальный верстак
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
@@ -59,72 +58,64 @@ export class RestoreScene extends Phaser.Scene {
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.coinsText = this.add.text(60, 24, `${coins} 💰`, {
-      fontSize: '15px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '28px',
+      fontFamily: 'sans-serif',
       color: '#facc15',
-      fontStyle: 'bold',
-      resolution: 2
-    }).setDepth(30);
+      fontStyle: 'bold'
+    }).setScale(0.5).setDepth(30);
 
-    // Премиальная кнопка лавки с прямым возвратом
     const shopBtn = this.add.rectangle(width - 50, 34, 76, 32, 0x181e2b)
       .setStrokeStyle(1.5, 0xd4af37, 0.9)
       .setInteractive({ useHandCursor: true }).setDepth(30);
     this.add.text(width - 50, 34, '🛒 Лавка', {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '22px',
+      fontFamily: 'sans-serif',
       color: '#fef08a',
-      fontStyle: 'bold',
-      resolution: 2
-    }).setOrigin(0.5).setDepth(31);
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScale(0.5).setDepth(31);
 
     shopBtn.on('pointerdown', () => {
       this.scene.start('ShopScene', { returnToRestore: true });
     });
 
-    // 3. Информационная панель артефакта
+    // 3. Шапка задачи
     this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
-      fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '22px',
+      fontFamily: 'sans-serif',
       color: '#c5a059',
       fontStyle: 'bold',
-      letterSpacing: 2,
-      resolution: 2
-    }).setOrigin(0.5).setDepth(30);
+      letterSpacing: 2
+    }).setOrigin(0.5).setScale(0.5).setDepth(30);
 
     this.add.text(width / 2, 76, this.artifactData.name, {
-      fontSize: '18px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '34px',
+      fontFamily: 'sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold',
-      resolution: 2
-    }).setOrigin(0.5).setDepth(30);
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScale(0.5).setDepth(30);
 
     this.taskNotice = this.add.text(width / 2, 98, '', {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '24px',
+      fontFamily: 'sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: width * 0.88 },
-      resolution: 2
-    }).setOrigin(0.5).setDepth(30);
+      wordWrap: { width: width * 1.7 }
+    }).setOrigin(0.5).setScale(0.5).setDepth(30);
 
-    // Прогресс-бар
     const barWidth = width * 0.65;
     this.progressBarBg = this.add.rectangle(width / 2, 118, barWidth, 7, 0x0f141d).setDepth(30);
     this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 118, 0, 7, 0x10b981)
       .setOrigin(0, 0.5).setDepth(31);
 
     this.toolWarning = this.add.text(width / 2, 134, '', {
-      fontSize: '11.5px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '22px',
+      fontFamily: 'sans-serif',
       color: '#ef4444',
-      fontStyle: 'bold',
-      resolution: 2
-    }).setOrigin(0.5).setDepth(30);
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setScale(0.5).setDepth(30);
 
-    // 4. Артефакт и точный слой грязи
+    // 4. Артефакт и привязка к телу фигуры
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -132,7 +123,6 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Глубокая объемная тень под предметом
     this.add.ellipse(this.centerX, this.centerY + 165, 260, 42, 0x000000, 0.7).setDepth(5);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
@@ -171,7 +161,7 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка честной очистки
+    // Сетка покрытия строго по силуэту
     this.gridCols = 20;
     this.gridRows = 26;
     this.totalCells = this.gridCols * this.gridRows;
@@ -181,7 +171,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Обработка стирания строго по телу фигуры
+    // 5. Взаимодействие
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -209,7 +199,6 @@ export class RestoreScene extends Phaser.Scene {
         const cellY = Math.floor((localY / this.artH) * this.gridRows);
         const centerIdx = cellY * this.gridCols + cellX;
 
-        // Стираем только если палец находится в зоне реального артефакта
         if (this.validCellsMask[centerIdx] === 1) {
           this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
@@ -262,7 +251,6 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // Расчет клеток силуэта артефакта, исключающий пустоту
   buildValidShapeMask(textureKey) {
     this.validCellsMask.fill(0);
     this.targetValidCells = 0;
@@ -271,7 +259,7 @@ export class RestoreScene extends Phaser.Scene {
     try {
       const tex = this.textures.get(textureKey);
       srcCanvas = tex.getSourceImage();
-    } catch (e) {
+    } catch {
       srcCanvas = null;
     }
 
@@ -296,7 +284,6 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
-    // Если текстура без прямого контекста — центрированный эллипс силуэта
     if (this.targetValidCells < 20) {
       this.targetValidCells = 0;
       for (let gy = 0; gy < this.gridRows; gy++) {
@@ -315,28 +302,22 @@ export class RestoreScene extends Phaser.Scene {
 
   createAtmosphericWorkbench(width, height, tier) {
     const bg = this.add.graphics().setDepth(0);
-
-    // Стены мастерской
     bg.fillStyle(0x0a0c10, 1);
     bg.fillRect(0, 0, width, height);
 
-    // Рабочая поверхность стола
     const tableY = height * 0.22;
     const tableH = height - tableY;
 
     if (tier === 1) {
-      // Сырой подвал: холодное темное дерево и стальной лист
       bg.fillStyle(0x131822, 1);
       bg.fillRect(0, tableY, width, tableH);
       bg.lineStyle(3, 0x222d3d, 1);
       bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
-      // Коврик реставратора с разметкой
       bg.fillStyle(0x1a212d, 0.9);
       bg.fillRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
       bg.lineStyle(1, 0x334155, 0.4);
       bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
     } else if (tier === 2) {
-      // Чердак антиквара: теплый фактурный дуб
       bg.fillStyle(0x221a14, 1);
       bg.fillRect(0, tableY, width, tableH);
       bg.lineStyle(3, 0x3d2e24, 1);
@@ -346,7 +327,6 @@ export class RestoreScene extends Phaser.Scene {
       bg.lineStyle(1.5, 0x8a6238, 0.5);
       bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
     } else if (tier === 3) {
-      // Лавка редкостей: благородный изумрудный бархат
       bg.fillStyle(0x0e1713, 1);
       bg.fillRect(0, tableY, width, tableH);
       bg.fillStyle(0x082218, 0.95);
@@ -354,7 +334,6 @@ export class RestoreScene extends Phaser.Scene {
       bg.lineStyle(2, 0xd4af37, 0.6);
       bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
     } else {
-      // Императорская лаборатория: полированный темный мрамор
       bg.fillStyle(0x0d1117, 1);
       bg.fillRect(0, tableY, width, tableH);
       bg.fillStyle(0x161d27, 0.95);
@@ -466,7 +445,6 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
     ];
 
-    // Металлическая подставка лотка
     this.add.rectangle(width / 2, trayY + 10, width * 0.94, 88, 0x0e131d, 0.96)
       .setStrokeStyle(1.5, 0x222e42, 0.9)
       .setDepth(22);
@@ -488,12 +466,11 @@ export class RestoreScene extends Phaser.Scene {
       this.add.image(slotX, trayY + 4, t.icon).setScale(0.56).setDepth(24);
 
       const lbl = this.add.text(slotX, trayY + 44, t.label, {
-        fontSize: '9.5px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '19px',
+        fontFamily: 'sans-serif',
         color: isSelected ? '#10b981' : '#64748b',
-        fontStyle: 'bold',
-        resolution: 2
-      }).setOrigin(0.5).setDepth(24);
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setScale(0.5).setDepth(24);
 
       slotBg.on('pointerdown', () => {
         this.selectTool(t.id, t.icon, t.mask);
