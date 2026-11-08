@@ -58,7 +58,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.createTabsUI(width);
     this.renderCards(width);
 
-    // Нижняя кнопка возврата
+    // Нижняя панель
     this.add.rectangle(width / 2, height - 33, width, 66, 0x07090e).setDepth(30);
     const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 44, 0x141a24)
       .setStrokeStyle(1.5, 0x475569, 0.9)
@@ -76,6 +76,7 @@ export class EraSelectScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
+    // Надежный вертикальный скролл
     let dragStartY = 0;
     let initialScrollY = 0;
 
@@ -205,7 +206,8 @@ export class EraSelectScene extends Phaser.Scene {
       const icon = this.add.image(width / 2 - cardW / 2 + 46, baseY, texKey)
         .setDisplaySize(68, 68).setDepth(11);
 
-      // Четко разнесенные по вертикали элементы карточки
+      // Строго разнесенные строки без наложений:
+      // 1. Имя артефакта (-36px от центра)
       const title = this.add.text(width / 2 - cardW / 2 + 90, baseY - 36, art.name, {
         fontSize: '28px',
         fontFamily: 'sans-serif',
@@ -213,6 +215,7 @@ export class EraSelectScene extends Phaser.Scene {
         fontStyle: 'bold'
       }).setScale(0.5).setDepth(11);
 
+      // 2. Описание (-12px от центра)
       const desc = this.add.text(width / 2 - cardW / 2 + 90, baseY - 12, art.description || 'Древний артефакт', {
         fontSize: '20px',
         fontFamily: 'sans-serif',
@@ -221,6 +224,7 @@ export class EraSelectScene extends Phaser.Scene {
         wordWrap: { width: (cardW - 100) * 2 }
       }).setScale(0.5).setDepth(11);
 
+      // 3. Действие (+32px от центра)
       const action = this.add.text(width / 2 - cardW / 2 + 90, baseY + 32, '▶ ВЗЯТЬ НА ВЕРСТАК', {
         fontSize: '22px',
         fontFamily: 'sans-serif',
@@ -249,7 +253,7 @@ export class EraSelectScene extends Phaser.Scene {
 
       this.cardsElements.push(bg, icon, title, desc, action, val);
 
-      // Сохраняем индивидуальные смещения каждого элемента относительно центра карточки
+      // Каждому элементу закреплено жесткое относительное смещение
       this.cardData.push({
         baseY,
         items: [
