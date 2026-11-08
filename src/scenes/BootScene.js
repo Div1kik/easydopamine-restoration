@@ -4,11 +4,11 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.createMasterAssets();
+    this.createCleanTextures();
     this.scene.start('MenuScene');
   }
 
-  createMasterAssets() {
+  createCleanTextures() {
     const make = (key, w, h, fn) => {
       const c = document.createElement('canvas');
       c.width = w * 2;
@@ -22,74 +22,122 @@ export class BootScene extends Phaser.Scene {
       this.textures.addCanvas(key, c);
     };
 
-    make('icon_home', 40, 40, (ctx) => {
-      ctx.fillStyle = '#cbd5e1';
-      ctx.beginPath();
-      ctx.moveTo(20, 8); ctx.lineTo(8, 20); ctx.lineTo(13, 20);
-      ctx.lineTo(13, 32); ctx.lineTo(27, 32); ctx.lineTo(27, 20); ctx.lineTo(32, 20);
-      ctx.closePath(); ctx.fill();
-    });
-
-    make('particle_dust', 6, 6, (ctx) => {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(3, 3, 2.5, 0, Math.PI * 2); ctx.fill();
-    });
-
-    make('shard_amphora', 48, 48, (ctx) => {
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.moveTo(10, 12); ctx.lineTo(38, 8); ctx.lineTo(32, 38); ctx.lineTo(12, 30);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 1.5; ctx.stroke();
-    });
-
+    // 1. ИКОНКИ ИНСТРУМЕНТОВ ВЫСОКОГО КАЧЕСТВА
+    // Латунный скребок
     make('slot_scraper', 56, 56, (ctx) => {
-      ctx.fillStyle = '#334155'; ctx.fillRect(25, 26, 6, 22);
-      const g = ctx.createLinearGradient(12, 26, 44, 8);
-      g.addColorStop(0, '#d97706'); g.addColorStop(0.5, '#fde047'); g.addColorStop(1, '#b45309');
-      ctx.fillStyle = g;
+      // Рукоять
+      const woodGrad = ctx.createLinearGradient(24, 0, 32, 0);
+      woodGrad.addColorStop(0, '#334155');
+      woodGrad.addColorStop(0.5, '#64748b');
+      woodGrad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = woodGrad;
       ctx.beginPath();
-      ctx.moveTo(12, 26); ctx.lineTo(44, 26); ctx.lineTo(28, 8);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.roundRect(25, 26, 6, 22, 2);
+      ctx.fill();
+
+      // Латунное лезвие с бликом
+      const metalGrad = ctx.createLinearGradient(12, 26, 44, 8);
+      metalGrad.addColorStop(0, '#b45309');
+      metalGrad.addColorStop(0.3, '#fde047');
+      metalGrad.addColorStop(0.6, '#facc15');
+      metalGrad.addColorStop(1, '#78350f');
+      ctx.fillStyle = metalGrad;
+      ctx.beginPath();
+      ctx.moveTo(10, 26);
+      ctx.lineTo(46, 26);
+      ctx.lineTo(28, 8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Острая фаска
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
     });
 
+    // Беличья кисть
     make('slot_brush_soft', 56, 56, (ctx) => {
-      ctx.fillStyle = '#475569'; ctx.fillRect(25, 28, 6, 20);
-      ctx.fillStyle = '#94a3b8'; ctx.fillRect(22, 22, 12, 6);
-      const bg = ctx.createLinearGradient(20, 8, 36, 22);
-      bg.addColorStop(0, '#f59e0b'); bg.addColorStop(1, '#b45309');
-      ctx.fillStyle = bg;
+      // Ручка
+      ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      ctx.moveTo(22, 22);
-      ctx.quadraticCurveTo(16, 8, 28, 6);
-      ctx.quadraticCurveTo(40, 8, 34, 22);
-      ctx.closePath(); ctx.fill();
+      ctx.roundRect(26, 28, 4, 20, 2);
+      ctx.fill();
+
+      // Обойма (металлическое кольцо)
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(23, 23, 10, 5);
+
+      // Ворс кисти с мягким переходом
+      const hairGrad = ctx.createLinearGradient(18, 6, 38, 23);
+      hairGrad.addColorStop(0, '#d97706');
+      hairGrad.addColorStop(0.4, '#f59e0b');
+      hairGrad.addColorStop(1, '#78350f');
+      ctx.fillStyle = hairGrad;
+      ctx.beginPath();
+      ctx.moveTo(23, 23);
+      ctx.quadraticCurveTo(16, 10, 28, 6);
+      ctx.quadraticCurveTo(40, 10, 33, 23);
+      ctx.closePath();
+      ctx.fill();
     });
 
+    // Химический спрей (реактив)
     make('slot_solvent', 56, 56, (ctx) => {
-      ctx.fillStyle = '#059669';
-      ctx.beginPath(); ctx.roundRect(18, 20, 20, 30, 4); ctx.fill();
-      ctx.fillStyle = '#34d399'; ctx.fillRect(23, 12, 10, 8);
-      ctx.fillStyle = '#10b981'; ctx.fillRect(20, 10, 16, 3);
-    });
-
-    make('slot_glue', 56, 56, (ctx) => {
-      ctx.fillStyle = '#ea580c';
+      // Флакон
+      const botGrad = ctx.createLinearGradient(18, 0, 38, 0);
+      botGrad.addColorStop(0, '#047857');
+      botGrad.addColorStop(0.5, '#10b981');
+      botGrad.addColorStop(1, '#064e3b');
+      ctx.fillStyle = botGrad;
       ctx.beginPath();
-      ctx.moveTo(20, 48); ctx.lineTo(36, 48); ctx.lineTo(31, 16); ctx.lineTo(25, 16);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fbbf24'; ctx.fillRect(26, 8, 4, 8);
+      ctx.roundRect(18, 20, 20, 30, 4);
+      ctx.fill();
+
+      // Дозатор и распылитель
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(24, 14, 8, 6);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(19, 10, 18, 4);
+      ctx.fillRect(16, 11, 4, 2);
     });
 
+    // Реставрационный клей
+    make('slot_glue', 56, 56, (ctx) => {
+      // Тюбик
+      const tubeGrad = ctx.createLinearGradient(18, 0, 38, 0);
+      tubeGrad.addColorStop(0, '#c2410c');
+      tubeGrad.addColorStop(0.5, '#fb923c');
+      tubeGrad.addColorStop(1, '#9a3412');
+      ctx.fillStyle = tubeGrad;
+      ctx.beginPath();
+      ctx.moveTo(19, 48);
+      ctx.lineTo(37, 48);
+      ctx.lineTo(32, 18);
+      ctx.lineTo(24, 18);
+      ctx.closePath();
+      ctx.fill();
+
+      // Носик
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(26, 8, 4, 10);
+    });
+
+    // Шелковая замша
     make('slot_polish', 56, 56, (ctx) => {
-      const g = ctx.createRadialGradient(28, 28, 4, 28, 28, 16);
-      g.addColorStop(0, '#f472b6'); g.addColorStop(1, '#9d174d');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.roundRect(14, 14, 28, 28, 6); ctx.fill();
-      ctx.strokeStyle = '#fbcfe8'; ctx.lineWidth = 1; ctx.stroke();
+      const clothGrad = ctx.createRadialGradient(28, 28, 4, 28, 28, 18);
+      clothGrad.addColorStop(0, '#f472b6');
+      clothGrad.addColorStop(0.7, '#c026d3');
+      clothGrad.addColorStop(1, '#701a75');
+      ctx.fillStyle = clothGrad;
+      ctx.beginPath();
+      ctx.roundRect(14, 14, 28, 28, 7);
+      ctx.fill();
+      ctx.strokeStyle = '#fbcfe8';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     });
 
+    // 2. МАСКИ СТИРАНИЯ
     const makeMask = (key, r) => {
       make(key, r * 2, r * 2, (ctx) => {
         const rad = ctx.createRadialGradient(r, r, 0, r, r, r);
@@ -97,7 +145,9 @@ export class BootScene extends Phaser.Scene {
         rad.addColorStop(0.75, 'rgba(0,0,0,0.85)');
         rad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rad;
-        ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(r, r, r, 0, Math.PI * 2);
+        ctx.fill();
       });
     };
     makeMask('mask_scraper', 26);
@@ -106,6 +156,7 @@ export class BootScene extends Phaser.Scene {
     makeMask('mask_glue', 22);
     makeMask('mask_polish', 34);
 
+    // 3. АРТЕФАКТЫ
     const W = 200, H = 240;
 
     make('art_egypt_scarab', W, H, (ctx) => {
@@ -222,6 +273,28 @@ export class BootScene extends Phaser.Scene {
       ctx.bezierCurveTo(cx + 35, cy + 65, cx + 40, cy + 18, cx + 22, cy - 12);
       ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy - 26, 18, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Служебные иконки
+    make('icon_home', 40, 40, (ctx) => {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(20, 8); ctx.lineTo(8, 20); ctx.lineTo(13, 20);
+      ctx.lineTo(13, 32); ctx.lineTo(27, 32); ctx.lineTo(27, 20); ctx.lineTo(32, 20);
+      ctx.closePath(); ctx.fill();
+    });
+
+    make('particle_dust', 6, 6, (ctx) => {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(3, 3, 2.5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    make('shard_amphora', 48, 48, (ctx) => {
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.moveTo(10, 12); ctx.lineTo(38, 8); ctx.lineTo(32, 38); ctx.lineTo(12, 30);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 1.5; ctx.stroke();
     });
   }
 }
