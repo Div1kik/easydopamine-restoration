@@ -16,7 +16,6 @@ export class EraSelectScene extends Phaser.Scene {
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
 
-    // Строгий линейный порядок разблокировки эпох
     const requiredRestoredPerEra = [0, 2, 4, 6, 8, 10, 12];
 
     this.eras = REGIONS.map((region, idx) => {
@@ -32,7 +31,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.selectedEraIndex = 0;
 
     // Шапка
-    this.add.text(width / 2, 36, 'КАРТА ЭКСПЕДИЦИЙ', {
+    this.add.text(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', {
       fontSize: '20px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
@@ -40,76 +39,78 @@ export class EraSelectScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(width / 2, 60, `Ранг Мастера: ${rank}  •  Казна: ${coins} 💰`, {
+    this.add.text(width / 2, 58, `Ранг Мастера: ${rank}  •  Казна: ${coins} 💰`, {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#94a3b8',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Кнопка сброса с безопасным подтверждением
-    const resetBg = this.add.circle(width - 36, 36, 16, 0x1e2430)
+    // Кнопка сброса с подтверждением
+    const resetBtn = this.add.rectangle(width - 36, 36, 34, 34, 0x1e2430)
       .setStrokeStyle(1.5, 0xef4444, 0.8)
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
-    this.add.text(width - 36, 36, '🗑', { fontSize: '13px' }).setOrigin(0.5).setDepth(21);
+    this.add.text(width - 36, 36, '🗑', { fontSize: '14px' }).setOrigin(0.5).setDepth(21);
 
-    resetBg.on('pointerdown', () => this.showResetModal());
+    resetBtn.on('pointerdown', () => this.showResetModal());
 
     // Вкладки эпох
-    this.createTabs(width, 94);
+    this.createTabs(width, 92);
 
     // Контейнер артефактов
-    this.listContainer = this.add.container(0, 142).setDepth(5);
+    this.listContainer = this.add.container(0, 140).setDepth(5);
     this.renderArtifactsList();
 
-    // Нижняя кнопка возврата с широкой интерактивной зоной
+    // Кнопка «В главное меню» на самом переднем плане
     const backBtnY = height - 42;
-    const backBtnBg = this.add.rectangle(width / 2, backBtnY, width * 0.88, 44, 0x141822)
-      .setStrokeStyle(1.5, 0x334155, 0.8)
+    const backBtn = this.add.rectangle(width / 2, backBtnY, width * 0.88, 48, 0x141822)
+      .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
-      .setDepth(20);
+      .setDepth(50);
 
-    const backBtnText = this.add.text(width / 2, backBtnY, 'В главное меню', {
-      fontSize: '14px',
+    this.add.text(width / 2, backBtnY, 'В главное меню', {
+      fontSize: '15px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#e2e8f0',
+      color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(21);
+    }).setOrigin(0.5).setDepth(51);
 
-    backBtnBg.on('pointerdown', () => {
+    backBtn.on('pointerdown', () => {
       AudioManager.playClick();
       this.scene.start('MenuScene');
     });
   }
 
   createTabs(width, y) {
-    if (this.tabsContainer) this.tabsContainer.destroy();
-    this.tabsContainer = this.add.container(0, y).setDepth(10);
+    if (this.tabsGroup) {
+      this.tabsGroup.forEach(item => item.destroy());
+    }
+    this.tabsGroup = [];
 
     const tabWidth = 92;
     const spacing = 6;
     const startX = 14;
-
     const shortNames = ['Египет', 'Античность', 'Европа', 'Япония', 'Ацтеки', 'Викинги', 'Ренессанс'];
 
     this.eras.forEach((era, i) => {
-      const tabX = startX + i * (tabWidth + spacing);
+      const tabX = startX + i * (tabWidth + spacing) + tabWidth / 2;
       const isSelected = (i === this.selectedEraIndex);
 
-      const bg = this.add.rectangle(tabX + tabWidth / 2, 18, tabWidth, 34, isSelected ? 0xd4af37 : 0x121722)
+      const bg = this.add.rectangle(tabX, y + 16, tabWidth, 34, isSelected ? 0xd4af37 : 0x121722)
         .setStrokeStyle(1.5, isSelected ? 0xfef08a : 0x273142, 0.9)
-        .setInteractive({ useHandCursor: true });
+        .setInteractive({ useHandCursor: true })
+        .setDepth(15);
 
       const lockPrefix = era.unlocked ? '' : '🔒 ';
       const title = `${lockPrefix}${shortNames[i] || era.name}`;
 
-      const text = this.add.text(tabX + tabWidth / 2, 18, title, {
+      const text = this.add.text(tabX, y + 16, title, {
         fontSize: '11px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: isSelected ? '#000000' : (era.unlocked ? '#94a3b8' : '#475569'),
         fontStyle: 'bold'
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setDepth(16);
 
       bg.on('pointerdown', () => {
         AudioManager.playClick();
@@ -118,7 +119,7 @@ export class EraSelectScene extends Phaser.Scene {
         this.renderArtifactsList();
       });
 
-      this.tabsContainer.add([bg, text]);
+      this.tabsGroup.push(bg, text);
     });
   }
 
@@ -183,7 +184,6 @@ export class EraSelectScene extends Phaser.Scene {
         fontStyle: 'bold'
       });
 
-      // Клик по всей плашке карточки
       bg.on('pointerdown', () => {
         AudioManager.playClick();
         this.scene.start('RestoreScene', {
