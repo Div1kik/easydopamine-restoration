@@ -1,7 +1,7 @@
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
-export class ShopScene extends Phaser.Scene {
+exort class ShopScene extends Phaser.Scene {
   constructor() {
     super('ShopScene');
   }
