@@ -27,36 +27,34 @@ export class RestoreScene extends Phaser.Scene {
     this.lastTouchPos = null;
     this.glueApplied = false;
     this.isTaskTransition = false;
-    this.cleaningProgress = 0;
-    // Сбалансированный порог: предмет не очищается мгновенно
-    this.targetProgress = 130;
 
+    // 1. Динамический фон в зависимости от тира верстака
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
+    this.renderDynamicWorkshopBg(width, height, tier);
 
-    // 1. Верхняя панель: Домой, Монеты и Магазин инструментов
+    // 2. Верхняя навигация
     const homeBtn = this.add.image(28, 32, 'icon_home')
-      .setScale(0.7).setInteractive({ useHandCursor: true }).setDepth(25);
+      .setScale(0.72).setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
       AudioManager.stopMusic();
       this.scene.start('EraSelectScene');
     });
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.coinsText = this.add.text(52, 22, `${coins} 💰`, {
+    this.coinsText = this.add.text(50, 22, `${coins} 💰`, {
       fontSize: '15px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
     }).setDepth(25);
 
-    // Кнопка магазина инструментов (Лавка / Улучшения)
-    const shopBtn = this.add.container(width - 66, 32).setDepth(25);
-    const shopBg = this.add.rectangle(0, 0, 52, 26, 0x1e2430, 0.95)
-      .setStrokeStyle(1.5, 0xc5a059, 0.8)
+    // Кнопка магазина
+    const shopBtn = this.add.container(width - 64, 32).setDepth(25);
+    const shopBg = this.add.rectangle(0, 0, 58, 28, 0x141a24, 0.95)
+      .setStrokeStyle(1.5, 0xe2b35b, 0.8)
       .setInteractive({ useHandCursor: true });
     const shopLabel = this.add.text(0, 0, '🛒 Лавка', {
-      fontSize: '10px',
+      fontSize: '10.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
@@ -68,9 +66,7 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('ShopScene');
     });
 
-    this.createMuteButton(width - 20, 32);
-
-    // 2. Иерархия текстов шапки
+    // 3. Шапка задания
     this.add.text(width / 2, 52, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -80,7 +76,7 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(25);
 
     this.add.text(width / 2, 74, this.artifactData.name, {
-      fontSize: '17px',
+      fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
@@ -95,7 +91,6 @@ export class RestoreScene extends Phaser.Scene {
       wordWrap: { width: width * 0.88 }
     }).setOrigin(0.5).setDepth(25);
 
-    // Прогресс-бар
     const barWidth = width * 0.65;
     this.progressBarBg = this.add.rectangle(width / 2, 118, barWidth, 6, 0x1e2430).setDepth(25);
     this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 118, 0, 6, 0x22c55e)
@@ -108,7 +103,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // 3. Рабочая зона артефакта
+    // 4. Рабочая зона и сетка честного покрытия
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -116,7 +111,7 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 165, 270, 48, 0x000000, 0.6).setDepth(1);
+    this.add.ellipse(this.centerX, this.centerY + 165, 270, 48, 0x000000, 0.65).setDepth(1);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(2);
@@ -154,9 +149,16 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
+    // Инициализация сетки честного покрытия (15x20 ячеек)
+    this.gridCols = 15;
+    this.gridRows = 20;
+    this.totalCells = this.gridCols * this.gridRows;
+    this.cleanedGrid = new Uint8Array(this.totalCells);
+    this.cleanedCount = 0;
+
     this.startTask(0);
 
-    // 4. Плавное и реалистичное накопление прогресса
+    // 5. Обработка стирания с проверкой сетки
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -168,30 +170,8 @@ export class RestoreScene extends Phaser.Scene {
         return;
       }
 
-      if (!this.lastTouchPos) {
-        this.lastTouchPos = { x: pointer.x, y: pointer.y };
-        return;
-      }
-
-      const dx = pointer.x - this.lastTouchPos.x;
-      const dy = pointer.y - this.lastTouchPos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 8) return;
-
-      this.lastTouchPos = { x: pointer.x, y: pointer.y };
-
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
       this.toolSprite.setAlpha(1);
-
-      if (this.activeTool === 'tool_scraper') {
-        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.4, -25, 25);
-      } else if (this.activeTool === 'tool_brush') {
-        this.toolSprite.angle = Phaser.Math.Clamp(-dx * 1.6, -20, 20);
-      } else if (this.activeTool === 'tool_polish') {
-        this.toolSprite.angle = Math.sin(this.time.now * 0.02) * 12;
-      } else {
-        this.toolSprite.angle = 0;
-      }
 
       if (this.activeTool !== currentTask.requiredTool) {
         this.toolWarning.setText(currentTask.hint || 'Выберите правильный инструмент в лотке!');
@@ -212,12 +192,29 @@ export class RestoreScene extends Phaser.Scene {
         if (navigator.vibrate && Math.random() < 0.2) navigator.vibrate(8);
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        // Мягкий расчет: очистка требует плотной проработки площади
-        this.cleaningProgress += Math.min(dist * 0.22, 3.2);
-        const ratio = Math.min(this.cleaningProgress / this.targetProgress, 1);
-        this.progressBarFill.width = barWidth * ratio;
+        // Расчет ячеек сетки в радиусе ластика
+        const cellX = Math.floor((localX / this.artW) * this.gridCols);
+        const cellY = Math.floor((localY / this.artH) * this.gridRows);
 
-        if (ratio >= 1.0 && !this.isTaskTransition) {
+        for (let ox = -1; ox <= 1; ox++) {
+          for (let oy = -1; oy <= 1; oy++) {
+            const gx = cellX + ox;
+            const gy = cellY + oy;
+            if (gx >= 0 && gx < this.gridCols && gy >= 0 && gy < this.gridRows) {
+              const idx = gy * this.gridCols + gx;
+              if (this.cleanedGrid[idx] === 0) {
+                this.cleanedGrid[idx] = 1;
+                this.cleanedCount++;
+              }
+            }
+          }
+        }
+
+        const coverageRatio = Math.min(this.cleanedCount / (this.totalCells * 0.88), 1);
+        this.progressBarFill.width = (this.scale.width * 0.65) * coverageRatio;
+
+        // Завершение наступает ТОЛЬКО при реальной очистке 88% площади
+        if (coverageRatio >= 1.0 && !this.isTaskTransition) {
           this.isTaskTransition = true;
           this.toolSprite.setAlpha(0);
           this.dirtLayer.clear();
@@ -240,6 +237,40 @@ export class RestoreScene extends Phaser.Scene {
         duration: 150
       });
     });
+  }
+
+  renderDynamicWorkshopBg(width, height, tier) {
+    const bgGfx = this.add.graphics().setDepth(0);
+
+    if (tier === 1) {
+      // Сырой подвал: темный холодный бетон с трещинами
+      bgGfx.fillStyle(0x0e1117, 1);
+      bgGfx.fillRect(0, 0, width, height);
+      bgGfx.fillStyle(0x161c26, 0.4);
+      for (let i = 0; i < 20; i++) {
+        bgGfx.fillRect(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 60, 2);
+      }
+    } else if (tier === 2) {
+      // Чердак антиквара: теплые деревянные доски
+      bgGfx.fillStyle(0x181410, 1);
+      bgGfx.fillRect(0, 0, width, height);
+      bgGfx.fillStyle(0x272018, 0.7);
+      for (let y = 0; y < height; y += 40) {
+        bgGfx.fillRect(0, y, width, 2);
+      }
+    } else if (tier === 3) {
+      // Лавка редкостей: благородный темно-зеленый бархат и золотые акценты
+      bgGfx.fillStyle(0x091410, 1);
+      bgGfx.fillRect(0, 0, width, height);
+      bgGfx.lineStyle(1.5, 0xd4af37, 0.25);
+      bgGfx.strokeRect(20, 20, width - 40, height - 40);
+    } else {
+      // Императорская лаборатория: глубокий мрамор с золотой рамкой
+      bgGfx.fillStyle(0x0a0c14, 1);
+      bgGfx.fillRect(0, 0, width, height);
+      bgGfx.lineStyle(2, 0x38bdf8, 0.4);
+      bgGfx.strokeRect(16, 16, width - 32, height - 32);
+    }
   }
 
   processGlueAction(pointer) {
@@ -374,13 +405,6 @@ export class RestoreScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(17);
 
       slotBg.on('pointerdown', () => {
-        this.tweens.add({
-          targets: slotBg,
-          scale: 0.92,
-          duration: 60,
-          yoyo: true,
-          ease: 'Quad.easeInOut'
-        });
         this.selectTool(t.id, t.icon, t.mask);
       });
 
@@ -404,7 +428,8 @@ export class RestoreScene extends Phaser.Scene {
   startTask(taskIdx) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
-    this.cleaningProgress = 0;
+    this.cleanedGrid.fill(0);
+    this.cleanedCount = 0;
     this.progressBarFill.width = 0;
     this.toolWarning.setText('');
 
@@ -539,25 +564,6 @@ export class RestoreScene extends Phaser.Scene {
           });
         }
       }
-    });
-  }
-
-  createMuteButton(x, y) {
-    const btn = this.add.image(x, y, 'icon_speaker')
-      .setScale(0.85).setInteractive({ useHandCursor: true }).setDepth(25);
-    const line = this.add.line(0, 0, x - 12, y - 12, x + 12, y + 12, 0xef4444, 3)
-      .setOrigin(0).setDepth(26);
-
-    const updateIcon = () => {
-      line.setVisible(Storage.isMuted());
-      btn.setAlpha(Storage.isMuted() ? 0.4 : 1);
-    };
-
-    updateIcon();
-
-    btn.on('pointerdown', () => {
-      AudioManager.toggleMute();
-      updateIcon();
     });
   }
 }
