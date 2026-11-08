@@ -58,7 +58,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.createTabsUI(width);
     this.renderCards(width);
 
-    // Нижняя кнопка
+    // Нижняя кнопка возврата
     this.add.rectangle(width / 2, height - 33, width, 66, 0x07090e).setDepth(30);
     const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 44, 0x141a24)
       .setStrokeStyle(1.5, 0x475569, 0.9)
@@ -205,7 +205,7 @@ export class EraSelectScene extends Phaser.Scene {
       const icon = this.add.image(width / 2 - cardW / 2 + 46, baseY, texKey)
         .setDisplaySize(68, 68).setDepth(11);
 
-      // Разнесенные строки текста с нормальными кеглями
+      // Строго разнесенные по вертикали строки карточки
       const title = this.add.text(width / 2 - cardW / 2 + 90, baseY - 36, art.name, {
         fontSize: '15px',
         fontFamily: 'sans-serif',
