@@ -1,10 +1,10 @@
-import { BootScene } from './scenes/BootScene.js?v=18.0';
-import { MenuScene } from './scenes/MenuScene.js?v=18.0';
-import { EraSelectScene } from './scenes/EraSelectScene.js?v=18.0';
-import { RestoreScene } from './scenes/RestoreScene.js?v=18.0';
-import { VictoryScene } from './scenes/VictoryScene.js?v=18.0';
-import { ShopScene } from './scenes/ShopScene.js?v=18.0';
-import { MuseumScene } from './scenes/MuseumScene.js?v=18.0';
+import { BootScene } from './scenes/BootScene.js?v=17.0';
+import { MenuScene } from './scenes/MenuScene.js?v=17.0';
+import { EraSelectScene } from './scenes/EraSelectScene.js?v=17.0';
+import { RestoreScene } from './scenes/RestoreScene.js?v=17.0';
+import { VictoryScene } from './scenes/VictoryScene.js?v=17.0';
+import { ShopScene } from './scenes/ShopScene.js?v=17.0';
+import { MuseumScene } from './scenes/MuseumScene.js?v=17.0';
 import { AudioManager } from './utils/AudioManager.js';
 
 const unlockAudio = () => {
