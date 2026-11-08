@@ -11,7 +11,7 @@ export class EraSelectScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.selectedRegionIndex = 0;
 
-    const tier = (Storage.getWorkshopTier && typeof Storage.getWorkshopTier === 'function') ? Storage.getWorkshopTier() : 1;
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
     // Шапка
@@ -24,18 +24,16 @@ export class EraSelectScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(21);
 
-    const lvl = (Storage.getMasterLevel && typeof Storage.getMasterLevel === 'function') ? Storage.getMasterLevel() : 1;
-    const coins = Storage.getCoins();
+    const lvl = Storage.getMasterLevel ? Storage.getMasterLevel() : 1;
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.add.text(width / 2, 48, `Ранг Мастера: ${lvl}  •  Казна: ${coins} золота`, {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#94a3b8'
     }).setOrigin(0.5).setDepth(21);
 
-    // 1. Горизонтальные табы регионов
     this.createScrollableTabs(width);
 
-    // 2. Вертикальный скролл карточек
     this.listContainer = this.add.container(0, 0).setDepth(5);
     const listMaskShape = this.make.graphics();
     listMaskShape.fillRect(0, 115, width, height - 180);
@@ -115,7 +113,6 @@ export class EraSelectScene extends Phaser.Scene {
 
       tab.tabBg.setFillStyle(isSelected ? 0xc5a059 : 0x141820);
       tab.tabBg.setStrokeStyle(1, isSelected ? 0xffffff : (isUnlocked ? 0x334155 : 0x1e2430));
-
       tab.label.setColor(isSelected ? '#0f172a' : (isUnlocked ? '#cbd5e1' : '#64748b'));
       tab.label.setText(isUnlocked ? tab.rawName : `🔒 ${tab.rawName}`);
     });
@@ -186,7 +183,6 @@ export class EraSelectScene extends Phaser.Scene {
         .setStrokeStyle(1, 0xc5a059, 0.5)
         .setInteractive({ useHandCursor: true });
 
-      // Гарантированная подгрузка текстуры: если нет — фоллбэк на скарабея
       const texKey = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
       const thumb = this.add.image(width * 0.18, cardY + 38, texKey).setScale(0.20);
 
@@ -213,9 +209,10 @@ export class EraSelectScene extends Phaser.Scene {
         letterSpacing: 1
       });
 
+      // ВАЖНО: передаем точный templateId, чтобы не было путаницы!
       bg.on('pointerdown', () => {
         if (AudioManager.playEraMusic) AudioManager.playEraMusic(region.id);
-        this.scene.start('RestoreScene', { regionId: region.id });
+        this.scene.start('RestoreScene', { regionId: region.id, templateId: item.templateId });
       });
 
       this.listContainer.add([bg, thumb, title, desc, action]);
