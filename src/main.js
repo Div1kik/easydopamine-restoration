@@ -1,4 +1,4 @@
-import { BootScene } from './scenes/BootScene.js';
+import { BootScene } from './scenes/BootScene.js?v=4.0';
 import { MenuScene } from './scenes/MenuScene.js';
 import { EraSelectScene } from './scenes/EraSelectScene.js';
 import { RestoreScene } from './scenes/RestoreScene.js';
