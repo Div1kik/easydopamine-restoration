@@ -1,13 +1,12 @@
-import { BootScene } from './scenes/BootScene.js?v=15.0';
-import { MenuScene } from './scenes/MenuScene.js?v=15.0';
-import { EraSelectScene } from './scenes/EraSelectScene.js?v=15.0';
-import { RestoreScene } from './scenes/RestoreScene.js?v=15.0';
-import { VictoryScene } from './scenes/VictoryScene.js?v=15.0';
-import { ShopScene } from './scenes/ShopScene.js?v=15.0';
-import { MuseumScene } from './scenes/MuseumScene.js?v=15.0';
+import { BootScene } from './scenes/BootScene.js?v=20.0';
+import { MenuScene } from './scenes/MenuScene.js?v=20.0';
+import { EraSelectScene } from './scenes/EraSelectScene.js?v=20.0';
+import { RestoreScene } from './scenes/RestoreScene.js?v=20.0';
+import { VictoryScene } from './scenes/VictoryScene.js?v=20.0';
+import { ShopScene } from './scenes/ShopScene.js?v=20.0';
+import { MuseumScene } from './scenes/MuseumScene.js?v=20.0';
 import { AudioManager } from './utils/AudioManager.js';
 
-// Надежная разблокировка звука при первом же тапе в любой точке
 const unlockAudio = () => {
   AudioManager.unlockAudio();
   window.removeEventListener('pointerdown', unlockAudio);
