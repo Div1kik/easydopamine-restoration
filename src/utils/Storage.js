@@ -46,7 +46,6 @@ export const Storage = {
   isMuted: () => localStorage.getItem('muted') === 'true',
   setMuted: (val) => localStorage.setItem('muted', val ? 'true' : 'false'),
 
-  // Сессия для возврата из лавки на верстак
   setActiveSession: (data) => localStorage.setItem('active_restore_session', JSON.stringify(data)),
   getActiveSession: () => {
     try {
