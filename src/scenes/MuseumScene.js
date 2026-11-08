@@ -9,41 +9,53 @@ export class MuseumScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // Звон колокольчиков над дверью и мелодия лавки
     AudioManager.playDoorBells();
     AudioManager.playEraMusic('shop');
 
-    // Интерьер лавки с резными полками
-    this.add.image(width / 2, height / 2, 'bg_antique_shop').setDepth(0);
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
+    // Фон лавки строго по центру
+    this.add.image(width / 2, height / 2, `bg_antique_shop_tier_${tier}`).setDepth(0);
 
-    // Заголовок лавки
-    this.add.text(width / 2, 38, 'ЛАВКА ДРЕВНОСТЕЙ', {
-      fontSize: '22px',
-      fontFamily: 'sans-serif',
+    // Шапка
+    this.add.rectangle(width / 2, 45, width, 90, 0x0a0c10, 0.92).setDepth(20);
+    this.add.text(width / 2, 30, 'ЛАВКА ДРЕВНОСТЕЙ', {
+      fontSize: '18px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#d4af37',
       fontStyle: 'bold',
       letterSpacing: 2
-    }).setOrigin(0.5).setDepth(2);
+    }).setOrigin(0.5).setDepth(21);
 
-    this.balanceText = this.add.text(width / 2, 65, `Касса лавки: ${Storage.getCoins()} золота`, {
-      fontSize: '14px',
-      fontFamily: 'sans-serif',
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    this.balanceText = this.add.text(width / 2, 52, `Касса лавки: ${coins} золота`, {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#f1c40f',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(2);
+    }).setOrigin(0.5).setDepth(21);
 
-    this.container = this.add.container(0, 0).setDepth(3);
+    // Контейнер скролла полок с маской
+    this.scrollContainer = this.add.container(0, 0).setDepth(5);
+    const maskShape = this.make.graphics();
+    maskShape.fillRect(0, 90, width, height - 150);
+    this.scrollContainer.setMask(maskShape.createGeometryMask());
+
+    this.setupScroll(height);
     this.renderShelves();
 
-    // Кнопка возврата в меню
-    const backBtn = this.add.rectangle(width / 2, height - 42, 220, 44, 0x34495e)
-      .setInteractive({ useHandCursor: true }).setDepth(10);
-    this.add.text(width / 2, height - 42, 'Выйти из лавки', {
-      fontSize: '15px',
-      fontFamily: 'sans-serif',
+    // Подвал
+    this.add.rectangle(width / 2, height - 32, width, 64, 0x0a0c10, 0.95).setDepth(20);
+    const backBtn = this.add.rectangle(width / 2, height - 32, 220, 38, 0x161b24, 0.95)
+      .setStrokeStyle(1.5, 0xffffff, 0.2)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(21);
+
+    this.add.text(width / 2, height - 32, 'Выйти из лавки', {
+      fontSize: '13px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(11);
+    }).setOrigin(0.5).setDepth(22);
 
     backBtn.on('pointerdown', () => {
       AudioManager.stopMusic();
@@ -51,74 +63,90 @@ export class MuseumScene extends Phaser.Scene {
     });
   }
 
-  renderShelves() {
-    const { width } = this.scale;
-    this.container.removeAll(true);
+  setupScroll(height) {
+    let startY = 0;
+    this.input.on('pointerdown', (p) => {
+      if (p.y > 90 && p.y < height - 60) startY = p.y - this.scrollContainer.y;
+    });
+    this.input.on('pointermove', (p) => {
+      if (p.isDown && p.y > 90 && p.y < height - 60) {
+        this.scrollContainer.y = Phaser.Math.Clamp(p.y - startY, this.minScrollY, 0);
+      }
+    });
+  }
 
-    const inventory = Storage.getInventory();
+  renderShelves() {
+    const { width, height } = this.scale;
+    this.scrollContainer.removeAll(true);
+    this.scrollContainer.y = 0;
+
+    const inventory = Storage.getInventory ? Storage.getInventory() : [];
 
     if (inventory.length === 0) {
-      const emptyBg = this.add.rectangle(width / 2, 380, width * 0.88, 300, 0x141210, 0.9)
+      const emptyBg = this.add.rectangle(width / 2, height * 0.44, width * 0.88, 220, 0x141210, 0.9)
         .setStrokeStyle(1.5, 0x444444);
-      const emptyText = this.add.text(width / 2, 350, 'ПОЛКИ ЛАВКИ ПУСТЫ', {
-        fontSize: '20px',
-        fontFamily: 'sans-serif',
+      const emptyText = this.add.text(width / 2, height * 0.41, 'ПОЛКИ ЛАВКИ ПУСТЫ', {
+        fontSize: '17px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#7f8c8d',
         fontStyle: 'bold'
       }).setOrigin(0.5);
 
-      const hintText = this.add.text(width / 2, 400, 'Отреставрируйте новые заказы на верстаке,\nчтобы выставить их на полку для покупателей.', {
-        fontSize: '13px',
-        fontFamily: 'sans-serif',
-        color: '#bdc3c7',
-        align: 'center'
+      const hintText = this.add.text(width / 2, height * 0.47, 'Отреставрируйте новые заказы на верстаке,\nчтобы выставить их на полку покупателям.', {
+        fontSize: '12px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#94a3b8',
+        align: 'center',
+        lineSpacing: 4
       }).setOrigin(0.5);
 
-      this.container.add([emptyBg, emptyText, hintText]);
+      this.scrollContainer.add([emptyBg, emptyText, hintText]);
+      this.minScrollY = 0;
       return;
     }
 
-    const startY = 95;
-    const cardH = 148;
+    const startY = 105;
+    const cardH = 135;
 
     inventory.forEach((item, idx) => {
       const cardY = startY + idx * cardH;
-      if (cardY > 660) return;
 
-      // Подставка под предмет на полке
-      const bg = this.add.rectangle(width / 2, cardY + 50, width * 0.9, 130, 0x1e1510, 0.95)
+      const bg = this.add.rectangle(width / 2, cardY + 55, width * 0.9, 120, 0x141822, 0.95)
         .setStrokeStyle(1.5, 0xd4af37, 0.8);
 
-      const thumb = this.add.image(width * 0.22, cardY + 50, item.textureKey).setScale(0.26);
+      // ГАРАНТИРОВАННАЯ ТЕКСТУРА: НИКАКИХ ЗЕЛЕНЫХ КВАДРАТОВ
+      const texKey = (item.textureKey && this.textures.exists(item.textureKey)) 
+        ? item.textureKey 
+        : 'art_egypt_scarab';
+      const thumb = this.add.image(width * 0.22, cardY + 55, texKey).setScale(0.24);
 
       const textX = width * 0.38;
-      const title = this.add.text(textX, cardY + 12, item.name, {
-        fontSize: '15px',
-        fontFamily: 'sans-serif',
+      const title = this.add.text(textX, cardY + 12, item.name || 'Реликвия', {
+        fontSize: '14px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold'
       });
 
-      const origin = this.add.text(textX, cardY + 32, item.regionName, {
-        fontSize: '11px',
-        fontFamily: 'sans-serif',
+      const origin = this.add.text(textX, cardY + 30, item.regionName || 'Экспедиция', {
+        fontSize: '10px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#e67e22',
         fontStyle: 'bold'
       });
 
-      const desc = this.add.text(textX, cardY + 50, item.museumDesc, {
-        fontSize: '11px',
-        fontFamily: 'sans-serif',
-        color: '#bdc3c7',
+      const desc = this.add.text(textX, cardY + 46, item.museumDesc || '', {
+        fontSize: '10px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#94a3b8',
         wordWrap: { width: width * 0.52 }
       });
 
-      // Кнопка продажи артефакта покупателю
-      const sellBtn = this.add.rectangle(textX + 70, cardY + 92, 140, 30, 0x27ae60)
+      const sellBtn = this.add.rectangle(textX + 70, cardY + 88, 140, 28, 0x10b981)
         .setInteractive({ useHandCursor: true });
-      const sellTxt = this.add.text(textX + 70, cardY + 92, `ПРОДАТЬ (+${item.marketValue})`, {
+      const sellTxt = this.add.text(textX + 70, cardY + 88, `ПРОДАТЬ (+${item.marketValue})`, {
         fontSize: '11px',
-        fontFamily: 'sans-serif',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold'
       }).setOrigin(0.5);
@@ -127,13 +155,14 @@ export class MuseumScene extends Phaser.Scene {
         Storage.addCoins(item.marketValue);
         Storage.removeArtifactFromInventory(item.instanceId);
         AudioManager.playCoin();
-        if (navigator.vibrate) navigator.vibrate([20, 30]);
-
         this.balanceText.setText(`Касса лавки: ${Storage.getCoins()} золота`);
         this.renderShelves();
       });
 
-      this.container.add([bg, thumb, title, origin, desc, sellBtn, sellTxt]);
+      this.scrollContainer.add([bg, thumb, title, origin, desc, sellBtn, sellTxt]);
     });
+
+    const totalHeight = startY + inventory.length * cardH + 40;
+    this.minScrollY = Math.min(0, (height - 65) - totalHeight);
   }
 }
