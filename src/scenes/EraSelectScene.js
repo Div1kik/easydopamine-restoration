@@ -16,7 +16,6 @@ export class EraSelectScene extends Phaser.Scene {
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
 
-    // Строгий линейный порядок: каждая следующая эпоха требует завершения предметов
     const requiredRestored = [0, 2, 4, 6, 8, 10, 12];
 
     this.eras = REGIONS.map((region, idx) => {
@@ -31,15 +30,15 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.selectedEraIndex = 0;
 
-    // Шапка
+    // 1. Верхняя панель (Header)
     this.add.text(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', {
-      fontSize: '19px',
+      fontSize: '20px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
       fontStyle: 'bold',
       letterSpacing: 2,
       resolution: 2
-    }).setOrigin(0.5).setDepth(10);
+    }).setOrigin(0.5).setDepth(20);
 
     this.add.text(width / 2, 58, `Ранг: ${rank}  •  Казна: ${coins} 💰`, {
       fontSize: '12px',
@@ -47,37 +46,55 @@ export class EraSelectScene extends Phaser.Scene {
       color: '#94a3b8',
       fontStyle: 'bold',
       resolution: 2
-    }).setOrigin(0.5).setDepth(10);
+    }).setOrigin(0.5).setDepth(20);
 
-    // Кнопка сброса с безопасным подтверждением
+    // Кнопка сброса прогресса
     const resetBtn = this.add.rectangle(width - 36, 36, 32, 32, 0x1f1924)
       .setStrokeStyle(1.5, 0xef4444, 0.8)
       .setInteractive({ useHandCursor: true })
-      .setDepth(20);
-    this.add.text(width - 36, 36, '🗑', { fontSize: '13px' }).setOrigin(0.5).setDepth(21);
+      .setDepth(25);
+    this.add.text(width - 36, 36, '🗑', { fontSize: '13px' }).setOrigin(0.5).setDepth(26);
     resetBtn.on('pointerdown', () => this.showResetModal());
 
-    // Вкладки эпох
-    this.createTabs(width, 92);
+    // 2. Горизонтальный скролл вкладок эпох
+    this.createScrollableTabs(width, 88);
 
-    // Контейнер списка артефактов
-    this.listContainer = this.add.container(0, 142).setDepth(5);
+    // 3. Зона вертикального скролла артефактов
+    this.listTopY = 138;
+    this.listBottomY = height - 68;
+    this.listHeight = this.listBottomY - this.listTopY;
+
+    // Контейнер элементов списка
+    this.listContainer = this.add.container(0, this.listTopY).setDepth(10);
+
+    // Ограничительная маска: карточки не выползают за пределы рабочей зоны
+    const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(0, this.listTopY, width, this.listHeight);
+    this.listContainer.setMask(maskShape.createGeometryMask());
+
+    // Зона обработки свайпа и перетаскивания списка по вертикали
+    this.setupVerticalScroll(width);
+
+    // Отрисовка текущего набора артефактов
     this.renderArtifactsList();
 
-    // Кнопка возврата в главное меню
-    const backBtnY = height - 42;
-    const backBtn = this.add.rectangle(width / 2, backBtnY, width * 0.88, 46, 0x131924)
+    // 4. Нижняя плашка с кнопкой возврата
+    const bottomBg = this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e)
+      .setDepth(30);
+
+    const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 46, 0x131924)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
-      .setDepth(50);
+      .setDepth(31);
 
-    this.add.text(width / 2, backBtnY, 'В главное меню', {
-      fontSize: '14px',
+    this.add.text(width / 2, height - 34, 'В главное меню', {
+      fontSize: '14.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
       resolution: 2
-    }).setOrigin(0.5).setDepth(51);
+    }).setOrigin(0.5).setDepth(32);
 
     backBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
@@ -85,65 +102,141 @@ export class EraSelectScene extends Phaser.Scene {
     });
   }
 
-  createTabs(width, y) {
-    if (this.tabsGroup) {
-      this.tabsGroup.forEach(el => el.destroy());
-    }
-    this.tabsGroup = [];
+  createScrollableTabs(width, y) {
+    if (this.tabsScrollContainer) this.tabsScrollContainer.destroy();
 
-    const tabWidth = 90;
-    const spacing = 6;
-    const startX = 14;
+    this.tabsScrollContainer = this.add.container(0, y).setDepth(20);
+    const tabWidth = 96;
+    const spacing = 8;
+    const startX = 16;
     const shortNames = ['Египет', 'Античность', 'Европа', 'Япония', 'Ацтеки', 'Викинги', 'Ренессанс'];
+
+    this.tabItems = [];
+    const totalTabsWidth = startX + this.eras.length * (tabWidth + spacing);
+    const minScrollX = Math.min(0, width - totalTabsWidth);
 
     this.eras.forEach((era, i) => {
       const tabX = startX + i * (tabWidth + spacing) + tabWidth / 2;
       const isSelected = (i === this.selectedEraIndex);
 
-      const bg = this.add.rectangle(tabX, y + 16, tabWidth, 32, isSelected ? 0xd4af37 : 0x111622)
+      const bg = this.add.rectangle(tabX, 16, tabWidth, 34, isSelected ? 0xd4af37 : 0x111622)
         .setStrokeStyle(1.5, isSelected ? 0xfef08a : 0x222c3d, 0.9)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(15);
+        .setInteractive({ useHandCursor: true });
 
       const lockPrefix = era.unlocked ? '' : '🔒 ';
       const title = `${lockPrefix}${shortNames[i] || era.name}`;
 
-      const text = this.add.text(tabX, y + 16, title, {
+      const text = this.add.text(tabX, 16, title, {
         fontSize: '11px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: isSelected ? '#000000' : (era.unlocked ? '#94a3b8' : '#475569'),
         fontStyle: 'bold',
         resolution: 2
-      }).setOrigin(0.5).setDepth(16);
+      }).setOrigin(0.5);
 
       bg.on('pointerdown', () => {
+        if (this.isDraggingTabs) return;
         if (AudioManager.playClick) AudioManager.playClick();
         this.selectedEraIndex = i;
-        this.createTabs(width, y);
+        this.updateTabsVisual();
         this.renderArtifactsList();
       });
 
-      this.tabsGroup.push(bg, text);
+      this.tabsScrollContainer.add([bg, text]);
+      this.tabItems.push({ bg, text, era, index: i });
+    });
+
+    let startPointerX = 0;
+    let initialContainerX = 0;
+    this.isDraggingTabs = false;
+
+    const hitZone = this.add.zone(width / 2, y + 16, width, 40)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(19);
+
+    hitZone.on('pointerdown', (pointer) => {
+      startPointerX = pointer.x;
+      initialContainerX = this.tabsScrollContainer.x;
+      this.isDraggingTabs = false;
+    });
+
+    hitZone.on('pointermove', (pointer) => {
+      if (!pointer.isDown) return;
+      const dx = pointer.x - startPointerX;
+      if (Math.abs(dx) > 6) {
+        this.isDraggingTabs = true;
+        this.tabsScrollContainer.x = Phaser.Math.Clamp(initialContainerX + dx, minScrollX, 0);
+      }
+    });
+
+    hitZone.on('pointerup', () => {
+      this.time.delayedCall(50, () => {
+        this.isDraggingTabs = false;
+      });
+    });
+  }
+
+  updateTabsVisual() {
+    this.tabItems.forEach(item => {
+      const isSelected = (item.index === this.selectedEraIndex);
+      item.bg.setFillStyle(isSelected ? 0xd4af37 : 0x111622)
+        .setStrokeStyle(1.5, isSelected ? 0xfef08a : 0x222c3d);
+      item.text.setColor(isSelected ? '#000000' : (item.era.unlocked ? '#94a3b8' : '#475569'));
+    });
+  }
+
+  setupVerticalScroll(width) {
+    let startY = 0;
+    let containerStartY = 0;
+    this.isDraggingList = false;
+
+    this.scrollZone = this.add.zone(width / 2, this.listTopY + this.listHeight / 2, width, this.listHeight)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(15);
+
+    this.scrollZone.on('pointerdown', (p) => {
+      startY = p.y;
+      containerStartY = this.listContainer.y;
+      this.isDraggingList = false;
+    });
+
+    this.scrollZone.on('pointermove', (p) => {
+      if (!p.isDown) return;
+      const dy = p.y - startY;
+      if (Math.abs(dy) > 5) {
+        this.isDraggingList = true;
+        const targetY = Phaser.Math.Clamp(containerStartY + dy, this.minListY, this.listTopY);
+        this.listContainer.y = targetY;
+      }
+    });
+
+    this.scrollZone.on('pointerup', () => {
+      this.time.delayedCall(80, () => {
+        this.isDraggingList = false;
+      });
     });
   }
 
   renderArtifactsList() {
     this.listContainer.removeAll(true);
+    this.listContainer.y = this.listTopY;
+
     const { width } = this.scale;
     const currentEra = this.eras[this.selectedEraIndex];
 
     if (!currentEra.unlocked) {
-      const lockBox = this.add.rectangle(width / 2, 170, width * 0.88, 130, 0x111520)
+      this.minListY = this.listTopY;
+      const lockBox = this.add.rectangle(width / 2, 100, width * 0.88, 140, 0x111520)
         .setStrokeStyle(1.5, 0xef4444, 0.6);
-      const lockTxt = this.add.text(width / 2, 150, '🔒 ЭПОХА ЗАБЛОКИРОВАНА', {
+      const lockTxt = this.add.text(width / 2, 80, '🔒 ЭПОХА ЗАБЛОКИРОВАНА', {
         fontSize: '15px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ef4444',
         fontStyle: 'bold',
         resolution: 2
       }).setOrigin(0.5);
-      const reqTxt = this.add.text(width / 2, 185, `Завершите ещё предметов в других эпохах,\nчтобы набрать ${currentEra.needed} экспонатов в коллекции.`, {
-        fontSize: '11.5px',
+      const reqTxt = this.add.text(width / 2, 116, `Отреставрируйте ещё предметов,\nчтобы набрать ${currentEra.needed} экспонатов в коллекции.`, {
+        fontSize: '12px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
         align: 'center',
@@ -155,45 +248,59 @@ export class EraSelectScene extends Phaser.Scene {
     }
 
     const eraArtifacts = ARTIFACT_TEMPLATES.filter(a => a.regionId === currentEra.id);
-    const cardH = 86;
+    const cardH = 118; // Просторная карточка
+    const spacing = 12;
     const cardW = width * 0.90;
 
     eraArtifacts.forEach((art, index) => {
-      const cardY = index * (cardH + 8);
+      const cardY = index * (cardH + spacing) + cardH / 2 + 8;
 
-      const bg = this.add.rectangle(width / 2, cardY + cardH / 2, cardW, cardH, 0x111622, 0.96)
+      const bg = this.add.rectangle(width / 2, cardY, cardW, cardH, 0x111622, 0.96)
         .setStrokeStyle(1.5, 0x222c3d, 0.8)
         .setInteractive({ useHandCursor: true });
 
       const texKey = this.textures.exists(art.textureKey) ? art.textureKey : 'art_egypt_scarab';
-      const icon = this.add.image(width / 2 - cardW / 2 + 44, cardY + cardH / 2, texKey)
-        .setDisplaySize(54, 54);
+      const icon = this.add.image(width / 2 - cardW / 2 + 48, cardY, texKey)
+        .setDisplaySize(68, 68);
 
-      const title = this.add.text(width / 2 - cardW / 2 + 78, cardY + cardH / 2 - 24, art.name, {
-        fontSize: '14.5px',
+      const title = this.add.text(width / 2 - cardW / 2 + 92, cardY - 38, art.name, {
+        fontSize: '15px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
         resolution: 2
       });
 
-      const desc = this.add.text(width / 2 - cardW / 2 + 78, cardY + cardH / 2 - 4, art.description || 'Древняя реликвия', {
-        fontSize: '10.5px',
+      // Развернутое двухстрочное описание исторического контекста
+      const fullDesc = art.description || 'Древняя историческая ценность, требующая бережной очистки и реставрации.';
+      const desc = this.add.text(width / 2 - cardW / 2 + 92, cardY - 14, fullDesc, {
+        fontSize: '11px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
-        wordWrap: { width: cardW - 90 },
+        lineSpacing: 2,
+        wordWrap: { width: cardW - 104 },
         resolution: 2
       });
 
-      const takeBtn = this.add.text(width / 2 - cardW / 2 + 78, cardY + cardH / 2 + 18, '▶ ВЗЯТЬ НА ВЕРСТАК', {
-        fontSize: '11px',
+      // Нижняя плашка действия
+      const takeBtn = this.add.text(width / 2 - cardW / 2 + 92, cardY + 34, '▶ ВЗЯТЬ НА ВЕРСТАК', {
+        fontSize: '11.5px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#10b981',
         fontStyle: 'bold',
         resolution: 2
       });
 
+      const valueBadge = this.add.text(width / 2 + cardW / 2 - 16, cardY + 34, `${art.marketValue || 200} 💰`, {
+        fontSize: '11.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: '#facc15',
+        fontStyle: 'bold',
+        resolution: 2
+      }).setOrigin(1, 0);
+
       bg.on('pointerdown', () => {
+        if (this.isDraggingList) return;
         if (AudioManager.playClick) AudioManager.playClick();
         this.scene.start('RestoreScene', {
           regionId: currentEra.id,
@@ -201,8 +308,11 @@ export class EraSelectScene extends Phaser.Scene {
         });
       });
 
-      this.listContainer.add([bg, icon, title, desc, takeBtn]);
+      this.listContainer.add([bg, icon, title, desc, takeBtn, valueBadge]);
     });
+
+    const totalContentHeight = eraArtifacts.length * (cardH + spacing) + 24;
+    this.minListY = Math.min(this.listTopY, this.listBottomY - totalContentHeight);
   }
 
   showResetModal() {
