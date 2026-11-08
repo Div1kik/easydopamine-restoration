@@ -10,11 +10,12 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
+    // 1. Определение текущего артефакта
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
-    let prefRegion = (data && data.regionId) ? data.regionId : null;
+    let prefRegion = (data && data.regionId) ? data.regionId : 'egypt';
     let reqTemplate = (data && data.templateId) ? data.templateId : null;
 
-    if (!prefRegion && !reqTemplate) {
+    if (!reqTemplate) {
       const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
       if (saved) {
         prefRegion = saved.regionId;
@@ -41,11 +42,11 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    // Детальный верстак
+    // 2. Отрисовка верстака
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
-    // Верхняя панель (четкая векторная стрелка домой вместо квадратика)
+    // 3. Верхняя панель навигации
     const homeBtnBg = this.add.circle(32, 34, 18, 0x141a24)
       .setStrokeStyle(1.5, 0x334155, 0.8)
       .setInteractive({ useHandCursor: true }).setDepth(30);
@@ -64,11 +65,11 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setDepth(30);
 
-    const shopBtn = this.add.rectangle(width - 50, 34, 76, 32, 0x181e2b)
+    const shopBtn = this.add.rectangle(width - 48, 34, 72, 30, 0x181e2b)
       .setStrokeStyle(1.5, 0xd4af37, 0.9)
       .setInteractive({ useHandCursor: true }).setDepth(30);
-    this.add.text(width - 50, 34, '🛒 Лавка', {
-      fontSize: '12px',
+    this.add.text(width - 48, 34, '🛒 Лавка', {
+      fontSize: '11.5px',
       fontFamily: 'sans-serif',
       color: '#fef08a',
       fontStyle: 'bold'
@@ -78,7 +79,7 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('ShopScene', { returnToRestore: true });
     });
 
-    // Инфо-панель задачи
+    // 4. Информационные надписи
     this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'sans-serif',
@@ -87,15 +88,15 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(30);
 
-    this.add.text(width / 2, 76, this.artifactData.name, {
+    this.add.text(width / 2, 74, this.artifactData.name, {
       fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    this.taskNotice = this.add.text(width / 2, 98, '', {
-      fontSize: '12px',
+    this.taskNotice = this.add.text(width / 2, 94, '', {
+      fontSize: '11.5px',
       fontFamily: 'sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
@@ -104,26 +105,27 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(30);
 
     const barWidth = width * 0.65;
-    this.progressBarBg = this.add.rectangle(width / 2, 118, barWidth, 7, 0x0f141d).setDepth(30);
-    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 118, 0, 7, 0x10b981)
+    this.progressBarBg = this.add.rectangle(width / 2, 114, barWidth, 6, 0x0f141d).setDepth(30);
+    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 114, 0, 6, 0x10b981)
       .setOrigin(0, 0.5).setDepth(31);
 
-    this.toolWarning = this.add.text(width / 2, 134, '', {
-      fontSize: '11.5px',
+    this.toolWarning = this.add.text(width / 2, 130, '', {
+      fontSize: '11px',
       fontFamily: 'sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // Рабочая зона верстака
-    this.artW = 300;
-    this.artH = 400;
+    // 5. Фиксированные компактные габариты артефакта (200x240)
+    this.artW = 200;
+    this.artH = 240;
     this.centerX = Math.round(width / 2);
     this.centerY = Math.round(height * 0.44);
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 165, 260, 42, 0x000000, 0.7).setDepth(5);
+    // Аккуратная тень под предметом
+    this.add.ellipse(this.centerX, this.centerY + 105, 170, 32, 0x000000, 0.7).setDepth(5);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(6);
@@ -142,8 +144,8 @@ export class RestoreScene extends Phaser.Scene {
     this.dirtLayer.setMask(maskImage.createBitmapMask());
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
-      lifespan: { min: 200, max: 400 },
-      speed: { min: 40, max: 100 },
+      lifespan: { min: 200, max: 350 },
+      speed: { min: 40, max: 90 },
       scale: { start: 1.0, end: 0 },
       emitting: false
     }).setDepth(9);
@@ -154,16 +156,16 @@ export class RestoreScene extends Phaser.Scene {
 
     const toolTex = (this.activeTool === 'tool_scraper') ? 'slot_scraper' : 'slot_brush_soft';
     this.toolSprite = this.add.image(this.centerX, this.centerY, toolTex)
-      .setOrigin(0.5, 0.95).setScale(0.72).setAlpha(0).setDepth(20);
+      .setOrigin(0.5, 0.95).setScale(0.7).setAlpha(0).setDepth(20);
 
     this.assemblyContainer = this.add.container(0, 0).setDepth(18).setVisible(false);
 
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка очистки строго по силуэту
+    // 6. Сетка честной очистки
     this.gridCols = 20;
-    this.gridRows = 26;
+    this.gridRows = 24;
     this.totalCells = this.gridCols * this.gridRows;
     this.cleanedGrid = new Uint8Array(this.totalCells);
     this.validCellsMask = new Uint8Array(this.totalCells);
@@ -171,6 +173,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
+    // 7. Обработка стирания
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -193,7 +196,7 @@ export class RestoreScene extends Phaser.Scene {
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
-      if (localX >= 4 && localX <= this.artW - 4 && localY >= 4 && localY <= this.artH - 4) {
+      if (localX >= 2 && localX <= this.artW - 2 && localY >= 2 && localY <= this.artH - 2) {
         const cellX = Math.floor((localX / this.artW) * this.gridCols);
         const cellY = Math.floor((localY / this.artH) * this.gridRows);
         const centerIdx = cellY * this.gridCols + cellX;
@@ -222,7 +225,7 @@ export class RestoreScene extends Phaser.Scene {
             }
           }
 
-          const ratio = Math.min(this.cleanedCount / Math.max(this.targetValidCells * 0.88, 1), 1);
+          const ratio = Math.min(this.cleanedCount / Math.max(this.targetValidCells * 0.90, 1), 1);
           this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
           if (ratio >= 1.0 && !this.isTaskTransition) {
@@ -289,7 +292,7 @@ export class RestoreScene extends Phaser.Scene {
         for (let gx = 0; gx < this.gridCols; gx++) {
           const nx = (gx / (this.gridCols - 1)) * 2 - 1;
           const ny = (gy / (this.gridRows - 1)) * 2 - 1;
-          if ((nx * nx * 1.6 + ny * ny) <= 0.85) {
+          if ((nx * nx * 1.5 + ny * ny) <= 0.8) {
             const idx = gy * this.gridCols + gx;
             this.validCellsMask[idx] = 1;
             this.targetValidCells++;
@@ -307,39 +310,15 @@ export class RestoreScene extends Phaser.Scene {
     const tableY = height * 0.22;
     const tableH = height - tableY;
 
-    if (tier === 1) {
-      bg.fillStyle(0x131822, 1);
-      bg.fillRect(0, tableY, width, tableH);
-      bg.lineStyle(3, 0x222d3d, 1);
-      bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
-      bg.fillStyle(0x1a212d, 0.9);
-      bg.fillRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-      bg.lineStyle(1, 0x334155, 0.4);
-      bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-    } else if (tier === 2) {
-      bg.fillStyle(0x221a14, 1);
-      bg.fillRect(0, tableY, width, tableH);
-      bg.lineStyle(3, 0x3d2e24, 1);
-      bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
-      bg.fillStyle(0x18130e, 0.95);
-      bg.fillRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-      bg.lineStyle(1.5, 0x8a6238, 0.5);
-      bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-    } else if (tier === 3) {
-      bg.fillStyle(0x0e1713, 1);
-      bg.fillRect(0, tableY, width, tableH);
-      bg.fillStyle(0x082218, 0.95);
-      bg.fillRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-      bg.lineStyle(2, 0xd4af37, 0.6);
-      bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-    } else {
-      bg.fillStyle(0x0d1117, 1);
-      bg.fillRect(0, tableY, width, tableH);
-      bg.fillStyle(0x161d27, 0.95);
-      bg.fillRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-      bg.lineStyle(2, 0x38bdf8, 0.7);
-      bg.strokeRoundedRect(width * 0.08, tableY + 20, width * 0.84, height * 0.55, 12);
-    }
+    bg.fillStyle(0x131822, 1);
+    bg.fillRect(0, tableY, width, tableH);
+    bg.lineStyle(2, 0x243042, 1);
+    bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
+
+    bg.fillStyle(0x18202c, 0.95);
+    bg.fillRoundedRect(width * 0.08, tableY + 14, width * 0.84, height * 0.56, 10);
+    bg.lineStyle(1, 0x334155, 0.5);
+    bg.strokeRoundedRect(width * 0.08, tableY + 14, width * 0.84, height * 0.56, 10);
   }
 
   processGlueAction(pointer) {
@@ -351,14 +330,14 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setPosition(pointer.x, pointer.y - 12);
     this.toolSprite.setAlpha(1);
 
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY - 20;
+    const targetX = this.centerX + 25;
+    const targetY = this.centerY - 10;
     const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, targetX, targetY);
 
-    if (d < 50 && !this.glueApplied) {
+    if (d < 45 && !this.glueApplied) {
       this.glueApplied = true;
       this.breakHoleGfx.fillStyle(0xf59e0b, 0.75);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 24);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 20);
       if (AudioManager.playWash) AudioManager.playWash();
       this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ОТКОЛОТУЮ ДЕТАЛЬ В ПАЗ');
       this.progressBarFill.width = (this.scale.width * 0.65);
@@ -374,15 +353,15 @@ export class RestoreScene extends Phaser.Scene {
     this.progressBarFill.width = 0;
 
     const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY - 20;
+    const targetX = this.centerX + 25;
+    const targetY = this.centerY - 10;
 
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
     this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
-    this.breakHoleGfx.fillCircle(targetX, targetY, 26);
-    this.breakHoleGfx.lineStyle(3, 0x8a7238, 0.7);
-    this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+    this.breakHoleGfx.fillCircle(targetX, targetY, 20);
+    this.breakHoleGfx.lineStyle(2, 0x8a7238, 0.7);
+    this.breakHoleGfx.strokeCircle(targetX, targetY, 20);
 
     this.brokenPiece = this.add.image(targetX, targetY, shardTex).setDepth(19);
 
@@ -391,9 +370,9 @@ export class RestoreScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.brokenPiece,
       x: width * 0.20,
-      y: this.centerY + 85,
+      y: this.centerY + 75,
       angle: 35,
-      duration: 650,
+      duration: 600,
       ease: 'Bounce.easeOut',
       onComplete: () => {
         this.brokenPiece.setInteractive({ draggable: true });
@@ -412,18 +391,18 @@ export class RestoreScene extends Phaser.Scene {
 
     this.brokenPiece.on('dragend', () => {
       const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
-      if (d < 45 && this.glueApplied) {
+      if (d < 40 && this.glueApplied) {
         this.brokenPiece.setPosition(targetX, targetY);
         this.brokenPiece.setAngle(0);
         this.brokenPiece.disableInteractive();
 
         this.breakHoleGfx.clear();
-        this.breakHoleGfx.lineStyle(4, 0x22c55e, 1);
-        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+        this.breakHoleGfx.lineStyle(3, 0x22c55e, 1);
+        this.breakHoleGfx.strokeCircle(targetX, targetY, 20);
 
         if (AudioManager.playCoin) AudioManager.playCoin();
 
-        this.time.delayedCall(500, () => {
+        this.time.delayedCall(450, () => {
           this.breakHoleGfx.setVisible(false);
           this.assemblyContainer.setVisible(false);
           this.completeTaskTransition();
@@ -444,7 +423,7 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
     ];
 
-    this.add.rectangle(width / 2, trayY + 10, width * 0.94, 88, 0x0e131d, 0.96)
+    this.add.rectangle(width / 2, trayY + 8, width * 0.94, 82, 0x0e131d, 0.96)
       .setStrokeStyle(1.5, 0x222e42, 0.9)
       .setDepth(22);
 
@@ -457,15 +436,15 @@ export class RestoreScene extends Phaser.Scene {
       const slotX = startX + i * stepX;
       const isSelected = (t.id === this.activeTool);
 
-      const slotBg = this.add.rectangle(slotX, trayY + 8, 52, 60, 0x161e2c, 0.95)
-        .setStrokeStyle(2, isSelected ? 0x10b981 : 0x2c3b52, isSelected ? 1 : 0.6)
+      const slotBg = this.add.rectangle(slotX, trayY + 8, 48, 54, 0x161e2c, 0.95)
+        .setStrokeStyle(1.5, isSelected ? 0x10b981 : 0x2c3b52, isSelected ? 1 : 0.6)
         .setInteractive({ useHandCursor: true })
         .setDepth(23);
 
-      this.add.image(slotX, trayY + 4, t.icon).setScale(0.56).setDepth(24);
+      this.add.image(slotX, trayY + 4, t.icon).setScale(0.6).setDepth(24);
 
-      const lbl = this.add.text(slotX, trayY + 44, t.label, {
-        fontSize: '10px',
+      const lbl = this.add.text(slotX, trayY + 40, t.label, {
+        fontSize: '9.5px',
         fontFamily: 'sans-serif',
         color: isSelected ? '#10b981' : '#64748b',
         fontStyle: 'bold'
@@ -487,7 +466,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.traySlots.forEach(slot => {
       const active = (slot.id === toolId);
-      slot.bg.setStrokeStyle(2, active ? 0x10b981 : 0x2c3b52, active ? 1 : 0.6);
+      slot.bg.setStrokeStyle(1.5, active ? 0x10b981 : 0x2c3b52, active ? 1 : 0.6);
       slot.label.setColor(active ? '#10b981' : '#64748b');
     });
   }
@@ -528,46 +507,29 @@ export class RestoreScene extends Phaser.Scene {
       dirtGfx.fillStyle(0x78562d, 0.98);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x4a2e12, 0.85);
-      for (let i = 0; i < 28; i++) {
-        dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(15, 45)
-        );
+      for (let i = 0; i < 22; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(15, 35));
       }
     } else if (task.requiredTool === 'tool_brush') {
       dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x6b634d, 0.7);
-      for (let i = 0; i < 28; i++) {
-        dirtGfx.fillCircle(
-          Phaser.Math.Between(20, this.artW - 20),
-          Phaser.Math.Between(20, this.artH - 20),
-          Phaser.Math.Between(10, 30)
-        );
+      for (let i = 0; i < 22; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(10, 25));
       }
     } else if (task.requiredTool === 'tool_solvent') {
       dirtGfx.fillStyle(0x2a593f, 0.92);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x438a63, 0.75);
-      for (let i = 0; i < 22; i++) {
-        dirtGfx.fillEllipse(
-          Phaser.Math.Between(30, this.artW - 30),
-          Phaser.Math.Between(30, this.artH - 30),
-          Phaser.Math.Between(30, 80),
-          Phaser.Math.Between(20, 50)
-        );
+      for (let i = 0; i < 18; i++) {
+        dirtGfx.fillEllipse(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), 40, 25);
       }
     } else {
       dirtGfx.fillStyle(0x181818, 0.55);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x333333, 0.40);
-      for (let i = 0; i < 16; i++) {
-        dirtGfx.fillCircle(
-          Phaser.Math.Between(25, this.artW - 25),
-          Phaser.Math.Between(25, this.artH - 25),
-          Phaser.Math.Between(20, 60)
-        );
+      for (let i = 0; i < 14; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), 25);
       }
     }
 
@@ -595,13 +557,13 @@ export class RestoreScene extends Phaser.Scene {
       alpha: 0,
       scaleX: 1.1,
       scaleY: 1.1,
-      duration: 380,
+      duration: 350,
       ease: 'Quad.easeOut',
       onComplete: () => {
         flash.destroy();
 
         if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
-          this.time.delayedCall(250, () => {
+          this.time.delayedCall(200, () => {
             this.startTask(this.currentTaskIndex + 1);
           });
         } else {
@@ -611,11 +573,11 @@ export class RestoreScene extends Phaser.Scene {
           try {
             Storage.addArtifactToInventory({
               instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
-              templateId: this.artifactData.templateId || 'egypt_scarab',
+              templateId: this.artifactData.id,
               regionName: this.artifactData.regionName || 'Древний Египет',
-              name: this.artifactData.name || 'Отреставрированный артефакт',
-              museumDesc: this.artifactData.museumDesc || '',
-              textureKey: this.artifactData.textureKey || 'art_egypt_scarab',
+              name: this.artifactData.name,
+              museumDesc: this.artifactData.description || '',
+              textureKey: this.artifactData.textureKey,
               marketValue: this.artifactData.marketValue || 200
             });
             Storage.addXP(100);
