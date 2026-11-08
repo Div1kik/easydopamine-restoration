@@ -5,17 +5,18 @@ class AudioManagerClass {
     this.ctx = null;
     this.masterGain = null;
     this.ambientTimer = null;
-    this.lastSoundTime = 0;
     this.currentTrack = null;
+    this.lastSoundTimes = {};
   }
 
+  // Мгновенная разблокировка звука при первом касании экрана
   init() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(Storage.isMuted() ? 0 : 0.8, this.ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(Storage.isMuted() ? 0 : 0.75, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
       }
     }
@@ -24,18 +25,31 @@ class AudioManagerClass {
     }
   }
 
+  unlockAudio() {
+    this.init();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    // Если трек меню еще не играет — стартуем сразу
+    if (!this.currentTrack && !Storage.isMuted()) {
+      this.playMenuMusic();
+    }
+  }
+
   toggleMute() {
     const isMuted = Storage.toggleMute();
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setValueAtTime(isMuted ? 0 : 0.8, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(isMuted ? 0 : 0.75, this.ctx.currentTime);
     }
     if (isMuted) {
       this.stopMusic();
+    } else {
+      this.playMenuMusic();
     }
     return isMuted;
   }
 
-  // Музыка главного меню (уютная акустическая гармония)
+  // 1. МУЗЫКА МЕНЮ (Уютный Lo-Fi ASMR)
   playMenuMusic() {
     this.init();
     if (!this.ctx || Storage.isMuted() || this.currentTrack === 'menu') return;
@@ -43,86 +57,119 @@ class AudioManagerClass {
     this.currentTrack = 'menu';
 
     const chords = [
-      [261.63, 329.63, 392.00], // C
-      [220.00, 261.63, 329.63], // Am
-      [174.61, 220.00, 261.63], // F
-      [196.00, 246.94, 293.66]  // G
+      [261.63, 329.63, 392.00, 523.25], // Cmaj7
+      [220.00, 261.63, 329.63, 440.00], // Am7
+      [174.61, 220.00, 261.63, 349.23], // Fmaj7
+      [196.00, 246.94, 293.66, 392.00]  // G7
     ];
     let chordIdx = 0;
 
-    const playArpeggio = () => {
+    const tick = () => {
       if (Storage.isMuted() || !this.ctx || this.currentTrack !== 'menu') return;
-      const currentChord = chords[chordIdx];
+      const notes = chords[chordIdx];
       chordIdx = (chordIdx + 1) % chords.length;
 
-      currentChord.forEach((freq, i) => {
+      notes.forEach((freq, i) => {
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         const filter = this.ctx.createBiquadFilter();
 
         filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(550, this.ctx.currentTime);
+        filter.frequency.setValueAtTime(500, this.ctx.currentTime);
 
-        osc.type = 'triangle';
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        const t = this.ctx.currentTime + i * 0.28;
+        const t = this.ctx.currentTime + i * 0.22;
         g.gain.setValueAtTime(0.001, t);
-        g.gain.linearRampToValueAtTime(0.035, t + 0.15);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+        g.gain.linearRampToValueAtTime(0.035, t + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
 
         osc.connect(filter);
         filter.connect(g);
         g.connect(this.masterGain);
 
         osc.start(t);
-        osc.stop(t + 2.3);
+        osc.stop(t + 2.5);
       });
 
-      this.ambientTimer = setTimeout(playArpeggio, 2200);
+      this.ambientTimer = setTimeout(tick, 2400);
     };
 
-    playArpeggio();
+    tick();
   }
 
-  // Фоновая музыка эпох для верстака и лавки
+  // 2. ИНДИВИДУАЛЬНАЯ МУЗЫКА ПОД 7 РЕГИОНОВ
   playEraMusic(eraId) {
     this.init();
     if (!this.ctx || Storage.isMuted() || this.currentTrack === eraId) return;
     this.stopMusic();
     this.currentTrack = eraId;
 
-    const scale = (eraId === 'japan') ? [146.83, 155.56, 196.00, 220.00, 293.66] : [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+    let notes = [261.63, 293.66, 329.63, 392.00, 440.00];
+    let oscType = 'sine';
+    let filterCutoff = 600;
 
-    const playNote = () => {
+    if (eraId === 'egypt') {
+      notes = [110.00, 116.54, 146.83, 164.81, 220.00]; // Фригийский лад с восточным оттенком
+      oscType = 'triangle';
+      filterCutoff = 550;
+    } else if (eraId === 'greece') {
+      notes = [146.83, 164.81, 174.61, 196.00, 220.00, 261.63]; // Дорийская кифара
+      oscType = 'sine';
+      filterCutoff = 700;
+    } else if (eraId === 'europe') {
+      notes = [130.81, 164.81, 196.00, 246.94, 261.63]; // Готический орган
+      oscType = 'triangle';
+      filterCutoff = 480;
+    } else if (eraId === 'japan') {
+      notes = [146.83, 155.56, 196.00, 220.00, 293.66]; // Пентатоника Инсэн
+      oscType = 'sine';
+      filterCutoff = 650;
+    } else if (eraId === 'mesoamerica') {
+      notes = [110.00, 130.81, 146.83, 164.81, 196.00]; // Низкая шаманская окарина
+      oscType = 'triangle';
+      filterCutoff = 420;
+    } else if (eraId === 'viking') {
+      notes = [98.00, 110.00, 130.81, 146.83, 174.61]; // Суровая нордическая тальхарпа
+      oscType = 'sawtooth';
+      filterCutoff = 320;
+    } else if (eraId === 'china') {
+      notes = [196.00, 220.00, 261.63, 293.66, 329.63, 392.00]; // Гучжэн / пентатоника Юй
+      oscType = 'sine';
+      filterCutoff = 800;
+    }
+
+    const step = () => {
       if (Storage.isMuted() || !this.ctx || this.currentTrack !== eraId) return;
-      const freq = scale[Math.floor(Math.random() * scale.length)];
+      const freq = notes[Math.floor(Math.random() * notes.length)];
 
       const osc = this.ctx.createOscillator();
-      const noteGain = this.ctx.createGain();
-      const filter = this.ctx.createBiquadFilter();
+      const g = this.ctx.createGain();
+      const f = this.ctx.createBiquadFilter();
 
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(650, this.ctx.currentTime);
-      osc.type = 'sine';
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(filterCutoff, this.ctx.currentTime);
+
+      osc.type = oscType;
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
       const t = this.ctx.currentTime;
-      noteGain.gain.setValueAtTime(0.001, t);
-      noteGain.gain.linearRampToValueAtTime(0.032, t + 0.25);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.038, t + 0.35);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
 
-      osc.connect(filter);
-      filter.connect(noteGain);
-      noteGain.connect(this.masterGain);
+      osc.connect(f);
+      f.connect(g);
+      g.connect(this.masterGain);
 
       osc.start(t);
-      osc.stop(t + 2.7);
+      osc.stop(t + 2.9);
 
-      this.ambientTimer = setTimeout(playNote, 1600 + Math.random() * 800);
+      this.ambientTimer = setTimeout(step, 1500 + Math.random() * 900);
     };
 
-    playNote();
+    step();
   }
 
   stopMusic() {
@@ -133,156 +180,164 @@ class AudioManagerClass {
     this.currentTrack = null;
   }
 
-  // 1. СКРЕБОК (хруст срезаемого камня и окалины)
-  playScrub() {
-    if (Storage.isMuted()) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const now = performance.now();
-    if (now - this.lastSoundTime < 70) return;
-    this.lastSoundTime = now;
-
-    const bufferSize = Math.floor(this.ctx.sampleRate * 0.045);
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.18;
-    }
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(850, this.ctx.currentTime);
-
-    const gain = this.ctx.createGain();
-    const t = this.ctx.currentTime;
-    gain.gain.setValueAtTime(0.07, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-    noise.start(t);
-  }
-
-  // 2. КИСТЬ (мягкое бархатное шорканье натуральной щетины)
+  // 3. ЗВУКИ ИНСТРУМЕНТОВ
   playBrush() {
     if (Storage.isMuted()) return;
     this.init();
     if (!this.ctx) return;
-
     const now = performance.now();
-    if (now - this.lastSoundTime < 65) return;
-    this.lastSoundTime = now;
+    if (now - (this.lastSoundTimes['brush'] || 0) < 55) return;
+    this.lastSoundTimes['brush'] = now;
 
-    const bufferSize = Math.floor(this.ctx.sampleRate * 0.06);
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.06;
+    // Мягкий, осязаемый шелест соболиной щетины (шум + bandpass)
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.07);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize) * 0.22;
     }
 
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(450, this.ctx.currentTime);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, this.ctx.currentTime);
+    filter.Q.setValueAtTime(2.2, this.ctx.currentTime);
 
     const gain = this.ctx.createGain();
     const t = this.ctx.currentTime;
-    gain.gain.setValueAtTime(0.04, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
 
-    noise.connect(filter);
+    src.connect(filter);
     filter.connect(gain);
     gain.connect(this.masterGain);
-    noise.start(t);
+    src.start(t);
   }
 
-  // 3. РАСПЫЛИТЕЛЬ (аэрозольный мягкий «пшик»)
   playSpray() {
     if (Storage.isMuted()) return;
     this.init();
     if (!this.ctx) return;
-
     const now = performance.now();
-    if (now - this.lastSoundTime < 110) return;
-    this.lastSoundTime = now;
+    if (now - (this.lastSoundTimes['spray'] || 0) < 95) return;
+    this.lastSoundTimes['spray'] = now;
 
-    const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.14;
+    // Плотный шипящий спрей пульверизатора с мягким затуханием
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.14);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.4)) * 0.35;
     }
 
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'highpass';
-    filter.frequency.setValueAtTime(2200, this.ctx.currentTime);
+    filter.frequency.setValueAtTime(3200, this.ctx.currentTime);
 
     const gain = this.ctx.createGain();
     const t = this.ctx.currentTime;
-    gain.gain.setValueAtTime(0.08, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
 
-    noise.connect(filter);
+    src.connect(filter);
     filter.connect(gain);
     gain.connect(this.masterGain);
-    noise.start(t);
+    src.start(t);
   }
 
-  // 4. ГУБКА С РАСТВОРИТЕЛЕМ (влажное трение)
-  playWash() {
+  playCloth() {
     if (Storage.isMuted()) return;
     this.init();
     if (!this.ctx) return;
-
     const now = performance.now();
-    if (now - this.lastSoundTime < 80) return;
-    this.lastSoundTime = now;
+    if (now - (this.lastSoundTimes['cloth'] || 0) < 75) return;
+    this.lastSoundTimes['cloth'] = now;
 
+    // Глубокий шелковистый скрип полируемого металла
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    const t = this.ctx.currentTime;
-    osc.frequency.setValueAtTime(280, t);
-    osc.frequency.exponentialRampToValueAtTime(140, t + 0.06);
-    gain.gain.setValueAtTime(0.04, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    const filter = this.ctx.createBiquadFilter();
 
-    osc.connect(gain);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+    filter.Q.setValueAtTime(4.0, this.ctx.currentTime);
+
+    osc.type = 'triangle';
+    const t = this.ctx.currentTime;
+    osc.frequency.setValueAtTime(480, t);
+    osc.frequency.linearRampToValueAtTime(780, t + 0.05);
+
+    gain.gain.setValueAtTime(0.06, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(this.masterGain);
     osc.start(t);
     osc.stop(t + 0.06);
   }
 
-  // 5. ЗАМША (шелковистый скрип и зеркальная полировка)
-  playCloth() {
+  playScrub() {
+    if (Storage.isMuted()) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = performance.now();
+    if (now - (this.lastSoundTimes['scrub'] || 0) < 65) return;
+    this.lastSoundTimes['scrub'] = now;
+
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.05);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.24;
+    }
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+    const gain = this.ctx.createGain();
+    const t = this.ctx.currentTime;
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    src.start(t);
+  }
+
+  playBreakSnap() {
     if (Storage.isMuted()) return;
     this.init();
     if (!this.ctx) return;
 
-    const now = performance.now();
-    if (now - this.lastSoundTime < 85) return;
-    this.lastSoundTime = now;
-
+    // Звук раскалывания керамики / хруста трещины
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     const t = this.ctx.currentTime;
-    osc.frequency.setValueAtTime(750, t);
-    osc.frequency.linearRampToValueAtTime(920, t + 0.04);
-    gain.gain.setValueAtTime(0.03, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    osc.frequency.setValueAtTime(950, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.08);
+
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
 
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start(t);
-    osc.stop(t + 0.05);
+    osc.stop(t + 0.12);
+  }
+
+  playWash() {
+    this.playSpray();
   }
 
   playDoorBells() {
@@ -290,13 +345,12 @@ class AudioManagerClass {
     this.init();
     if (!this.ctx) return;
 
-    const notes = [2093, 2637, 3135, 3520];
-    notes.forEach((f, i) => {
+    [2093, 2637, 3135, 3520].forEach((f, i) => {
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
       osc.type = 'sine';
-      const t = this.ctx.currentTime + i * 0.08;
-      osc.frequency.setValueAtTime(f + (Math.random() * 20 - 10), t);
+      const t = this.ctx.currentTime + i * 0.07;
+      osc.frequency.setValueAtTime(f + (Math.random() * 15 - 7), t);
       g.gain.setValueAtTime(0.05, t);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
       osc.connect(g);
@@ -329,19 +383,18 @@ class AudioManagerClass {
     this.init();
     if (!this.ctx) return;
 
-    const notes = [523.25, 659.25, 783.99, 1046.50];
-    notes.forEach((freq, idx) => {
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.value = freq;
-      const startTime = this.ctx.currentTime + idx * 0.08;
-      gain.gain.setValueAtTime(0.09, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
+      const t = this.ctx.currentTime + idx * 0.08;
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
       osc.connect(gain);
       gain.connect(this.masterGain);
-      osc.start(startTime);
-      osc.stop(startTime + 0.6);
+      osc.start(t);
+      osc.stop(t + 0.6);
     });
   }
 
