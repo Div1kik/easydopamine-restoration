@@ -28,12 +28,12 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
     this.cleaningProgress = 0;
-    this.targetProgress = 40; // Гарантированное завершение за 40 движений
+    this.targetProgress = 35; // Ровно 35 уверенных мазков для завершения этапа
 
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.add.image(width / 2, height / 2, `bg_workshop_tier_${tier}`).setDepth(0);
 
-    // 1. ВЕРХНЯЯ ПАНЕЛЬ С НАВИГАЦИЕЙ
+    // 1. Верхняя строгая панель навигации
     const homeBtn = this.add.image(32, 34, 'icon_home')
       .setScale(0.7).setInteractive({ useHandCursor: true }).setDepth(25);
     homeBtn.on('pointerdown', () => {
@@ -42,8 +42,8 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.add.text(56, 22, `${coins} 💰`, {
-      fontSize: '18px',
+    this.add.text(58, 24, `${coins} 💰`, {
+      fontSize: '17px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
@@ -51,8 +51,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.createMuteButton(width - 32, 34);
 
-    // 2. АККУРАТНЫЙ БЛОК НАЗВАНИЙ (СТРОГО РАЗНЕСЕННЫЙ ПО ВЫСОТЕ)
-    this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
+    // 2. Иерархия заголовков без наездов друг на друга
+    this.add.text(width / 2, 52, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#c5a059',
@@ -60,36 +60,37 @@ export class RestoreScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(25);
 
-    this.add.text(width / 2, 78, this.artifactData.name, {
-      fontSize: '19px',
+    this.add.text(width / 2, 76, this.artifactData.name, {
+      fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // Индикатор шага с автопереносом строк
-    this.taskNotice = this.add.text(width / 2, 108, '', {
+    // Текст текущего действия с жестким ограничением ширины строки
+    this.taskNotice = this.add.text(width / 2, 104, '', {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: width * 0.88 }
+      wordWrap: { width: width * 0.86 }
     }).setOrigin(0.5).setDepth(25);
 
-    // Мини-прогресс-бар текущей чистки под текстом
-    this.progressBarBg = this.add.rectangle(width / 2, 126, width * 0.65, 6, 0x1e2430).setDepth(25);
-    this.progressBarFill = this.add.rectangle(width / 2 - (width * 0.65) / 2, 126, 0, 6, 0x22c55e)
+    // Наглядный прогресс-бар очистки
+    const barWidth = width * 0.65;
+    this.progressBarBg = this.add.rectangle(width / 2, 124, barWidth, 6, 0x1e2430).setDepth(25);
+    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 124, 0, 6, 0x22c55e)
       .setOrigin(0, 0.5).setDepth(26);
 
-    this.toolWarning = this.add.text(width / 2, 142, '', {
+    this.toolWarning = this.add.text(width / 2, 140, '', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(25);
 
-    // 3. РАБОЧАЯ ЗОНА АРТЕФАКТА
+    // 3. Рабочая область
     this.artW = 300;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -104,7 +105,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.breakHoleGfx = this.add.graphics().setDepth(3).setVisible(false);
 
-    // Слой грязи
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0).setDepth(4);
 
@@ -138,7 +138,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // ОБРАБОТКА ДВИЖЕНИЙ С ГАРАНТИРОВАННЫМ ПРОГРЕССОМ
+    // 4. Логика очистки с гарантированным завершением
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -158,7 +158,7 @@ export class RestoreScene extends Phaser.Scene {
       const dx = pointer.x - this.lastTouchPos.x;
       const dy = pointer.y - this.lastTouchPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 5) return;
+      if (dist < 6) return;
 
       this.lastTouchPos = { x: pointer.x, y: pointer.y };
 
@@ -166,7 +166,7 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool === 'tool_scraper') {
-        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.5, -25, 25) + (Math.random() * 4 - 2);
+        this.toolSprite.angle = Phaser.Math.Clamp(dx * 1.5, -25, 25);
       } else if (this.activeTool === 'tool_brush') {
         this.toolSprite.angle = Phaser.Math.Clamp(-dx * 1.8, -20, 20);
       } else if (this.activeTool === 'tool_polish') {
@@ -183,7 +183,6 @@ export class RestoreScene extends Phaser.Scene {
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
-      // Проверяем, что палец находится в пределах рабочего поля артефакта
       if (localX >= 10 && localX <= this.artW - 10 && localY >= 10 && localY <= this.artH - 10) {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
@@ -195,12 +194,10 @@ export class RestoreScene extends Phaser.Scene {
         if (navigator.vibrate && Math.random() < 0.25) navigator.vibrate(8);
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        // Честный прирост прогресса за пройденную дистанцию
         this.cleaningProgress += (dist / 14);
         const ratio = Math.min(this.cleaningProgress / this.targetProgress, 1);
-        this.progressBarFill.width = (width * 0.65) * ratio;
+        this.progressBarFill.width = barWidth * ratio;
 
-        // Плавное растворение оставшейся пыли при достижении 100%
         if (ratio >= 1.0 && !this.isTaskTransition) {
           this.isTaskTransition = true;
           this.toolSprite.setAlpha(0);
@@ -413,7 +410,6 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer.setVisible(false);
     this.breakHoleGfx.setVisible(false);
 
-    // Слой грязи
     this.dirtLayer.clear();
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
 
