@@ -10,7 +10,6 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // 1. Определение текущего артефакта
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
     let prefRegion = (data && data.regionId) ? data.regionId : 'egypt';
     let reqTemplate = (data && data.templateId) ? data.templateId : null;
@@ -42,11 +41,11 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.isTaskTransition = false;
 
-    // 2. Отрисовка верстака
+    // 1. Фон верстака
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
-    // 3. Верхняя панель навигации
+    // 2. Верхняя панель
     const homeBtnBg = this.add.circle(32, 34, 18, 0x141a24)
       .setStrokeStyle(1.5, 0x334155, 0.8)
       .setInteractive({ useHandCursor: true }).setDepth(30);
@@ -79,8 +78,8 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('ShopScene', { returnToRestore: true });
     });
 
-    // 4. Информационные надписи
-    this.add.text(width / 2, 54, (this.artifactData.regionName || 'ЭКСПЕДИЦИЯ').toUpperCase(), {
+    // 3. Шапка задачи
+    this.add.text(width / 2, 54, (this.artifactData.regionName || 'ДРЕВНИЙ ЕГИПЕТ').toUpperCase(), {
       fontSize: '11px',
       fontFamily: 'sans-serif',
       color: '#c5a059',
@@ -116,7 +115,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 5. Фиксированные компактные габариты артефакта (200x240)
+    // 4. Точные габариты (200x240) — идеальное расположение
     this.artW = 200;
     this.artH = 240;
     this.centerX = Math.round(width / 2);
@@ -124,7 +123,6 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Аккуратная тень под предметом
     this.add.ellipse(this.centerX, this.centerY + 105, 170, 32, 0x000000, 0.7).setDepth(5);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
@@ -163,7 +161,7 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // 6. Сетка честной очистки
+    // 5. Честная сетка стирания (20x24)
     this.gridCols = 20;
     this.gridRows = 24;
     this.totalCells = this.gridCols * this.gridRows;
@@ -173,7 +171,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 7. Обработка стирания
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -225,6 +222,7 @@ export class RestoreScene extends Phaser.Scene {
             }
           }
 
+          // Полноценная очистка без спешки: нужно аккуратно снять 90% реальной поверхности
           const ratio = Math.min(this.cleanedCount / Math.max(this.targetValidCells * 0.90, 1), 1);
           this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
