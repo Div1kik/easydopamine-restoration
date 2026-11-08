@@ -32,17 +32,17 @@ export class EraSelectScene extends Phaser.Scene {
 
     // Шапка
     this.add.text(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', {
-      fontSize: '28px',
+      fontSize: '18px',
       fontFamily: 'sans-serif',
       color: '#e2b35b',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+    }).setOrigin(0.5).setDepth(30);
 
     this.add.text(width / 2, 56, `Ранг: ${rank}  •  Казна: ${coins} 💰`, {
-      fontSize: '22px',
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#94a3b8'
-    }).setOrigin(0.5).setScale(0.5).setDepth(30);
+    }).setOrigin(0.5).setDepth(30);
 
     // Кнопка сброса
     const resetBtn = this.add.rectangle(width - 34, 34, 34, 34, 0x1f1924)
@@ -58,25 +58,24 @@ export class EraSelectScene extends Phaser.Scene {
     this.createTabsUI(width);
     this.renderCards(width);
 
-    // Нижняя панель
+    // Нижняя кнопка
     this.add.rectangle(width / 2, height - 33, width, 66, 0x07090e).setDepth(30);
     const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 44, 0x141a24)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
     this.add.text(width / 2, height - 34, 'В главное меню', {
-      fontSize: '26px',
+      fontSize: '15px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(32);
+    }).setOrigin(0.5).setDepth(32);
 
     backBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
 
-    // Надежный вертикальный скролл
     let dragStartY = 0;
     let initialScrollY = 0;
 
@@ -124,11 +123,11 @@ export class EraSelectScene extends Phaser.Scene {
 
       const title = `${era.unlocked ? '' : '🔒 '}${names[i] || era.name}`;
       const txt = this.add.text(bx, 96, title, {
-        fontSize: '22px',
+        fontSize: '12px',
         fontFamily: 'sans-serif',
         color: isSel ? '#000000' : (era.unlocked ? '#94a3b8' : '#475569'),
         fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5).setDepth(21);
+      }).setOrigin(0.5).setDepth(21);
 
       bg.on('pointerdown', (p) => {
         tabDragX = p.x;
@@ -171,17 +170,17 @@ export class EraSelectScene extends Phaser.Scene {
       const box = this.add.rectangle(width / 2, this.listTop + 80, width * 0.88, 120, 0x111520)
         .setStrokeStyle(1.5, 0xef4444, 0.6).setDepth(10);
       const t1 = this.add.text(width / 2, this.listTop + 60, '🔒 ЭПОХА ЗАБЛОКИРОВАНА', {
-        fontSize: '28px',
+        fontSize: '15px',
         fontFamily: 'sans-serif',
         color: '#ef4444',
         fontStyle: 'bold'
-      }).setOrigin(0.5).setScale(0.5).setDepth(11);
+      }).setOrigin(0.5).setDepth(11);
 
       const t2 = this.add.text(width / 2, this.listTop + 95, `Отреставрируйте минимум ${currentEra.needed} экспонатов для открытия`, {
-        fontSize: '22px',
+        fontSize: '12px',
         fontFamily: 'sans-serif',
         color: '#94a3b8'
-      }).setOrigin(0.5).setScale(0.5).setDepth(11);
+      }).setOrigin(0.5).setDepth(11);
 
       this.cardsElements.push(box, t1, t2);
       return;
@@ -206,38 +205,35 @@ export class EraSelectScene extends Phaser.Scene {
       const icon = this.add.image(width / 2 - cardW / 2 + 46, baseY, texKey)
         .setDisplaySize(68, 68).setDepth(11);
 
-      // Строго разнесенные строки без наложений:
-      // 1. Имя артефакта (-36px от центра)
+      // Разнесенные строки текста с нормальными кеглями
       const title = this.add.text(width / 2 - cardW / 2 + 90, baseY - 36, art.name, {
-        fontSize: '28px',
+        fontSize: '15px',
         fontFamily: 'sans-serif',
         color: '#ffffff',
         fontStyle: 'bold'
-      }).setScale(0.5).setDepth(11);
+      }).setDepth(11);
 
-      // 2. Описание (-12px от центра)
       const desc = this.add.text(width / 2 - cardW / 2 + 90, baseY - 12, art.description || 'Древний артефакт', {
-        fontSize: '20px',
+        fontSize: '11px',
         fontFamily: 'sans-serif',
         color: '#94a3b8',
         lineSpacing: 2,
-        wordWrap: { width: (cardW - 100) * 2 }
-      }).setScale(0.5).setDepth(11);
+        wordWrap: { width: cardW - 100 }
+      }).setDepth(11);
 
-      // 3. Действие (+32px от центра)
       const action = this.add.text(width / 2 - cardW / 2 + 90, baseY + 32, '▶ ВЗЯТЬ НА ВЕРСТАК', {
-        fontSize: '22px',
+        fontSize: '11.5px',
         fontFamily: 'sans-serif',
         color: '#10b981',
         fontStyle: 'bold'
-      }).setScale(0.5).setDepth(11);
+      }).setDepth(11);
 
       const val = this.add.text(width / 2 + cardW / 2 - 16, baseY + 32, `${art.marketValue || 200} 💰`, {
-        fontSize: '22px',
+        fontSize: '12px',
         fontFamily: 'sans-serif',
         color: '#facc15',
         fontStyle: 'bold'
-      }).setOrigin(1, 0).setScale(0.5).setDepth(11);
+      }).setOrigin(1, 0).setDepth(11);
 
       let tapY = 0;
       bg.on('pointerdown', (p) => { tapY = p.y; });
@@ -253,7 +249,6 @@ export class EraSelectScene extends Phaser.Scene {
 
       this.cardsElements.push(bg, icon, title, desc, action, val);
 
-      // Каждому элементу закреплено жесткое относительное смещение
       this.cardData.push({
         baseY,
         items: [
@@ -295,27 +290,27 @@ export class EraSelectScene extends Phaser.Scene {
       .setStrokeStyle(1.5, 0xef4444, 0.9).setDepth(51);
 
     const title = this.add.text(width / 2, height / 2 - 50, 'СБРОСИТЬ ПРОГРЕСС?', {
-      fontSize: '32px',
+      fontSize: '17px',
       fontFamily: 'sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(52);
+    }).setOrigin(0.5).setDepth(52);
 
     const desc = this.add.text(width / 2, height / 2 - 12, 'Все артефакты, монеты и уровни\nбудут удалены безвозвратно.', {
-      fontSize: '22px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#cbd5e1',
       align: 'center'
-    }).setOrigin(0.5).setScale(0.5).setDepth(52);
+    }).setOrigin(0.5).setDepth(52);
 
     const confirmBtn = this.add.rectangle(width / 2 - 60, height / 2 + 48, 100, 36, 0xef4444)
       .setInteractive({ useHandCursor: true }).setDepth(52);
     const confirmTxt = this.add.text(width / 2 - 60, height / 2 + 48, 'СБРОСИТЬ', {
-      fontSize: '22px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(53);
+    }).setOrigin(0.5).setDepth(53);
 
     confirmBtn.on('pointerdown', () => {
       localStorage.clear();
@@ -325,11 +320,11 @@ export class EraSelectScene extends Phaser.Scene {
     const cancelBtn = this.add.rectangle(width / 2 + 60, height / 2 + 48, 100, 36, 0x334155)
       .setInteractive({ useHandCursor: true }).setDepth(52);
     const cancelTxt = this.add.text(width / 2 + 60, height / 2 + 48, 'ОТМЕНА', {
-      fontSize: '22px',
+      fontSize: '12px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setScale(0.5).setDepth(53);
+    }).setOrigin(0.5).setDepth(53);
 
     cancelBtn.on('pointerdown', () => {
       modalObjects.forEach(o => o.destroy());
