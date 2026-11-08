@@ -52,11 +52,9 @@ export class EraSelectScene extends Phaser.Scene {
     this.add.text(width - 34, 34, '🗑', { fontSize: '15px' }).setOrigin(0.5).setDepth(32);
     resetBtn.on('pointerdown', () => this.showResetModal());
 
-    // Границы рабочей зоны списка
     this.listTop = 136;
     this.listBottom = height - 66;
 
-    // Отрисовка интерфейса
     this.createTabsUI(width);
     this.renderCards(width);
 
@@ -78,16 +76,13 @@ export class EraSelectScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Обработка вертикального жеста списка без блокирующих overlay
     let dragStartY = 0;
     let initialScrollY = 0;
-    let isDragging = false;
 
     this.input.on('pointerdown', (p) => {
       if (p.y >= this.listTop && p.y <= this.listBottom) {
         dragStartY = p.y;
         initialScrollY = this.scrollY;
-        isDragging = false;
       }
     });
 
@@ -96,7 +91,6 @@ export class EraSelectScene extends Phaser.Scene {
       if (p.y >= this.listTop && p.y <= this.listBottom) {
         const dy = p.y - dragStartY;
         if (Math.abs(dy) > 6) {
-          isDragging = true;
           this.scrollY = Phaser.Math.Clamp(initialScrollY + dy, this.maxScrollUp, 0);
           this.updateCardsPosition();
         }
@@ -211,6 +205,7 @@ export class EraSelectScene extends Phaser.Scene {
       const icon = this.add.image(width / 2 - cardW / 2 + 46, baseY, texKey)
         .setDisplaySize(68, 68).setDepth(11);
 
+      // Четко разнесенные по вертикали элементы карточки
       const title = this.add.text(width / 2 - cardW / 2 + 90, baseY - 36, art.name, {
         fontSize: '28px',
         fontFamily: 'sans-serif',
@@ -253,7 +248,19 @@ export class EraSelectScene extends Phaser.Scene {
       });
 
       this.cardsElements.push(bg, icon, title, desc, action, val);
-      this.cardData.push({ baseY, elements: [bg, icon, title, desc, action, val] });
+
+      // Сохраняем индивидуальные смещения каждого элемента относительно центра карточки
+      this.cardData.push({
+        baseY,
+        items: [
+          { el: bg, offsetY: 0 },
+          { el: icon, offsetY: 0 },
+          { el: title, offsetY: -36 },
+          { el: desc, offsetY: -12 },
+          { el: action, offsetY: 32 },
+          { el: val, offsetY: 32 }
+        ]
+      });
     });
 
     const totalHeight = eraArtifacts.length * (cardH + spacing) + 20;
@@ -264,11 +271,11 @@ export class EraSelectScene extends Phaser.Scene {
   updateCardsPosition() {
     if (!this.cardData) return;
     this.cardData.forEach(card => {
-      const curY = card.baseY + this.scrollY;
-      const isVisible = (curY >= this.listTop - 30 && curY <= this.listBottom + 30);
-      card.elements.forEach(el => {
-        el.y = curY;
-        el.setVisible(isVisible);
+      const curCardY = card.baseY + this.scrollY;
+      const isVisible = (curCardY >= this.listTop - 40 && curCardY <= this.listBottom + 40);
+      card.items.forEach(item => {
+        item.el.y = curCardY + item.offsetY;
+        item.el.setVisible(isVisible);
       });
     });
   }
