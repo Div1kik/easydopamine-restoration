@@ -22,7 +22,6 @@ export class BootScene extends Phaser.Scene {
       this.textures.addCanvas(key, c);
     };
 
-    // 1. СЛУЖЕБНЫЕ АССЕТЫ
     make('icon_home', 40, 40, (ctx) => {
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
@@ -44,7 +43,6 @@ export class BootScene extends Phaser.Scene {
       ctx.strokeStyle = '#78350f'; ctx.lineWidth = 1.5; ctx.stroke();
     });
 
-    // 2. ИНСТРУМЕНТЫ ЛОТКА (Качественные, детализированные)
     make('slot_scraper', 56, 56, (ctx) => {
       ctx.fillStyle = '#334155'; ctx.fillRect(25, 26, 6, 22);
       const g = ctx.createLinearGradient(12, 26, 44, 8);
@@ -92,12 +90,11 @@ export class BootScene extends Phaser.Scene {
       ctx.strokeStyle = '#fbcfe8'; ctx.lineWidth = 1; ctx.stroke();
     });
 
-    // 3. МАСКИ ОЧИСТКИ
     const makeMask = (key, r) => {
       make(key, r * 2, r * 2, (ctx) => {
         const rad = ctx.createRadialGradient(r, r, 0, r, r, r);
         rad.addColorStop(0, 'rgba(0,0,0,1)');
-        rad.addColorStop(0.7, 'rgba(0,0,0,0.85)');
+        rad.addColorStop(0.75, 'rgba(0,0,0,0.85)');
         rad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = rad;
         ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI * 2); ctx.fill();
@@ -109,22 +106,16 @@ export class BootScene extends Phaser.Scene {
     makeMask('mask_glue', 22);
     makeMask('mask_polish', 34);
 
-    // 4. ЭТАЛОННЫЕ МОДЕЛИ АРТЕФАКТОВ (СТАНДАРТ 200x240, ИДЕАЛЬНАЯ ПОСАДКА НА СТОЛ)
     const W = 200, H = 240;
 
-    // --- ДРЕВНИЙ ЕГИПЕТ ---
-    // Скарабей (аккуратный, сбалансированный, золотой с лазуритом)
     make('art_egypt_scarab', W, H, (ctx) => {
       const cx = 100, cy = 120;
       ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath();
-      // Передние лапки
       ctx.moveTo(cx - 20, cy - 15); ctx.lineTo(cx - 45, cy - 35); ctx.lineTo(cx - 52, cy - 48);
       ctx.moveTo(cx + 20, cy - 15); ctx.lineTo(cx + 45, cy - 35); ctx.lineTo(cx + 52, cy - 48);
-      // Средние лапки
       ctx.moveTo(cx - 28, cy + 10); ctx.lineTo(cx - 52, cy + 14); ctx.lineTo(cx - 56, cy + 28);
       ctx.moveTo(cx + 28, cy + 10); ctx.lineTo(cx + 52, cy + 14); ctx.lineTo(cx + 56, cy + 28);
-      // Задние лапки
       ctx.moveTo(cx - 24, cy + 32); ctx.lineTo(cx - 46, cy + 50); ctx.lineTo(cx - 50, cy + 68);
       ctx.moveTo(cx + 24, cy + 32); ctx.lineTo(cx + 46, cy + 50); ctx.lineTo(cx + 50, cy + 68);
       ctx.stroke();
@@ -151,7 +142,6 @@ export class BootScene extends Phaser.Scene {
       ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.5; ctx.stroke();
     });
 
-    // Маска Тутанхамона
     make('art_egypt_mask', W, H, (ctx) => {
       const cx = 100, cy = 115;
       ctx.save();
@@ -186,7 +176,6 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#1e3a8a'; ctx.fillRect(cx - 4, cy + 18, 8, 20);
     });
 
-    // Обрядовый Анкх
     make('art_egypt_ankh', W, H, (ctx) => {
       const cx = 100, cy = 115;
       const b = ctx.createLinearGradient(cx - 30, 0, cx + 30, 0);
@@ -199,7 +188,6 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(cx, cy - 3, 6, 0, Math.PI * 2); ctx.fill();
     });
 
-    // Статуэтка Бастет (Черная кошка с золотым колье)
     make('art_egypt_bastet', W, H, (ctx) => {
       const cx = 100, cy = 120;
       const cG = ctx.createLinearGradient(cx - 26, cy, cx + 26, cy);
@@ -222,7 +210,6 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(cx, cy - 14, 13, 0.2, Math.PI - 0.2); ctx.stroke();
     });
 
-    // Алебастровая канопа
     make('art_egypt_canopic', W, H, (ctx) => {
       const cx = 100, cy = 120;
       const alG = ctx.createLinearGradient(cx - 32, cy, cx + 32, cy);
@@ -235,81 +222,6 @@ export class BootScene extends Phaser.Scene {
       ctx.bezierCurveTo(cx + 35, cy + 65, cx + 40, cy + 18, cx + 22, cy - 12);
       ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy - 26, 18, 0, Math.PI * 2); ctx.fill();
-    });
-
-    // --- АНТИЧНОСТЬ ---
-    make('art_antique_amphora', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#c2410c';
-      ctx.beginPath();
-      ctx.moveTo(cx - 16, cy - 40);
-      ctx.bezierCurveTo(cx - 40, cy - 8, cx - 36, cy + 46, cx - 16, cy + 70);
-      ctx.lineTo(cx + 16, cy + 70);
-      ctx.bezierCurveTo(cx + 36, cy + 46, cx + 40, cy - 8, cx + 16, cy - 40);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(cx - 24, cy - 8, 14, Math.PI * 0.5, Math.PI * 1.5);
-      ctx.arc(cx + 24, cy - 8, 14, Math.PI * 1.5, Math.PI * 0.5);
-      ctx.stroke();
-    });
-
-    make('art_antique_helmet', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#b45309';
-      ctx.beginPath(); ctx.arc(cx, cy - 8, 32, Math.PI, 0);
-      ctx.lineTo(cx + 30, cy + 30); ctx.lineTo(cx + 10, cy + 40);
-      ctx.lineTo(cx + 5, cy + 12); ctx.lineTo(cx - 5, cy + 12);
-      ctx.lineTo(cx - 10, cy + 40); ctx.lineTo(cx - 30, cy + 30);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#dc2626'; ctx.fillRect(cx - 4, cy - 48, 8, 36);
-    });
-
-    // --- ЕВРОПА ---
-    make('art_europe_grail', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#e2b35b';
-      ctx.beginPath();
-      ctx.arc(cx, cy - 12, 26, 0, Math.PI);
-      ctx.lineTo(cx + 5, cy + 35); ctx.lineTo(cx + 20, cy + 58);
-      ctx.lineTo(cx - 20, cy + 58); ctx.lineTo(cx - 5, cy + 35);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
-    });
-
-    // --- ЯПОНИЯ ---
-    make('art_japan_mask', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#991b1b';
-      ctx.beginPath();
-      ctx.moveTo(cx - 30, cy - 16); ctx.lineTo(cx + 30, cy - 16);
-      ctx.lineTo(cx + 22, cy + 38); ctx.lineTo(cx, cy + 52);
-      ctx.lineTo(cx - 22, cy + 38); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#facc15'; ctx.fillRect(cx - 16, cy + 8, 32, 5);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 10, cy + 18, 20, 5);
-    });
-
-    // --- АЦТЕКИ ---
-    make('art_aztec_idol', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#065f46';
-      ctx.beginPath(); ctx.roundRect(cx - 26, cy - 40, 52, 80, 7); ctx.fill();
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(cx - 18, cy - 22, 12, 9); ctx.fillRect(cx + 6, cy - 22, 12, 9);
-      ctx.fillRect(cx - 14, cy + 6, 28, 10);
-    });
-
-    // --- ВИКИНГИ ---
-    make('art_viking_axe', W, H, (ctx) => {
-      const cx = 100, cy = 120;
-      ctx.fillStyle = '#78350f'; ctx.fillRect(cx - 5, cy - 45, 10, 105);
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.moveTo(cx + 4, cy - 35);
-      ctx.quadraticCurveTo(cx + 40, cy - 40, cx + 44, cy - 8);
-      ctx.quadraticCurveTo(cx + 30, cy + 8, cx + 4, cy);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
     });
   }
 }
