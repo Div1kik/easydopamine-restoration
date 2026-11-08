@@ -24,11 +24,12 @@ export class BootScene extends Phaser.Scene {
     this.createCinematicBackgrounds(width, height);
     this.createHDToolIcons();
 
-    this.createSmoothMask('mask_scraper', 42);
-    this.createSmoothMask('mask_brush', 36);
-    this.createSmoothMask('mask_solvent', 56);
-    this.createSmoothMask('mask_glue', 28);
-    this.createSmoothMask('mask_polish', 64);
+    // Маски высокого разрешения
+    this.createSmoothMask('mask_scraper', 80);
+    this.createSmoothMask('mask_brush', 70);
+    this.createSmoothMask('mask_solvent', 110);
+    this.createSmoothMask('mask_glue', 55);
+    this.createSmoothMask('mask_polish', 125);
 
     this.createAll35HDArtifacts();
     this.createHDShards();
@@ -65,7 +66,7 @@ export class BootScene extends Phaser.Scene {
 
   createSmoothMask(key, radius) {
     this.createCanvasTexture(key, radius * 2, radius * 2, (ctx) => {
-      const grad = ctx.createRadialGradient(radius, radius, radius * 0.3, radius, radius, radius);
+      const grad = ctx.createRadialGradient(radius, radius, radius * 0.35, radius, radius, radius);
       grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
       grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.95)');
       grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
@@ -76,215 +77,204 @@ export class BootScene extends Phaser.Scene {
     });
   }
 
-  // Настоящие, видимые, атмосферные фоны
   createCinematicBackgrounds(w, h) {
     for (let tier = 1; tier <= 4; tier++) {
-      // 1. ФОН ВЕРСТАКА: массив мореного дуба, теплый свет лампы, полки на заднем плане
+      // ФОН ВЕРСТАКА (Четкое дерево, видимый зеленый раскроечный мат, мягкий свет)
       this.createCanvasTexture(`bg_workshop_tier_${tier}`, w, h, (ctx) => {
-        // Задняя стена мастерской (кирпичная кладка в полумраке)
-        const wallGrad = ctx.createLinearGradient(0, 0, 0, h * 0.5);
-        wallGrad.addColorStop(0, '#1a1412');
-        wallGrad.addColorStop(1, '#2c1e17');
+        // Задняя стена мастерской
+        const wallGrad = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+        wallGrad.addColorStop(0, '#120d0b');
+        wallGrad.addColorStop(1, '#241712');
         ctx.fillStyle = wallGrad;
-        ctx.fillRect(0, 0, w, h * 0.5);
+        ctx.fillRect(0, 0, w, h * 0.45);
 
-        // Полка на заднем плане с банками пигментов и свитками
-        ctx.fillStyle = '#18100c';
-        ctx.fillRect(0, h * 0.14, w, 14);
+        // Полка с инструментами и склянками пигментов
+        ctx.fillStyle = '#160d08';
+        ctx.fillRect(0, h * 0.12, w, 32);
         ctx.fillStyle = '#c5a059';
-        ctx.fillRect(0, h * 0.14 + 12, w, 2);
+        ctx.fillRect(0, h * 0.12 + 28, w, 4);
 
-        // Силуэты склянок и свитков на дальней полке
-        const bottles = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-        bottles.forEach((col, idx) => {
+        const colors = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed'];
+        colors.forEach((col, i) => {
           ctx.fillStyle = col;
-          ctx.globalAlpha = 0.35;
-          ctx.fillRect(40 + idx * 45, h * 0.14 - 24, 18, 24);
+          ctx.globalAlpha = 0.45;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(80 + i * 110, h * 0.12 - 50, 42, 50, 6);
+          else ctx.rect(80 + i * 110, h * 0.12 - 50, 42, 50);
+          ctx.fill();
           ctx.globalAlpha = 1.0;
         });
 
-        // Столешница верстака (мореный дуб с древесными волокнами)
+        // Мореная дубовая столешница
         const tableY = h * 0.22;
         const woodGrad = ctx.createLinearGradient(0, tableY, 0, h);
-        if (tier === 1) {
-          woodGrad.addColorStop(0, '#3e2723');
-          woodGrad.addColorStop(0.4, '#271711');
-          woodGrad.addColorStop(1, '#170c08');
-        } else if (tier === 2) {
-          woodGrad.addColorStop(0, '#4a3319');
-          woodGrad.addColorStop(0.5, '#2e1c0c');
-          woodGrad.addColorStop(1, '#1a0e05');
-        } else if (tier === 3) {
-          woodGrad.addColorStop(0, '#2b3442');
-          woodGrad.addColorStop(0.5, '#171f2c');
-          woodGrad.addColorStop(1, '#0c111a');
-        } else {
-          woodGrad.addColorStop(0, '#382b47');
-          woodGrad.addColorStop(0.5, '#1f152b');
-          woodGrad.addColorStop(1, '#0e0817');
-        }
+        woodGrad.addColorStop(0, '#382318');
+        woodGrad.addColorStop(0.3, '#22140d');
+        woodGrad.addColorStop(1, '#110906');
         ctx.fillStyle = woodGrad;
         ctx.fillRect(0, tableY, w, h - tableY);
 
-        // Фаска стола с латунной инкрустацией
         ctx.fillStyle = '#c5a059';
-        ctx.fillRect(0, tableY, w, 3);
+        ctx.fillRect(0, tableY, w, 6);
 
-        // Профессиональный рабочий коврик реставратора (самозатягивающийся зеленый/графитовый мат с сеткой)
-        const matX = w * 0.05, matY = h * 0.18, matW = w * 0.90, matH = 460;
+        // Раскроечный мат реставратора
+        const matX = w * 0.06, matY = h * 0.18, matW = w * 0.88, matH = 1050;
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-        ctx.shadowBlur = 30;
-        ctx.shadowOffsetY = 15;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = 45;
+        ctx.shadowOffsetY = 25;
 
         const matGrad = ctx.createLinearGradient(matX, matY, matX, matY + matH);
         matGrad.addColorStop(0, '#1c2826');
-        matGrad.addColorStop(1, '#0f1715');
+        matGrad.addColorStop(1, '#0e1715');
         ctx.fillStyle = matGrad;
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(matX, matY, matW, matH, 16); else ctx.rect(matX, matY, matW, matH);
+        if (ctx.roundRect) ctx.roundRect(matX, matY, matW, matH, 32);
+        else ctx.rect(matX, matY, matW, matH);
         ctx.fill();
         ctx.restore();
 
-        // Миллиметровая сетка на мате
-        ctx.strokeStyle = 'rgba(52, 211, 153, 0.08)';
-        ctx.lineWidth = 1;
-        for (let gx = matX + 20; gx < matX + matW; gx += 25) {
+        // Четкая координатная сетка
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.12)';
+        ctx.lineWidth = 1.5;
+        for (let gx = matX + 50; gx < matX + matW; gx += 60) {
           ctx.beginPath(); ctx.moveTo(gx, matY); ctx.lineTo(gx, matY + matH); ctx.stroke();
         }
-        for (let gy = matY + 20; gy < matY + matH; gy += 25) {
+        for (let gy = matY + 50; gy < matY + matH; gy += 60) {
           ctx.beginPath(); ctx.moveTo(matX, gy); ctx.lineTo(matX + matW, gy); ctx.stroke();
         }
 
-        // Золотая рамка мата
-        ctx.strokeStyle = 'rgba(197, 160, 89, 0.6)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(197, 160, 89, 0.75)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(matX, matY, matW, matH, 16); else ctx.rect(matX, matY, matW, matH);
+        if (ctx.roundRect) ctx.roundRect(matX, matY, matW, matH, 32);
+        else ctx.rect(matX, matY, matW, matH);
         ctx.stroke();
 
-        // Теплый фотометрический спот от настольной лампы реставратора
-        const lamp = ctx.createRadialGradient(w / 2, h * 0.42, 40, w / 2, h * 0.42, 340);
+        // Мягкий свет софита
+        const lamp = ctx.createRadialGradient(w / 2, h * 0.44, 100, w / 2, h * 0.44, 750);
         lamp.addColorStop(0, 'rgba(254, 240, 138, 0.22)');
-        lamp.addColorStop(0.5, 'rgba(245, 158, 11, 0.06)');
+        lamp.addColorStop(0.55, 'rgba(245, 158, 11, 0.05)');
         lamp.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = lamp;
         ctx.fillRect(0, 0, w, h);
       });
 
-      // 2. ФОН ЛАВКИ: деревянные витринные шкафы с подсветкой, полки, паркет
+      // ФОН ЛАВКИ
       this.createCanvasTexture(`bg_antique_shop_tier_${tier}`, w, h, (ctx) => {
-        // Тёплые дубовые стены торгового зала
         const wallGrad = ctx.createLinearGradient(0, 0, 0, h);
-        wallGrad.addColorStop(0, '#261710');
+        wallGrad.addColorStop(0, '#2b1a13');
         wallGrad.addColorStop(0.6, '#180e09');
-        wallGrad.addColorStop(1, '#0d0704');
+        wallGrad.addColorStop(1, '#0c0704');
         ctx.fillStyle = wallGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // Паркетные доски внизу зала
         ctx.fillStyle = '#1e110b';
-        ctx.fillRect(0, h * 0.82, w, h * 0.18);
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.lineWidth = 2;
-        for (let px = 0; px < w; px += 45) {
-          ctx.beginPath(); ctx.moveTo(px, h * 0.82); ctx.lineTo(px, h); ctx.stroke();
+        ctx.fillRect(0, h * 0.85, w, h * 0.15);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.lineWidth = 3;
+        for (let px = 0; px < w; px += 90) {
+          ctx.beginPath(); ctx.moveTo(px, h * 0.85); ctx.lineTo(px, h); ctx.stroke();
         }
 
-        // Витринные полки со стеклом и позолоченным бортиком
-        [125, 275, 425, 575].forEach((y) => {
+        [300, 650, 1000, 1350].forEach((y) => {
           ctx.save();
           ctx.shadowColor = 'rgba(0,0,0,0.85)';
-          ctx.shadowBlur = 20;
-          ctx.shadowOffsetY = 10;
+          ctx.shadowBlur = 30;
+          ctx.shadowOffsetY = 15;
           ctx.fillStyle = '#3a2216';
-          ctx.fillRect(16, y, w - 32, 18);
+          ctx.fillRect(36, y, w - 72, 38);
           ctx.restore();
 
-          // Золотой бортик
-          const goldTrim = ctx.createLinearGradient(16, y + 14, w - 16, y + 14);
+          const goldTrim = ctx.createLinearGradient(36, y + 30, w - 36, y + 30);
           goldTrim.addColorStop(0, '#b45309');
           goldTrim.addColorStop(0.5, '#fef08a');
           goldTrim.addColorStop(1, '#b45309');
           ctx.fillStyle = goldTrim;
-          ctx.fillRect(16, y + 14, w - 32, 4);
-
-          // Мягкий свет софита на каждую полку
-          const spot = ctx.createRadialGradient(w / 2, y - 30, 20, w / 2, y + 10, 140);
-          spot.addColorStop(0, 'rgba(254, 243, 199, 0.18)');
-          spot.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = spot;
-          ctx.fillRect(16, y - 70, w - 32, 70);
+          ctx.fillRect(36, y + 30, w - 72, 8);
         });
       });
     }
   }
 
   createHDToolIcons() {
-    this.createCanvasTexture('slot_scraper', 80, 120, (ctx) => {
-      const handle = ctx.createLinearGradient(30, 52, 50, 52);
-      handle.addColorStop(0, '#2d3748'); handle.addColorStop(1, '#1a202c');
+    this.createCanvasTexture('slot_scraper', 160, 240, (ctx) => {
+      const handle = ctx.createLinearGradient(60, 100, 100, 100);
+      handle.addColorStop(0, '#1f2937'); handle.addColorStop(0.5, '#374151'); handle.addColorStop(1, '#111827');
       ctx.fillStyle = handle;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(30, 50, 20, 62, 8); else ctx.rect(30, 50, 20, 62);
+      if (ctx.roundRect) ctx.roundRect(60, 100, 40, 125, 12); else ctx.rect(60, 100, 40, 125);
       ctx.fill();
 
-      const blade = ctx.createLinearGradient(18, 42, 62, 8);
-      blade.addColorStop(0, '#cbd5e1'); blade.addColorStop(0.4, '#ffffff'); blade.addColorStop(1, '#94a3b8');
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(55, 80, 50, 20);
+
+      const blade = ctx.createLinearGradient(35, 80, 125, 15);
+      blade.addColorStop(0, '#cbd5e1'); blade.addColorStop(0.5, '#ffffff'); blade.addColorStop(1, '#64748b');
       ctx.fillStyle = blade;
-      ctx.beginPath(); ctx.moveTo(18, 42); ctx.lineTo(62, 42); ctx.lineTo(40, 8); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(35, 80); ctx.lineTo(125, 80); ctx.lineTo(80, 15); ctx.closePath(); ctx.fill();
     });
 
-    this.createCanvasTexture('slot_brush_soft', 80, 120, (ctx) => {
+    this.createCanvasTexture('slot_brush_soft', 160, 240, (ctx) => {
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(35, 45, 10, 68, 5); else ctx.rect(35, 45, 10, 68);
+      if (ctx.roundRect) ctx.roundRect(70, 90, 20, 135, 8); else ctx.rect(70, 90, 20, 135);
       ctx.fill();
-      ctx.fillStyle = '#f59e0b'; ctx.fillRect(32, 36, 16, 9);
 
-      const fur = ctx.createLinearGradient(25, 10, 55, 10);
-      fur.addColorStop(0, '#b45309'); fur.addColorStop(0.5, '#fbbf24'); fur.addColorStop(1, '#78350f');
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(64, 72, 32, 18);
+
+      const fur = ctx.createLinearGradient(50, 20, 110, 20);
+      fur.addColorStop(0, '#92400e'); fur.addColorStop(0.5, '#f59e0b'); fur.addColorStop(1, '#78350f');
       ctx.fillStyle = fur;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(26, 10, 28, 26, 6); else ctx.rect(26, 10, 28, 26);
+      if (ctx.roundRect) ctx.roundRect(52, 20, 56, 52, 12); else ctx.rect(52, 20, 56, 52);
       ctx.fill();
     });
 
-    this.createCanvasTexture('slot_solvent', 80, 120, (ctx) => {
-      const body = ctx.createLinearGradient(22, 34, 58, 34);
+    this.createCanvasTexture('slot_solvent', 160, 240, (ctx) => {
+      const body = ctx.createLinearGradient(45, 70, 115, 70);
       body.addColorStop(0, '#047857'); body.addColorStop(0.5, '#10b981'); body.addColorStop(1, '#065f46');
       ctx.fillStyle = body;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(22, 34, 36, 72, 10); else ctx.rect(22, 34, 36, 72);
+      if (ctx.roundRect) ctx.roundRect(44, 70, 72, 145, 18); else ctx.rect(44, 70, 72, 145);
       ctx.fill();
-      ctx.fillStyle = '#0f172a'; ctx.fillRect(32, 16, 16, 18);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(64, 32, 32, 38);
     });
 
-    this.createCanvasTexture('slot_glue', 80, 120, (ctx) => {
-      const tube = ctx.createLinearGradient(26, 105, 54, 105);
+    this.createCanvasTexture('slot_glue', 160, 240, (ctx) => {
+      const tube = ctx.createLinearGradient(52, 210, 108, 210);
       tube.addColorStop(0, '#d97706'); tube.addColorStop(0.5, '#f59e0b'); tube.addColorStop(1, '#b45309');
       ctx.fillStyle = tube;
-      ctx.beginPath(); ctx.moveTo(26, 105); ctx.lineTo(54, 105); ctx.lineTo(46, 38); ctx.lineTo(34, 38); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#ef4444'; ctx.fillRect(35, 16, 10, 22);
+      ctx.beginPath(); ctx.moveTo(52, 210); ctx.lineTo(108, 210); ctx.lineTo(92, 75); ctx.lineTo(68, 75); ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(70, 32, 20, 44);
     });
 
-    this.createCanvasTexture('slot_polish', 80, 120, (ctx) => {
-      const pad = ctx.createRadialGradient(40, 60, 5, 40, 60, 32);
+    this.createCanvasTexture('slot_polish', 160, 240, (ctx) => {
+      const pad = ctx.createRadialGradient(80, 120, 10, 80, 120, 65);
       pad.addColorStop(0, '#c084fc'); pad.addColorStop(1, '#7e22ce');
       ctx.fillStyle = pad;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(18, 36, 44, 52, 14); else ctx.rect(18, 36, 44, 52);
+      if (ctx.roundRect) ctx.roundRect(36, 72, 88, 105, 26); else ctx.rect(36, 72, 88, 105);
       ctx.fill();
     });
   }
 
-  // ВЫСОКОДЕТАЛИЗИРОВАННЫЕ АРТЕФАКТЫ (Без примитивных овалов)
   createAll35HDArtifacts() {
-    // 1. МАСКА ТУТАНХАМОНА (Настоящая форма Немеса, лицо, кобра, бородка)
-    this.createCanvasTexture('art_egypt_mask', 300, 400, (ctx) => {
+    // 1. МАСКА ТУТАНХАМОНА (Высокое разрешение 600x800, музейная прорисовка)
+    this.createCanvasTexture('art_egypt_mask', 600, 800, (ctx) => {
       ctx.save();
-      // Золотой капюшон Немес с изогнутыми крыльями
-      const gold = ctx.createLinearGradient(50, 70, 250, 330);
+      // Мягкая внешняя тень
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 35;
+      ctx.shadowOffsetY = 20;
+
+      // Капюшон Немес с изогнутыми крыльями
+      const gold = ctx.createLinearGradient(100, 140, 500, 660);
       gold.addColorStop(0, '#fef08a');
       gold.addColorStop(0.3, '#f59e0b');
       gold.addColorStop(0.7, '#d97706');
@@ -292,515 +282,547 @@ export class BootScene extends Phaser.Scene {
 
       ctx.fillStyle = gold;
       ctx.beginPath();
-      ctx.moveTo(70, 80);
-      ctx.bezierCurveTo(110, 45, 190, 45, 230, 80);
-      ctx.bezierCurveTo(275, 140, 265, 240, 245, 280);
-      ctx.lineTo(215, 280);
-      ctx.lineTo(210, 230);
-      ctx.lineTo(90, 230);
-      ctx.lineTo(85, 280);
-      ctx.lineTo(55, 280);
-      ctx.bezierCurveTo(35, 240, 25, 140, 70, 80);
+      ctx.moveTo(140, 160);
+      ctx.bezierCurveTo(220, 90, 380, 90, 460, 160);
+      ctx.bezierCurveTo(550, 280, 530, 480, 490, 560);
+      ctx.lineTo(430, 560);
+      ctx.lineTo(420, 460);
+      ctx.lineTo(180, 460);
+      ctx.lineTo(170, 560);
+      ctx.lineTo(110, 560);
+      ctx.bezierCurveTo(70, 480, 50, 280, 140, 160);
       ctx.closePath();
       ctx.fill();
+      ctx.restore();
 
-      // Лазуритовые полосы на Немесе
+      // Инкрустированные полосы лазурита с легким внутренним объемом
       ctx.fillStyle = '#1e3a8a';
-      [90, 115, 140, 165, 190, 215, 240].forEach((y) => {
+      [180, 230, 280, 330, 380, 430, 480].forEach((y) => {
         ctx.beginPath();
-        ctx.moveTo(50, y);
-        ctx.lineTo(250, y);
-        ctx.lineTo(246, y + 11);
-        ctx.lineTo(54, y + 11);
+        ctx.moveTo(100, y);
+        ctx.lineTo(500, y);
+        ctx.lineTo(492, y + 22);
+        ctx.lineTo(108, y + 22);
         ctx.closePath();
         ctx.fill();
       });
 
-      // Лицо фараона из полированного золота с объемом
-      const faceGrad = ctx.createRadialGradient(145, 160, 15, 150, 170, 60);
+      // Лицо фараона с анатомическим объемом
+      const faceGrad = ctx.createRadialGradient(290, 320, 30, 300, 340, 120);
       faceGrad.addColorStop(0, '#fef08a');
-      faceGrad.addColorStop(0.6, '#f59e0b');
+      faceGrad.addColorStop(0.5, '#f59e0b');
       faceGrad.addColorStop(1, '#b45309');
       ctx.fillStyle = faceGrad;
       ctx.beginPath();
-      ctx.moveTo(110, 120);
-      ctx.bezierCurveTo(110, 100, 190, 100, 190, 120);
-      ctx.bezierCurveTo(195, 175, 175, 220, 150, 225);
-      ctx.bezierCurveTo(125, 220, 105, 175, 110, 120);
+      ctx.moveTo(220, 240);
+      ctx.bezierCurveTo(220, 200, 380, 200, 380, 240);
+      ctx.bezierCurveTo(390, 350, 350, 440, 300, 450);
+      ctx.bezierCurveTo(250, 440, 210, 350, 220, 240);
       ctx.closePath();
       ctx.fill();
 
-      // Подведенные миндалевидные глаза Гора
+      // Глаза Гора (миндалевидная форма с обводкой)
       ctx.fillStyle = '#0f172a';
       // Левый глаз
       ctx.beginPath();
-      ctx.moveTo(122, 148); ctx.quadraticCurveTo(133, 140, 142, 148); ctx.quadraticCurveTo(133, 156, 122, 148); ctx.fill();
+      ctx.moveTo(244, 296); ctx.quadraticCurveTo(266, 280, 284, 296); ctx.quadraticCurveTo(266, 312, 244, 296); ctx.fill();
       // Правый глаз
       ctx.beginPath();
-      ctx.moveTo(158, 148); ctx.quadraticCurveTo(167, 140, 178, 148); ctx.quadraticCurveTo(167, 156, 158, 148); ctx.fill();
+      ctx.moveTo(316, 296); ctx.quadraticCurveTo(334, 280, 356, 296); ctx.quadraticCurveTo(334, 312, 316, 296); ctx.fill();
 
-      // Зрачки из обсидиана
+      // Зрачки с бликами
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(133, 148, 2.5, 0, Math.PI * 2); ctx.arc(168, 148, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(266, 296, 4, 0, Math.PI * 2); ctx.arc(336, 296, 4, 0, Math.PI * 2); ctx.fill();
 
-      // Рельефный нос и губы
-      ctx.strokeStyle = '#b45309'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(150, 148); ctx.lineTo(147, 172); ctx.lineTo(154, 172); ctx.stroke();
+      // Нос и губы с тенями
+      ctx.strokeStyle = '#b45309'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(300, 296); ctx.lineTo(294, 344); ctx.lineTo(308, 344); ctx.stroke();
       ctx.fillStyle = '#991b1b';
-      ctx.beginPath(); ctx.ellipse(150, 185, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 370, 22, 8, 0, 0, Math.PI * 2); ctx.fill();
 
       // Плетеная бородка Осириса
-      const beard = ctx.createLinearGradient(142, 225, 158, 305);
+      const beard = ctx.createLinearGradient(284, 450, 316, 600);
       beard.addColorStop(0, '#1e3a8a'); beard.addColorStop(0.5, '#f59e0b'); beard.addColorStop(1, '#0f172a');
       ctx.fillStyle = beard;
       ctx.beginPath();
-      ctx.moveTo(144, 225); ctx.lineTo(156, 225); ctx.lineTo(154, 295); ctx.lineTo(146, 295); ctx.closePath();
+      ctx.moveTo(288, 450); ctx.lineTo(312, 450); ctx.lineTo(308, 590); ctx.lineTo(292, 590); ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 3; ctx.stroke();
 
-      // Кобра Уаджит и коршун на челе
+      // Урей (священная кобра)
       ctx.fillStyle = '#dc2626';
-      ctx.beginPath(); ctx.arc(150, 82, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      ctx.beginPath(); ctx.arc(300, 164, 16, 0, Math.PI * 2); ctx.fill();
     });
 
-    // 2. ЗОЛОТОЙ СКАРАБЕЙ
-    this.createCanvasTexture('art_egypt_scarab', 300, 400, (ctx) => {
+    // 2. ЗОЛОТОЙ СКАРАБЕЙ (600x800)
+    this.createCanvasTexture('art_egypt_scarab', 600, 800, (ctx) => {
       ctx.save();
-      ctx.strokeStyle = '#997300'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 35;
+      ctx.shadowOffsetY = 20;
+
+      ctx.strokeStyle = '#997300'; ctx.lineWidth = 20; ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(100, 130); ctx.lineTo(45, 90); ctx.lineTo(30, 110);
-      ctx.moveTo(200, 130); ctx.lineTo(255, 90); ctx.lineTo(270, 110);
-      ctx.moveTo(85, 200); ctx.lineTo(30, 205);
-      ctx.moveTo(215, 200); ctx.lineTo(270, 205);
-      ctx.moveTo(95, 270); ctx.lineTo(45, 320);
-      ctx.moveTo(205, 270); ctx.lineTo(255, 320);
+      ctx.moveTo(200, 260); ctx.lineTo(90, 180); ctx.lineTo(60, 220);
+      ctx.moveTo(400, 260); ctx.lineTo(510, 180); ctx.lineTo(540, 220);
+      ctx.moveTo(170, 400); ctx.lineTo(60, 410);
+      ctx.moveTo(430, 400); ctx.lineTo(540, 410);
+      ctx.moveTo(190, 540); ctx.lineTo(90, 640);
+      ctx.moveTo(410, 540); ctx.lineTo(510, 640);
       ctx.stroke();
 
-      const gold = ctx.createRadialGradient(135, 175, 20, 150, 210, 115);
+      const gold = ctx.createRadialGradient(270, 350, 40, 300, 420, 230);
       gold.addColorStop(0, '#fef08a'); gold.addColorStop(0.3, '#facc15'); gold.addColorStop(1, '#854d0e');
       ctx.fillStyle = gold;
-      ctx.beginPath(); ctx.ellipse(150, 210, 85, 115, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(150, 85, 36, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 420, 170, 230, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 170, 72, 0, Math.PI * 2); ctx.fill();
 
-      const lapis = ctx.createRadialGradient(138, 185, 10, 150, 212, 65);
+      const lapis = ctx.createRadialGradient(276, 370, 20, 300, 424, 130);
       lapis.addColorStop(0, '#3b82f6'); lapis.addColorStop(0.5, '#1d4ed8'); lapis.addColorStop(1, '#0f172a');
       ctx.fillStyle = lapis;
-      ctx.beginPath(); ctx.ellipse(150, 212, 42, 68, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 424, 84, 136, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     });
 
-    // 3. АНКХ
-    this.createCanvasTexture('art_egypt_ankh', 300, 400, (ctx) => {
-      const bronze = ctx.createLinearGradient(70, 70, 230, 370);
+    // 3. АНКХ (600x800)
+    this.createCanvasTexture('art_egypt_ankh', 600, 800, (ctx) => {
+      const bronze = ctx.createLinearGradient(140, 140, 460, 740);
       bronze.addColorStop(0, '#fef08a'); bronze.addColorStop(0.4, '#d97706'); bronze.addColorStop(1, '#78350f');
-      ctx.strokeStyle = bronze; ctx.lineWidth = 26; ctx.beginPath(); ctx.arc(150, 130, 48, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = bronze; ctx.lineWidth = 52; ctx.beginPath(); ctx.arc(300, 260, 96, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = bronze;
       ctx.beginPath();
       if (ctx.roundRect) {
-        ctx.roundRect(75, 185, 150, 28, 6);
-        ctx.roundRect(136, 185, 28, 180, 6);
+        ctx.roundRect(150, 370, 300, 56, 12);
+        ctx.roundRect(272, 370, 56, 360, 12);
       } else {
-        ctx.rect(75, 185, 150, 28);
-        ctx.rect(136, 185, 28, 180);
+        ctx.rect(150, 370, 300, 56);
+        ctx.rect(272, 370, 56, 360);
       }
       ctx.fill();
     });
 
-    // 4. БАСТЕТ
-    this.createCanvasTexture('art_egypt_cat', 300, 400, (ctx) => {
-      const darkBronze = ctx.createLinearGradient(60, 60, 240, 360);
-      darkBronze.addColorStop(0, '#292524'); darkBronze.addColorStop(0.5, '#44403c'); darkBronze.addColorStop(1, '#1c1917');
-      ctx.fillStyle = darkBronze;
-      ctx.beginPath(); ctx.ellipse(150, 240, 65, 110, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(150, 130, 45, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(110, 120); ctx.lineTo(125, 70); ctx.lineTo(145, 100); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(190, 120); ctx.lineTo(175, 70); ctx.lineTo(155, 100); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(106, 140, 10, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(194, 140, 10, 0, Math.PI * 2); ctx.stroke();
+    // 4. БАСТЕТ (600x800)
+    this.createCanvasTexture('art_egypt_cat', 600, 800, (ctx) => {
+      const dark = ctx.createLinearGradient(120, 120, 480, 720);
+      dark.addColorStop(0, '#292524'); dark.addColorStop(0.5, '#44403c'); dark.addColorStop(1, '#1c1917');
+      ctx.fillStyle = dark;
+      ctx.beginPath(); ctx.ellipse(300, 480, 130, 220, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 260, 90, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(220, 240); ctx.lineTo(250, 140); ctx.lineTo(290, 200); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(380, 240); ctx.lineTo(350, 140); ctx.lineTo(310, 200); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(212, 280, 20, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(388, 280, 20, 0, Math.PI * 2); ctx.stroke();
     });
 
-    // 5. КАНОПА
-    this.createCanvasTexture('art_egypt_canopic', 300, 400, (ctx) => {
-      const alabaster = ctx.createLinearGradient(80, 80, 220, 340);
-      alabaster.addColorStop(0, '#fef3c7'); alabaster.addColorStop(0.6, '#fde68a'); alabaster.addColorStop(1, '#d97706');
-      ctx.fillStyle = alabaster;
-      ctx.beginPath(); ctx.ellipse(150, 240, 75, 115, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(150, 115, 42, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(150, 115); ctx.lineTo(175, 128); ctx.lineTo(150, 138); ctx.closePath(); ctx.fill();
+    // 5. КАНОПА (600x800)
+    this.createCanvasTexture('art_egypt_canopic', 600, 800, (ctx) => {
+      const alab = ctx.createLinearGradient(160, 160, 440, 680);
+      alab.addColorStop(0, '#fef3c7'); alab.addColorStop(0.6, '#fde68a'); alab.addColorStop(1, '#d97706');
+      ctx.fillStyle = alab;
+      ctx.beginPath(); ctx.ellipse(300, 480, 150, 230, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 230, 84, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(300, 230); ctx.lineTo(350, 256); ctx.lineTo(300, 276); ctx.closePath(); ctx.fill();
     });
 
-    // ГРЕЦИЯ
-    this.createCanvasTexture('art_greece_amphora', 300, 400, (ctx) => {
-      const terra = ctx.createRadialGradient(130, 170, 20, 150, 200, 140);
+    // ОСТАЛЬНЫЕ РЕГИОНЫ В 600x800
+    this.createOtherRegionsHD(ctx => {});
+  }
+
+  createOtherRegionsHD() {
+    // ГРЕЦИЯ: АМФОРА
+    this.createCanvasTexture('art_greece_amphora', 600, 800, (ctx) => {
+      const terra = ctx.createRadialGradient(260, 340, 40, 300, 400, 280);
       terra.addColorStop(0, '#ea580c'); terra.addColorStop(0.6, '#c2410c'); terra.addColorStop(1, '#7c2d12');
       ctx.fillStyle = terra;
-      ctx.beginPath(); ctx.ellipse(150, 200, 92, 132, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#9a3412'; ctx.fillRect(110, 48, 80, 52); ctx.fillRect(115, 320, 70, 24);
-      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 16;
-      ctx.beginPath(); ctx.arc(88, 160, 46, Math.PI * 0.4, Math.PI * 1.5, true); ctx.stroke();
-      ctx.beginPath(); ctx.arc(212, 160, 46, Math.PI * 1.5, Math.PI * 0.6, false); ctx.stroke();
-      ctx.fillStyle = '#18181b'; ctx.fillRect(72, 175, 156, 42);
+      ctx.beginPath(); ctx.ellipse(300, 400, 184, 264, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9a3412'; ctx.fillRect(220, 96, 160, 104); ctx.fillRect(230, 640, 140, 48);
+      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 32;
+      ctx.beginPath(); ctx.arc(176, 320, 92, Math.PI * 0.4, Math.PI * 1.5, true); ctx.stroke();
+      ctx.beginPath(); ctx.arc(424, 320, 92, Math.PI * 1.5, Math.PI * 0.6, false); ctx.stroke();
+      ctx.fillStyle = '#18181b'; ctx.fillRect(144, 350, 312, 84);
     });
 
-    this.createCanvasTexture('art_greece_helmet', 300, 400, (ctx) => {
-      const metal = ctx.createLinearGradient(70, 70, 230, 300);
+    // ШЛЕМ
+    this.createCanvasTexture('art_greece_helmet', 600, 800, (ctx) => {
+      const metal = ctx.createLinearGradient(140, 140, 460, 600);
       metal.addColorStop(0, '#fef08a'); metal.addColorStop(0.4, '#d97706'); metal.addColorStop(1, '#451a03');
       ctx.fillStyle = metal;
-      ctx.beginPath(); ctx.arc(150, 170, 105, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(70, 180, 52, 120); ctx.fillRect(178, 180, 52, 120); ctx.fillRect(138, 160, 24, 130);
-      const crest = ctx.createLinearGradient(50, 40, 250, 40);
+      ctx.beginPath(); ctx.arc(300, 340, 210, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(140, 360, 104, 240); ctx.fillRect(356, 360, 104, 240); ctx.fillRect(276, 320, 48, 260);
+      const crest = ctx.createLinearGradient(100, 80, 500, 80);
       crest.addColorStop(0, '#dc2626'); crest.addColorStop(1, '#991b1b');
       ctx.fillStyle = crest;
-      ctx.beginPath(); ctx.moveTo(50, 70); ctx.lineTo(250, 70); ctx.lineTo(215, 30); ctx.lineTo(85, 30); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(100, 140); ctx.lineTo(500, 140); ctx.lineTo(430, 60); ctx.lineTo(170, 60); ctx.closePath(); ctx.fill();
     });
 
-    this.createCanvasTexture('art_greece_coin', 300, 400, (ctx) => {
-      const silver = ctx.createRadialGradient(135, 185, 20, 150, 200, 120);
+    // ТЕТРАДРАХМА
+    this.createCanvasTexture('art_greece_coin', 600, 800, (ctx) => {
+      const silver = ctx.createRadialGradient(270, 370, 40, 300, 400, 240);
       silver.addColorStop(0, '#f8fafc'); silver.addColorStop(0.5, '#94a3b8'); silver.addColorStop(1, '#334155');
       ctx.fillStyle = silver;
-      ctx.beginPath(); ctx.arc(150, 200, 118, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 400, 236, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#475569';
-      ctx.beginPath(); ctx.ellipse(150, 205, 42, 60, 0, 0, Math.PI * 2); ctx.arc(150, 145, 38, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 410, 84, 120, 0, 0, Math.PI * 2); ctx.arc(300, 290, 76, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_greece_kylix', 300, 400, (ctx) => {
+    // КИЛИК
+    this.createCanvasTexture('art_greece_kylix', 600, 800, (ctx) => {
       ctx.fillStyle = '#18181b';
-      ctx.beginPath(); ctx.arc(150, 180, 100, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 360, 200, 0, Math.PI, false); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#c2410c';
-      ctx.beginPath(); ctx.arc(150, 180, 85, 0, Math.PI, false); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#18181b'; ctx.fillRect(142, 180, 16, 90);
-      ctx.beginPath(); ctx.ellipse(150, 270, 60, 16, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#18181b'; ctx.lineWidth = 10;
-      ctx.beginPath(); ctx.moveTo(55, 180); ctx.lineTo(25, 165); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(245, 180); ctx.lineTo(275, 165); ctx.stroke();
+      ctx.beginPath(); ctx.arc(300, 360, 170, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#18181b'; ctx.fillRect(284, 360, 32, 180);
+      ctx.beginPath(); ctx.ellipse(300, 540, 120, 32, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#18181b'; ctx.lineWidth = 20;
+      ctx.beginPath(); ctx.moveTo(110, 360); ctx.lineTo(50, 330); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(490, 360); ctx.lineTo(550, 330); ctx.stroke();
     });
 
-    this.createCanvasTexture('art_greece_shield', 300, 400, (ctx) => {
-      const bronze = ctx.createRadialGradient(150, 200, 10, 150, 200, 130);
+    // ЩИТ ГОПЛИТА
+    this.createCanvasTexture('art_greece_shield', 600, 800, (ctx) => {
+      const bronze = ctx.createRadialGradient(300, 400, 20, 300, 400, 260);
       bronze.addColorStop(0, '#fef08a'); bronze.addColorStop(0.5, '#d97706'); bronze.addColorStop(1, '#451a03');
       ctx.fillStyle = bronze;
-      ctx.beginPath(); ctx.arc(150, 200, 125, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 400, 250, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#dc2626';
-      ctx.beginPath(); ctx.moveTo(150, 110); ctx.lineTo(210, 230); ctx.lineTo(185, 230); ctx.lineTo(150, 160); ctx.lineTo(115, 230); ctx.lineTo(90, 230); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(300, 220); ctx.lineTo(420, 460); ctx.lineTo(370, 460); ctx.lineTo(300, 320); ctx.lineTo(230, 460); ctx.lineTo(180, 460); ctx.closePath(); ctx.fill();
     });
 
-    // ЕВРОПА
-    this.createCanvasTexture('art_europe_sword', 300, 400, (ctx) => {
-      const blade = ctx.createLinearGradient(135, 100, 165, 100);
+    // ЕВРОПА: МЕЧ
+    this.createCanvasTexture('art_europe_sword', 600, 800, (ctx) => {
+      const blade = ctx.createLinearGradient(270, 200, 330, 200);
       blade.addColorStop(0, '#94a3b8'); blade.addColorStop(0.5, '#ffffff'); blade.addColorStop(1, '#64748b');
       ctx.fillStyle = blade;
-      ctx.beginPath(); ctx.moveTo(136, 100); ctx.lineTo(164, 100); ctx.lineTo(150, 375); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(272, 200); ctx.lineTo(328, 200); ctx.lineTo(300, 750); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#d4af37';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(80, 95, 140, 18, 5); else ctx.rect(80, 95, 140, 18);
-      ctx.arc(150, 40, 16, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#3e2723'; ctx.fillRect(142, 45, 16, 55);
+      if (ctx.roundRect) ctx.roundRect(160, 190, 280, 36, 10); else ctx.rect(160, 190, 280, 36);
+      ctx.arc(300, 80, 32, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3e2723'; ctx.fillRect(284, 90, 32, 110);
     });
 
-    this.createCanvasTexture('art_europe_chalice', 300, 400, (ctx) => {
-      const gold = ctx.createLinearGradient(70, 70, 230, 280);
+    // ПОТИР
+    this.createCanvasTexture('art_europe_chalice', 600, 800, (ctx) => {
+      const gold = ctx.createLinearGradient(140, 140, 460, 560);
       gold.addColorStop(0, '#fef08a'); gold.addColorStop(0.5, '#f59e0b'); gold.addColorStop(1, '#78350f');
       ctx.fillStyle = gold;
-      ctx.beginPath(); ctx.arc(150, 140, 76, 0, Math.PI, false); ctx.closePath(); ctx.fill();
-      ctx.fillRect(140, 140, 20, 130);
-      ctx.beginPath(); ctx.ellipse(150, 280, 60, 18, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(150, 200, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 280, 152, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+      ctx.fillRect(280, 280, 40, 260);
+      ctx.beginPath(); ctx.ellipse(300, 560, 120, 36, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(300, 400, 18, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_europe_shield', 300, 400, (ctx) => {
-      const steel = ctx.createLinearGradient(50, 60, 250, 350);
+    // ЩИТ ТАРЧ
+    this.createCanvasTexture('art_europe_shield', 600, 800, (ctx) => {
+      const steel = ctx.createLinearGradient(100, 120, 500, 700);
       steel.addColorStop(0, '#e2e8f0'); steel.addColorStop(0.5, '#64748b'); steel.addColorStop(1, '#1e293b');
       ctx.fillStyle = steel;
-      ctx.beginPath(); ctx.moveTo(50, 60); ctx.lineTo(250, 60); ctx.lineTo(250, 220); ctx.lineTo(150, 350); ctx.lineTo(50, 220); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#dc2626'; ctx.fillRect(135, 75, 30, 210); ctx.fillRect(80, 140, 140, 30);
-      ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 6; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(100, 120); ctx.lineTo(500, 120); ctx.lineTo(500, 440); ctx.lineTo(300, 700); ctx.lineTo(100, 440); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#dc2626'; ctx.fillRect(270, 150, 60, 420); ctx.fillRect(160, 280, 280, 60);
+      ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 12; ctx.stroke();
     });
 
-    this.createCanvasTexture('art_europe_crown', 300, 400, (ctx) => {
-      const gold = ctx.createLinearGradient(60, 140, 240, 260);
+    // КОРОНА
+    this.createCanvasTexture('art_europe_crown', 600, 800, (ctx) => {
+      const gold = ctx.createLinearGradient(120, 280, 480, 520);
       gold.addColorStop(0, '#fef08a'); gold.addColorStop(0.5, '#f59e0b'); gold.addColorStop(1, '#b45309');
       ctx.fillStyle = gold;
       ctx.beginPath();
-      ctx.moveTo(60, 240); ctx.lineTo(60, 150); ctx.lineTo(105, 190); ctx.lineTo(150, 120); ctx.lineTo(195, 190); ctx.lineTo(240, 150); ctx.lineTo(240, 240);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(150, 120, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.moveTo(120, 480); ctx.lineTo(120, 300); ctx.lineTo(210, 380); ctx.lineTo(300, 240); ctx.lineTo(390, 380); ctx.lineTo(480, 300); ctx.lineTo(480, 480); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(300, 240, 24, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_europe_book', 300, 400, (ctx) => {
+    // МАНУСКРИПТ
+    this.createCanvasTexture('art_europe_book', 600, 800, (ctx) => {
       ctx.fillStyle = '#451a03';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(70, 90, 160, 220, 12); else ctx.rect(70, 90, 160, 220);
+      if (ctx.roundRect) ctx.roundRect(140, 180, 320, 440, 24); else ctx.rect(140, 180, 320, 440);
       ctx.fill();
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(82, 102, 136, 196);
-      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(150, 200, 24, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 8; ctx.strokeRect(164, 204, 272, 392);
+      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(300, 400, 48, 0, Math.PI * 2); ctx.fill();
     });
 
-    // ЯПОНИЯ
-    this.createCanvasTexture('art_japan_katana', 300, 400, (ctx) => {
-      const steel = ctx.createLinearGradient(140, 90, 160, 375);
+    // ЯПОНИЯ: КАТАНА
+    this.createCanvasTexture('art_japan_katana', 600, 800, (ctx) => {
+      const steel = ctx.createLinearGradient(280, 180, 320, 750);
       steel.addColorStop(0, '#f8fafc'); steel.addColorStop(0.5, '#94a3b8'); steel.addColorStop(1, '#475569');
       ctx.fillStyle = steel;
-      ctx.beginPath(); ctx.moveTo(144, 90); ctx.lineTo(158, 90); ctx.lineTo(154, 355); ctx.lineTo(142, 375); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(150, 90, 24, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(288, 180); ctx.lineTo(316, 180); ctx.lineTo(308, 710); ctx.lineTo(284, 750); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(300, 180, 48, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(142, 35, 16, 52, 3); else ctx.rect(142, 35, 16, 52);
+      if (ctx.roundRect) ctx.roundRect(284, 70, 32, 104, 6); else ctx.rect(284, 70, 32, 104);
       ctx.fill();
     });
 
-    this.createCanvasTexture('art_japan_mask', 300, 400, (ctx) => {
-      const urushi = ctx.createRadialGradient(150, 180, 20, 150, 180, 100);
+    // МАСКА МЭНГУ
+    this.createCanvasTexture('art_japan_mask', 600, 800, (ctx) => {
+      const urushi = ctx.createRadialGradient(300, 360, 40, 300, 360, 200);
       urushi.addColorStop(0, '#ef4444'); urushi.addColorStop(0.6, '#991b1b'); urushi.addColorStop(1, '#450a0a');
       ctx.fillStyle = urushi;
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(60, 140, 180, 120, 22); else ctx.rect(60, 140, 180, 120);
+      if (ctx.roundRect) ctx.roundRect(120, 280, 360, 240, 44); else ctx.rect(120, 280, 360, 240);
       ctx.fill();
       ctx.fillStyle = '#facc15';
-      ctx.beginPath(); ctx.moveTo(115, 205); ctx.lineTo(125, 205); ctx.lineTo(120, 230); ctx.moveTo(175, 205); ctx.lineTo(185, 205); ctx.lineTo(180, 230); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(230, 410); ctx.lineTo(250, 410); ctx.lineTo(240, 460); ctx.moveTo(350, 410); ctx.lineTo(370, 410); ctx.lineTo(360, 460); ctx.fill();
     });
 
-    this.createCanvasTexture('art_japan_netsuke', 300, 400, (ctx) => {
-      const ivory = ctx.createRadialGradient(140, 180, 20, 150, 200, 90);
+    // НЭЦКЭ
+    this.createCanvasTexture('art_japan_netsuke', 600, 800, (ctx) => {
+      const ivory = ctx.createRadialGradient(280, 360, 40, 300, 400, 180);
       ivory.addColorStop(0, '#ffffff'); ivory.addColorStop(0.6, '#f5f5f4'); ivory.addColorStop(1, '#d6d3d1');
       ctx.fillStyle = ivory;
-      ctx.beginPath(); ctx.arc(150, 200, 96, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 400, 192, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f59e0b';
-      ctx.beginPath(); ctx.arc(138, 142, 9, 0, Math.PI * 2); ctx.arc(162, 142, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(276, 284, 18, 0, Math.PI * 2); ctx.arc(324, 284, 18, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_japan_kabuto', 300, 400, (ctx) => {
+    // КАБУТО
+    this.createCanvasTexture('art_japan_kabuto', 600, 800, (ctx) => {
       ctx.fillStyle = '#1e293b';
-      ctx.beginPath(); ctx.arc(150, 190, 85, Math.PI, 0, false); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 380, 170, Math.PI, 0, false); ctx.fill();
       ctx.fillStyle = '#facc15';
-      ctx.beginPath(); ctx.arc(150, 110, 45, Math.PI * 0.2, Math.PI * 0.8, false); ctx.arc(150, 118, 38, Math.PI * 0.8, Math.PI * 0.2, true); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#991b1b'; ctx.fillRect(80, 190, 140, 30);
+      ctx.beginPath(); ctx.arc(300, 220, 90, Math.PI * 0.2, Math.PI * 0.8, false); ctx.arc(300, 236, 76, Math.PI * 0.8, Math.PI * 0.2, true); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#991b1b'; ctx.fillRect(160, 380, 280, 60);
     });
 
-    this.createCanvasTexture('art_japan_tea', 300, 400, (ctx) => {
-      const ceramic = ctx.createRadialGradient(150, 190, 10, 150, 210, 90);
-      ceramic.addColorStop(0, '#1c1917'); ceramic.addColorStop(0.7, '#292524'); ceramic.addColorStop(1, '#0c0a09');
-      ctx.fillStyle = ceramic;
-      ctx.beginPath(); ctx.arc(150, 180, 90, 0, Math.PI, false); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#065f46'; ctx.beginPath(); ctx.ellipse(150, 180, 75, 18, 0, 0, Math.PI * 2); ctx.fill();
+    // ЧАША ТЭММОКУ
+    this.createCanvasTexture('art_japan_tea', 600, 800, (ctx) => {
+      const cer = ctx.createRadialGradient(300, 380, 20, 300, 420, 180);
+      cer.addColorStop(0, '#1c1917'); cer.addColorStop(0.7, '#292524'); cer.addColorStop(1, '#0c0a09');
+      ctx.fillStyle = cer;
+      ctx.beginPath(); ctx.arc(300, 360, 180, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#065f46'; ctx.beginPath(); ctx.ellipse(300, 360, 150, 36, 0, 0, Math.PI * 2); ctx.fill();
     });
 
-    // МЕЗОАМЕРИКА
-    this.createCanvasTexture('art_meso_mask', 300, 400, (ctx) => {
-      const jade = ctx.createRadialGradient(140, 180, 20, 150, 200, 100);
+    // МЕЗОАМЕРИКА: МАСКА ПАКАЛЯ
+    this.createCanvasTexture('art_meso_mask', 600, 800, (ctx) => {
+      const jade = ctx.createRadialGradient(280, 360, 40, 300, 400, 200);
       jade.addColorStop(0, '#34d399'); jade.addColorStop(0.6, '#059669'); jade.addColorStop(1, '#064e3b');
       ctx.fillStyle = jade;
-      ctx.beginPath(); ctx.ellipse(150, 200, 75, 105, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 400, 150, 210, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#f8fafc';
-      ctx.beginPath(); ctx.arc(115, 175, 18, 0, Math.PI * 2); ctx.arc(185, 175, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(230, 350, 36, 0, Math.PI * 2); ctx.arc(370, 350, 36, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0f172a';
-      ctx.beginPath(); ctx.arc(115, 175, 8, 0, Math.PI * 2); ctx.arc(185, 175, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(230, 350, 16, 0, Math.PI * 2); ctx.arc(370, 350, 16, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_meso_disk', 300, 400, (ctx) => {
-      const stone = ctx.createRadialGradient(140, 190, 20, 150, 200, 120);
+    // ДИСК ТОНАТИУ
+    this.createCanvasTexture('art_meso_disk', 600, 800, (ctx) => {
+      const stone = ctx.createRadialGradient(280, 380, 40, 300, 400, 240);
       stone.addColorStop(0, '#94a3b8'); stone.addColorStop(0.7, '#475569'); stone.addColorStop(1, '#1e293b');
       ctx.fillStyle = stone;
-      ctx.beginPath(); ctx.arc(150, 200, 122, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.beginPath(); ctx.arc(300, 400, 244, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 8; ctx.stroke();
     });
 
-    this.createCanvasTexture('art_meso_dagger', 300, 400, (ctx) => {
-      const obsidian = ctx.createLinearGradient(135, 100, 165, 360);
-      obsidian.addColorStop(0, '#475569'); obsidian.addColorStop(0.4, '#0f172a'); obsidian.addColorStop(1, '#020617');
-      ctx.fillStyle = obsidian;
-      ctx.beginPath(); ctx.moveTo(135, 100); ctx.lineTo(165, 100); ctx.lineTo(150, 360); ctx.closePath(); ctx.fill();
+    // ОБСИДИАНОВЫЙ КИНЖАЛ
+    this.createCanvasTexture('art_meso_dagger', 600, 800, (ctx) => {
+      const obs = ctx.createLinearGradient(270, 200, 330, 720);
+      obs.addColorStop(0, '#475569'); obs.addColorStop(0.4, '#0f172a'); obs.addColorStop(1, '#020617');
+      ctx.fillStyle = obs;
+      ctx.beginPath(); ctx.moveTo(270, 200); ctx.lineTo(330, 200); ctx.lineTo(300, 720); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#f59e0b';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(125, 45, 50, 60, 10); else ctx.rect(125, 45, 50, 60);
+      if (ctx.roundRect) ctx.roundRect(250, 90, 100, 120, 20); else ctx.rect(250, 90, 100, 120);
       ctx.fill();
     });
 
-    this.createCanvasTexture('art_meso_pipe', 300, 400, (ctx) => {
+    // КУРИЛЬНИЦА
+    this.createCanvasTexture('art_meso_pipe', 600, 800, (ctx) => {
       ctx.fillStyle = '#b45309';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(100, 110, 100, 180, 18); else ctx.rect(100, 110, 100, 180);
+      if (ctx.roundRect) ctx.roundRect(200, 220, 200, 360, 36); else ctx.rect(200, 220, 200, 360);
       ctx.fill();
-      ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(150, 170, 35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(300, 340, 70, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_meso_gold', 300, 400, (ctx) => {
-      const gold = ctx.createRadialGradient(150, 190, 10, 150, 190, 110);
+    // ПЕКТОРАЛЬ
+    this.createCanvasTexture('art_meso_gold', 600, 800, (ctx) => {
+      const gold = ctx.createRadialGradient(300, 380, 20, 300, 380, 220);
       gold.addColorStop(0, '#fef08a'); gold.addColorStop(0.5, '#f59e0b'); gold.addColorStop(1, '#78350f');
       ctx.fillStyle = gold;
-      ctx.beginPath(); ctx.arc(150, 190, 105, 0, Math.PI, false); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 380, 210, 0, Math.PI, false); ctx.closePath(); ctx.fill();
     });
 
-    // ВИКИНГИ
-    this.createCanvasTexture('art_viking_axe', 300, 400, (ctx) => {
+    // ВИКИНГИ: ТОПОР
+    this.createCanvasTexture('art_viking_axe', 600, 800, (ctx) => {
       ctx.fillStyle = '#573016';
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(142, 60, 16, 300, 6); else ctx.rect(142, 60, 16, 300);
+      if (ctx.roundRect) ctx.roundRect(284, 120, 32, 600, 12); else ctx.rect(284, 120, 32, 600);
       ctx.fill();
-      const blade = ctx.createLinearGradient(70, 80, 160, 170);
+      const blade = ctx.createLinearGradient(140, 160, 320, 340);
       blade.addColorStop(0, '#f8fafc'); blade.addColorStop(0.5, '#94a3b8'); blade.addColorStop(1, '#475569');
       ctx.fillStyle = blade;
-      ctx.beginPath(); ctx.moveTo(142, 80); ctx.lineTo(60, 110); ctx.lineTo(75, 200); ctx.lineTo(142, 150); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(284, 160); ctx.lineTo(120, 220); ctx.lineTo(150, 400); ctx.lineTo(284, 300); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 4; ctx.stroke();
     });
 
-    this.createCanvasTexture('art_viking_horn', 300, 400, (ctx) => {
+    // РОГ
+    this.createCanvasTexture('art_viking_horn', 600, 800, (ctx) => {
       ctx.fillStyle = '#1e293b';
-      ctx.beginPath(); ctx.arc(150, 200, 95, Math.PI * 0.1, Math.PI * 0.9, false); ctx.lineTo(150, 200); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#94a3b8'; ctx.fillRect(230, 160, 20, 60);
+      ctx.beginPath(); ctx.arc(300, 400, 190, Math.PI * 0.1, Math.PI * 0.9, false); ctx.lineTo(300, 400); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#94a3b8'; ctx.fillRect(460, 320, 40, 120);
     });
 
-    this.createCanvasTexture('art_viking_brooch', 300, 400, (ctx) => {
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 16;
-      ctx.beginPath(); ctx.arc(150, 200, 75, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 6;
-      ctx.beginPath(); ctx.moveTo(90, 130); ctx.lineTo(210, 270); ctx.stroke();
+    // ФИБУЛА
+    this.createCanvasTexture('art_viking_brooch', 600, 800, (ctx) => {
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 32;
+      ctx.beginPath(); ctx.arc(300, 400, 150, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.moveTo(180, 260); ctx.lineTo(420, 540); ctx.stroke();
     });
 
-    this.createCanvasTexture('art_viking_helmet', 300, 400, (ctx) => {
+    // ШЛЕМ ИЗ ГЬЁРМУНДБЮ
+    this.createCanvasTexture('art_viking_helmet', 600, 800, (ctx) => {
       ctx.fillStyle = '#334155';
-      ctx.beginPath(); ctx.arc(150, 180, 85, Math.PI, 0, false); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#64748b'; ctx.fillRect(90, 175, 120, 45);
+      ctx.beginPath(); ctx.arc(300, 360, 170, Math.PI, 0, false); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#64748b'; ctx.fillRect(180, 350, 240, 90);
       ctx.fillStyle = '#0f172a';
-      ctx.beginPath(); ctx.arc(125, 200, 16, 0, Math.PI * 2); ctx.arc(175, 200, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(250, 400, 32, 0, Math.PI * 2); ctx.arc(350, 400, 32, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_viking_raven', 300, 400, (ctx) => {
+    // АМУЛЕТ ВОРОНА
+    this.createCanvasTexture('art_viking_raven', 600, 800, (ctx) => {
       ctx.fillStyle = '#94a3b8';
-      ctx.beginPath(); ctx.ellipse(150, 200, 55, 85, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(150, 145, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(300, 400, 110, 170, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(300, 290, 16, 0, Math.PI * 2); ctx.fill();
     });
 
-    // КИТАЙ
-    this.createCanvasTexture('art_china_vase', 300, 400, (ctx) => {
-      const celadon = ctx.createRadialGradient(130, 170, 20, 150, 210, 130);
-      celadon.addColorStop(0, '#f0fdf4'); celadon.addColorStop(0.7, '#bbf7d0'); celadon.addColorStop(1, '#86efac');
-      ctx.fillStyle = celadon;
-      ctx.beginPath(); ctx.ellipse(150, 220, 85, 110, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(125, 75, 50, 60);
-      ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.ellipse(150, 210, 50, 40, 0, 0, Math.PI * 2); ctx.stroke();
+    // КИТАЙ: ВАЗА ТАН
+    this.createCanvasTexture('art_china_vase', 600, 800, (ctx) => {
+      const cel = ctx.createRadialGradient(260, 340, 40, 300, 420, 260);
+      cel.addColorStop(0, '#f0fdf4'); cel.addColorStop(0.7, '#bbf7d0'); cel.addColorStop(1, '#86efac');
+      ctx.fillStyle = cel;
+      ctx.beginPath(); ctx.ellipse(300, 440, 170, 220, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(250, 150, 100, 120);
+      ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.ellipse(300, 420, 100, 80, 0, 0, Math.PI * 2); ctx.stroke();
     });
 
-    this.createCanvasTexture('art_china_dragon', 300, 400, (ctx) => {
+    // ДРАКОН
+    this.createCanvasTexture('art_china_dragon', 600, 800, (ctx) => {
       ctx.fillStyle = '#f8fafc';
-      ctx.beginPath(); ctx.arc(150, 200, 85, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#10b981'; ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.arc(150, 200, 60, Math.PI * 0.2, Math.PI * 1.8, false); ctx.stroke();
+      ctx.beginPath(); ctx.arc(300, 400, 170, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#10b981'; ctx.lineWidth = 16;
+      ctx.beginPath(); ctx.arc(300, 400, 120, Math.PI * 0.2, Math.PI * 1.8, false); ctx.stroke();
     });
 
-    this.createCanvasTexture('art_china_mirror', 300, 400, (ctx) => {
+    // БРОНЗОВОЕ ЗЕРКАЛО
+    this.createCanvasTexture('art_china_mirror', 600, 800, (ctx) => {
       ctx.fillStyle = '#78350f';
-      ctx.beginPath(); ctx.arc(150, 200, 85, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 5; ctx.stroke();
-      ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(150, 200, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(300, 400, 170, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 10; ctx.stroke();
+      ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(300, 400, 36, 0, Math.PI * 2); ctx.fill();
     });
 
-    this.createCanvasTexture('art_china_teapot', 300, 400, (ctx) => {
+    // ИСИНСКИЙ ЧАЙНИК
+    this.createCanvasTexture('art_china_teapot', 600, 800, (ctx) => {
       ctx.fillStyle = '#831843';
-      ctx.beginPath(); ctx.ellipse(150, 210, 85, 58, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(135, 145, 30, 18);
-      ctx.strokeStyle = '#831843'; ctx.lineWidth = 14;
-      ctx.beginPath(); ctx.arc(80, 205, 35, Math.PI * 0.5, Math.PI * 1.5, false); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(300, 420, 170, 116, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(270, 290, 60, 36);
+      ctx.strokeStyle = '#831843'; ctx.lineWidth = 28;
+      ctx.beginPath(); ctx.arc(160, 410, 70, Math.PI * 0.5, Math.PI * 1.5, false); ctx.stroke();
     });
 
-    this.createCanvasTexture('art_china_coin', 300, 400, (ctx) => {
+    // МОНЕТА КИТАЯ
+    this.createCanvasTexture('art_china_coin', 600, 800, (ctx) => {
       ctx.fillStyle = '#b45309';
-      ctx.beginPath(); ctx.arc(150, 200, 85, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#0a0c10'; ctx.fillRect(132, 182, 36, 36);
+      ctx.beginPath(); ctx.arc(300, 400, 170, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0a0c10'; ctx.fillRect(264, 364, 72, 72);
     });
   }
 
   createHDShards() {
-    this.createCanvasTexture('shard_scarab_wing', 60, 60, (ctx) => {
-      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.ellipse(30, 30, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 2; ctx.stroke();
+    this.createCanvasTexture('shard_scarab_wing', 120, 120, (ctx) => {
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.ellipse(60, 60, 44, 56, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 4; ctx.stroke();
     });
-    this.createCanvasTexture('shard_mask_beard', 50, 70, (ctx) => {
-      ctx.fillStyle = '#1e3a8a'; ctx.fillRect(15, 10, 20, 50);
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.strokeRect(15, 10, 20, 50);
+    this.createCanvasTexture('shard_mask_beard', 100, 140, (ctx) => {
+      ctx.fillStyle = '#1e3a8a'; ctx.fillRect(30, 20, 40, 100);
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4; ctx.strokeRect(30, 20, 40, 100);
     });
-    this.createCanvasTexture('shard_cat_ear', 60, 60, (ctx) => {
-      ctx.fillStyle = '#44403c'; ctx.beginPath(); ctx.moveTo(10, 50); ctx.lineTo(30, 10); ctx.lineTo(50, 50); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_cat_ear', 120, 120, (ctx) => {
+      ctx.fillStyle = '#44403c'; ctx.beginPath(); ctx.moveTo(20, 100); ctx.lineTo(60, 20); ctx.lineTo(100, 100); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_amphora', 65, 70, (ctx) => {
-      ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(55, 18); ctx.lineTo(45, 60); ctx.lineTo(15, 45); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_amphora', 130, 140, (ctx) => {
+      ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(110, 36); ctx.lineTo(90, 120); ctx.lineTo(30, 90); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_helmet_cheek', 60, 75, (ctx) => {
-      ctx.fillStyle = '#d97706'; ctx.fillRect(15, 10, 30, 55);
+    this.createCanvasTexture('shard_helmet_cheek', 120, 150, (ctx) => {
+      ctx.fillStyle = '#d97706'; ctx.fillRect(30, 20, 60, 110);
     });
-    this.createCanvasTexture('shard_kylix_handle', 60, 60, (ctx) => {
-      ctx.strokeStyle = '#18181b'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(30, 30, 20, 0, Math.PI, false); ctx.stroke();
+    this.createCanvasTexture('shard_kylix_handle', 120, 120, (ctx) => {
+      ctx.strokeStyle = '#18181b'; ctx.lineWidth = 16; ctx.beginPath(); ctx.arc(60, 60, 40, 0, Math.PI, false); ctx.stroke();
     });
-    this.createCanvasTexture('shard_sword_tip', 60, 75, (ctx) => {
-      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(45, 10); ctx.lineTo(30, 65); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_sword_tip', 120, 150, (ctx) => {
+      ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.moveTo(30, 20); ctx.lineTo(90, 20); ctx.lineTo(60, 130); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_chalice_gem', 50, 50, (ctx) => {
-      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(25, 25, 15, 0, Math.PI * 2); ctx.fill();
+    this.createCanvasTexture('shard_chalice_gem', 100, 100, (ctx) => {
+      ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(50, 50, 30, 0, Math.PI * 2); ctx.fill();
     });
-    this.createCanvasTexture('shard_crown_cross', 60, 60, (ctx) => {
-      ctx.fillStyle = '#f59e0b'; ctx.fillRect(25, 10, 10, 40); ctx.fillRect(10, 25, 40, 10);
+    this.createCanvasTexture('shard_crown_cross', 120, 120, (ctx) => {
+      ctx.fillStyle = '#f59e0b'; ctx.fillRect(50, 20, 20, 80); ctx.fillRect(20, 50, 80, 20);
     });
-    this.createCanvasTexture('shard_katana_tsuba', 60, 60, (ctx) => {
-      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(30, 30, 20, 0, Math.PI, false); ctx.fill();
+    this.createCanvasTexture('shard_katana_tsuba', 120, 120, (ctx) => {
+      ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(60, 60, 40, 0, Math.PI, false); ctx.fill();
     });
-    this.createCanvasTexture('shard_mask_fang', 50, 60, (ctx) => {
-      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.moveTo(15, 15); ctx.lineTo(35, 15); ctx.lineTo(25, 50); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_mask_fang', 100, 120, (ctx) => {
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.moveTo(30, 30); ctx.lineTo(70, 30); ctx.lineTo(50, 100); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_kabuto_crest', 65, 65, (ctx) => {
-      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(32, 32, 24, Math.PI * 0.2, Math.PI * 0.8, false); ctx.fill();
+    this.createCanvasTexture('shard_kabuto_crest', 130, 130, (ctx) => {
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(64, 64, 48, Math.PI * 0.2, Math.PI * 0.8, false); ctx.fill();
     });
-    this.createCanvasTexture('shard_jade_piece', 65, 65, (ctx) => {
+    this.createCanvasTexture('shard_jade_piece', 130, 130, (ctx) => {
       ctx.fillStyle = '#10b981'; ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(10, 10, 45, 45, 8); else ctx.rect(10, 10, 45, 45);
+      if (ctx.roundRect) ctx.roundRect(20, 20, 90, 90, 16); else ctx.rect(20, 20, 90, 90);
       ctx.fill();
     });
-    this.createCanvasTexture('shard_dagger_blade', 60, 75, (ctx) => {
-      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(45, 10); ctx.lineTo(30, 65); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_dagger_blade', 120, 150, (ctx) => {
+      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.moveTo(30, 20); ctx.lineTo(90, 20); ctx.lineTo(60, 130); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_axe_notch', 60, 60, (ctx) => {
-      ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(45, 15); ctx.lineTo(35, 45); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_axe_notch', 120, 120, (ctx) => {
+      ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(90, 30); ctx.lineTo(70, 90); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_brooch_needle', 50, 70, (ctx) => {
-      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(25, 10); ctx.lineTo(25, 60); ctx.stroke();
+    this.createCanvasTexture('shard_brooch_needle', 100, 140, (ctx) => {
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(50, 20); ctx.lineTo(50, 120); ctx.stroke();
     });
-    this.createCanvasTexture('shard_china_neck', 65, 65, (ctx) => {
-      ctx.fillStyle = '#bbf7d0'; ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(55, 15); ctx.lineTo(45, 55); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('shard_china_neck', 130, 130, (ctx) => {
+      ctx.fillStyle = '#bbf7d0'; ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(110, 30); ctx.lineTo(90, 110); ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('shard_china_lid', 55, 55, (ctx) => {
-      ctx.fillStyle = '#831843'; ctx.beginPath(); ctx.arc(27, 27, 20, 0, Math.PI * 2); ctx.fill();
+    this.createCanvasTexture('shard_china_lid', 110, 110, (ctx) => {
+      ctx.fillStyle = '#831843'; ctx.beginPath(); ctx.arc(54, 54, 40, 0, Math.PI * 2); ctx.fill();
     });
   }
 
   createHDUIElements() {
-    this.createCanvasTexture('icon_lock', 40, 40, (ctx) => {
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(20, 14, 9, Math.PI, 0, false); ctx.stroke();
+    this.createCanvasTexture('icon_lock', 80, 80, (ctx) => {
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(40, 28, 18, Math.PI, 0, false); ctx.stroke();
       ctx.fillStyle = '#475569'; ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(8, 16, 24, 20, 5); else ctx.rect(8, 16, 24, 20);
+      if (ctx.roundRect) ctx.roundRect(16, 32, 48, 40, 10); else ctx.rect(16, 32, 48, 40);
       ctx.fill();
     });
-    this.createCanvasTexture('icon_star', 40, 40, (ctx) => {
+    this.createCanvasTexture('icon_star', 80, 80, (ctx) => {
       ctx.fillStyle = '#facc15'; ctx.beginPath();
       for (let i = 0; i < 10; i++) {
-        const r = (i % 2 === 0) ? 17 : 8;
+        const r = (i % 2 === 0) ? 34 : 16;
         const angle = (i * Math.PI) / 5 - Math.PI / 2;
-        const x = 20 + r * Math.cos(angle);
-        const y = 20 + r * Math.sin(angle);
+        const x = 40 + r * Math.cos(angle);
+        const y = 40 + r * Math.sin(angle);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath(); ctx.fill();
     });
-    this.createCanvasTexture('particle_dust', 8, 8, (ctx) => {
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(4, 4, 3.5, 0, Math.PI * 2); ctx.fill();
+    this.createCanvasTexture('particle_dust', 16, 16, (ctx) => {
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(8, 8, 7, 0, Math.PI * 2); ctx.fill();
     });
-    this.createCanvasTexture('icon_home', 40, 40, (ctx) => {
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(20, 8); ctx.lineTo(6, 20); ctx.lineTo(34, 20); ctx.closePath(); ctx.fill();
-      ctx.fillRect(11, 20, 18, 14);
+    this.createCanvasTexture('icon_home', 80, 80, (ctx) => {
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(40, 16); ctx.lineTo(12, 40); ctx.lineTo(68, 40); ctx.closePath(); ctx.fill();
+      ctx.fillRect(22, 40, 36, 28);
     });
-    this.createCanvasTexture('icon_speaker', 40, 40, (ctx) => {
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(6, 14, 8, 12);
-      ctx.beginPath(); ctx.moveTo(14, 14); ctx.lineTo(26, 6); ctx.lineTo(26, 34); ctx.lineTo(14, 26); ctx.closePath(); ctx.fill();
+    this.createCanvasTexture('icon_speaker', 80, 80, (ctx) => {
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(12, 28, 16, 24);
+      ctx.beginPath(); ctx.moveTo(28, 28); ctx.lineTo(52, 12); ctx.lineTo(52, 68); ctx.lineTo(28, 52); ctx.closePath(); ctx.fill();
     });
   }
 }
