@@ -57,7 +57,7 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // ДВЕ КНОПКИ ЗВУКА: МУЗЫКА И ЭФФЕКТЫ (В верхнем правом углу)
+    // ДВЕ КНОПКИ ЗВУКА: МУЗЫКА И ЭФФЕКТЫ
     this.createAudioToggles(width);
 
     // Кнопки навигации
@@ -91,7 +91,9 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('EraSelectScene');
     });
 
-    createBtn(startY + 64, '🏛 МУЗЕЙНАЯ ВИТРИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
+    // ЗАМЕНЕНО: «ВИТРИНА МАГАЗИНА» со звуком колокольчика
+    createBtn(startY + 64, '🏪 ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
+      if (AudioManager.playShopBell) AudioManager.playShopBell();
       this.scene.start('MuseumScene');
     });
 
@@ -108,14 +110,13 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Запуск фоновой музыки (если включена)
+    // Фоновая музыка главного меню
     if (!Storage.isMusicMuted()) {
-      AudioManager.playEraMusic();
+      AudioManager.playEraMusic('menu');
     }
   }
 
   createAudioToggles(width) {
-    // 1. Кнопка Музыки
     const isMusicOff = Storage.isMusicMuted();
     const musicBtn = this.add.circle(width - 70, 36, 17, isMusicOff ? 0x221a24 : 0x142033)
       .setStrokeStyle(1.5, isMusicOff ? 0xef4444 : 0x38bdf8, 0.9)
@@ -138,11 +139,10 @@ export class MenuScene extends Phaser.Scene {
       if (next) {
         AudioManager.stopMusic();
       } else {
-        AudioManager.playEraMusic();
+        AudioManager.playEraMusic('menu');
       }
     });
 
-    // 2. Кнопка Звуковых Эффектов
     const isSfxOff = Storage.isSfxMuted();
     const sfxBtn = this.add.circle(width - 30, 36, 17, isSfxOff ? 0x221a24 : 0x14261d)
       .setStrokeStyle(1.5, isSfxOff ? 0xef4444 : 0x22c55e, 0.9)
