@@ -29,6 +29,9 @@ export class EraSelectScene extends Phaser.Scene {
     this.selectedEraIndex = 0;
     this.scrollY = 0;
 
+    // Включаем музыку первой открытой эпохи
+    AudioManager.playEraMusic(this.eras[0].id);
+
     // Шапка
     this.add.text(width / 2, 34, 'КАРТА ЭКСПЕДИЦИЙ', {
       fontSize: '20px',
@@ -53,10 +56,8 @@ export class EraSelectScene extends Phaser.Scene {
     this.add.text(width - 36, 36, '🗑', { fontSize: '13px' }).setOrigin(0.5).setDepth(26);
     resetBtn.on('pointerdown', () => this.showResetModal());
 
-    // Табы эпох
     this.createScrollableTabs(width, 88);
 
-    // Границы списка карточек
     this.listTopY = 138;
     this.listBottomY = height - 68;
     this.listHeight = this.listBottomY - this.listTopY;
@@ -148,6 +149,11 @@ export class EraSelectScene extends Phaser.Scene {
           this.selectedEraIndex = i;
           this.updateTabsVisual();
           this.renderArtifactsList();
+
+          // ВКЛЮЧЕНИЕ МУЗЫКИ ВЫБРАННОЙ ЭПОХИ
+          if (era.unlocked) {
+            AudioManager.playEraMusic(era.id);
+          }
         }
       });
 
