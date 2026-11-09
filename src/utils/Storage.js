@@ -28,6 +28,11 @@ export const Storage = {
     inv.unshift(item);
     localStorage.setItem('inventory', JSON.stringify(inv));
   },
+  removeArtifactFromInventory: (instanceId) => {
+    const inv = Storage.getInventory().filter(it => it.instanceId !== instanceId);
+    localStorage.setItem('inventory', JSON.stringify(inv));
+    return inv;
+  },
 
   getRecentHistory: () => {
     try {
@@ -43,8 +48,12 @@ export const Storage = {
     localStorage.setItem('recent_history', JSON.stringify(hist));
   },
 
-  isMuted: () => localStorage.getItem('muted') === 'true',
-  setMuted: (val) => localStorage.setItem('muted', val ? 'true' : 'false'),
+  // Раздельные флаги звука
+  isMusicMuted: () => localStorage.getItem('music_muted') === 'true',
+  setMusicMuted: (val) => localStorage.setItem('music_muted', val ? 'true' : 'false'),
+
+  isSfxMuted: () => localStorage.getItem('sfx_muted') === 'true',
+  setSfxMuted: (val) => localStorage.setItem('sfx_muted', val ? 'true' : 'false'),
 
   setActiveSession: (data) => localStorage.setItem('active_restore_session', JSON.stringify(data)),
   getActiveSession: () => {
