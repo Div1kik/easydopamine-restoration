@@ -12,12 +12,16 @@ export class MuseumScene extends Phaser.Scene {
     bg.fillStyle(0x07090e, 1);
     bg.fillRect(0, 0, width, height);
 
-    // Шапка
-    this.add.text(width / 2, 34, 'МУЗЕЙНАЯ ВИТРИНА', {
+    // Колокольчик при входе
+    if (AudioManager.playShopBell) AudioManager.playShopBell();
+
+    // Шапка: ВИТРИНА МАГАЗИНА
+    this.add.text(width / 2, 34, 'ВИТРИНА МАГАЗИНА', {
       fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      letterSpacing: 2
     }).setOrigin(0.5).setDepth(10);
 
     this.infoText = this.add.text(width / 2, 56, '', {
@@ -54,18 +58,18 @@ export class MuseumScene extends Phaser.Scene {
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
 
-    this.infoText.setText(`Экспонатов: ${inventory.length}  •  Казна: ${coins} 💰`);
+    this.infoText.setText(`Товаров на витрине: ${inventory.length}  •  Казна: ${coins} 💰`);
 
     if (inventory.length === 0) {
       const box = this.add.rectangle(width / 2, height * 0.38, width * 0.88, 130, 0x111622)
         .setStrokeStyle(1.5, 0x334155, 0.7);
-      const t1 = this.add.text(width / 2, height * 0.38 - 16, 'ВИТРИНЫ ПОКА ПУСТЫ', {
+      const t1 = this.add.text(width / 2, height * 0.38 - 16, 'ВИТРИНА ПОКА ПУСТА', {
         fontSize: '15px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#64748b',
         fontStyle: 'bold'
       }).setOrigin(0.5);
-      const t2 = this.add.text(width / 2, height * 0.38 + 14, 'Отреставрируйте реликвии в экспедициях,\nчтобы выставить их на продажу или показ.', {
+      const t2 = this.add.text(width / 2, height * 0.38 + 14, 'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на витрину магазина.', {
         fontSize: '12px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#475569',
@@ -102,7 +106,6 @@ export class MuseumScene extends Phaser.Scene {
         fontStyle: 'bold'
       });
 
-      // КНОПКА ПРОДАЖИ АРТЕФАКТА
       const sellPrice = item.marketValue || 200;
       const sellBtnBg = this.add.rectangle(cardW / 2 - 48, 0, 84, 34, 0x16241a)
         .setStrokeStyle(1.5, 0x22c55e, 0.8)
@@ -120,7 +123,6 @@ export class MuseumScene extends Phaser.Scene {
         Storage.addCoins(sellPrice);
         Storage.removeArtifactFromInventory(item.instanceId);
 
-        // Анимация продажи с удалением карточки
         this.tweens.add({
           targets: card,
           alpha: 0,
