@@ -9,10 +9,9 @@ export class MenuScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // Глубокий темный фон
     this.add.rectangle(width / 2, height / 2, width, height, 0x090c15).setDepth(0);
 
-    // Студийный лейбл Easy Dopamine Games
+    // Студийный лейбл
     this.add.text(width / 2, height * 0.11, 'EASY DOPAMINE GAMES', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -21,7 +20,6 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 3
     }).setOrigin(0.5).setAlpha(0.85).setDepth(10);
 
-    // Тонкая золотая полоска-разделитель под студией
     const divider = this.add.graphics().setDepth(10);
     divider.lineStyle(1, 0xd4af37, 0.4);
     divider.lineBetween(width / 2 - 50, height * 0.125, width / 2 + 50, height * 0.125);
@@ -42,7 +40,7 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 1
     }).setOrigin(0.5).setDepth(10);
 
-    // Центральный парящий артефакт
+    // Парящий логотип
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
       const logo = this.add.image(width / 2, height * 0.36, logoKey)
@@ -58,6 +56,9 @@ export class MenuScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
     }
+
+    // ДВЕ КНОПКИ ЗВУКА: МУЗЫКА И ЭФФЕКТЫ (В верхнем правом углу)
+    this.createAudioToggles(width);
 
     // Кнопки навигации
     const createBtn = (y, text, colorBg, colorStroke, textColor, callback) => {
@@ -106,5 +107,62 @@ export class MenuScene extends Phaser.Scene {
       color: '#facc15',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
+
+    // Запуск фоновой музыки (если включена)
+    if (!Storage.isMusicMuted()) {
+      AudioManager.playEraMusic();
+    }
+  }
+
+  createAudioToggles(width) {
+    // 1. Кнопка Музыки
+    const isMusicOff = Storage.isMusicMuted();
+    const musicBtn = this.add.circle(width - 70, 36, 17, isMusicOff ? 0x221a24 : 0x142033)
+      .setStrokeStyle(1.5, isMusicOff ? 0xef4444 : 0x38bdf8, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    const musicIcon = this.add.text(width - 70, 36, isMusicOff ? '🔇' : '🎵', {
+      fontSize: '14px'
+    }).setOrigin(0.5).setDepth(31);
+
+    musicBtn.on('pointerdown', () => {
+      const cur = Storage.isMusicMuted();
+      Storage.setMusicMuted(!cur);
+      const next = !cur;
+
+      musicBtn.setFillStyle(next ? 0x221a24 : 0x142033);
+      musicBtn.setStrokeStyle(1.5, next ? 0xef4444 : 0x38bdf8, 0.9);
+      musicIcon.setText(next ? '🔇' : '🎵');
+
+      if (next) {
+        AudioManager.stopMusic();
+      } else {
+        AudioManager.playEraMusic();
+      }
+    });
+
+    // 2. Кнопка Звуковых Эффектов
+    const isSfxOff = Storage.isSfxMuted();
+    const sfxBtn = this.add.circle(width - 30, 36, 17, isSfxOff ? 0x221a24 : 0x14261d)
+      .setStrokeStyle(1.5, isSfxOff ? 0xef4444 : 0x22c55e, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    const sfxIcon = this.add.text(width - 30, 36, isSfxOff ? '❌' : '🔊', {
+      fontSize: '14px'
+    }).setOrigin(0.5).setDepth(31);
+
+    sfxBtn.on('pointerdown', () => {
+      const cur = Storage.isSfxMuted();
+      Storage.setSfxMuted(!cur);
+      const next = !cur;
+
+      sfxBtn.setFillStyle(next ? 0x221a24 : 0x14261d);
+      sfxBtn.setStrokeStyle(1.5, next ? 0xef4444 : 0x22c55e, 0.9);
+      sfxIcon.setText(next ? '❌' : '🔊');
+
+      if (!next) AudioManager.playClick();
+    });
   }
 }
