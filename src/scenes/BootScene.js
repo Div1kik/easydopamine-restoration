@@ -21,7 +21,7 @@ export class BootScene extends Phaser.Scene {
       this.textures.addCanvas(key, c);
     };
 
-    // 1. ЗОЛОТЫЕ ЗВЕЗДЫ ДЛЯ ЭКРАНА ПОБЕДЫ (Устраняют зеленые квадраты)
+    // 1. ЗВЕЗДЫ
     const drawStar = (ctx, cx, cy, spikes, outerRadius, innerRadius) => {
       let rot = (Math.PI / 2) * 3;
       let x = cx;
@@ -68,7 +68,7 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    // 2. ИКОНКИ ИНСТРУМЕНТОВ
+    // 2. ИНСТРУМЕНТЫ
     make('slot_scraper', 56, 56, (ctx) => {
       ctx.fillStyle = '#1e293b';
       ctx.beginPath(); ctx.roundRect(25, 26, 6, 22, 2); ctx.fill();
@@ -145,173 +145,173 @@ export class BootScene extends Phaser.Scene {
         ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI * 2); ctx.fill();
       });
     };
-    makeMask('mask_scraper', 26);
-    makeMask('mask_brush', 32);
-    makeMask('mask_solvent', 28);
-    makeMask('mask_glue', 22);
-    makeMask('mask_polish', 34);
+    makeMask('mask_scraper', 32);
+    makeMask('mask_brush', 38);
+    makeMask('mask_solvent', 34);
+    makeMask('mask_glue', 28);
+    makeMask('mask_polish', 40);
 
-    // 4. ВСЕ АРТЕФАКТЫ (СТРОГО 240x300, ЦЕНТР 120, 150)
-    const W = 240, H = 300;
+    // 4. ВСЕ АРТЕФАКТЫ — КРУПНЫЙ ВНУШИТЕЛЬНЫЙ РАЗМЕР (320 x 400, ЦЕНТР 160, 200)
+    const W = 320, H = 400;
 
     // --- ЕГИПЕТ: СКАРАБЕЙ ---
     make('art_egypt_scarab', W, H, (ctx) => {
-      const cx = 120, cy = 150;
-      ctx.strokeStyle = '#92400e'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      const cx = 160, cy = 200;
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = 5; ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx - 24, cy - 20); ctx.lineTo(cx - 55, cy - 45); ctx.lineTo(cx - 65, cy - 65);
-      ctx.moveTo(cx + 24, cy - 20); ctx.lineTo(cx + 55, cy - 45); ctx.lineTo(cx + 65, cy - 65);
-      ctx.moveTo(cx - 32, cy + 12); ctx.lineTo(cx - 65, cy + 18); ctx.lineTo(cx - 70, cy + 38);
-      ctx.moveTo(cx + 32, cy + 12); ctx.lineTo(cx + 65, cy + 18); ctx.lineTo(cx + 70, cy + 38);
-      ctx.moveTo(cx - 28, cy + 42); ctx.lineTo(cx - 56, cy + 68); ctx.lineTo(cx - 62, cy + 92);
-      ctx.moveTo(cx + 28, cy + 42); ctx.lineTo(cx + 56, cy + 68); ctx.lineTo(cx + 62, cy + 92);
+      ctx.moveTo(cx - 32, cy - 25); ctx.lineTo(cx - 75, cy - 60); ctx.lineTo(cx - 90, cy - 85);
+      ctx.moveTo(cx + 32, cy - 25); ctx.lineTo(cx + 75, cy - 60); ctx.lineTo(cx + 90, cy - 85);
+      ctx.moveTo(cx - 42, cy + 16); ctx.lineTo(cx - 88, cy + 24); ctx.lineTo(cx - 95, cy + 50);
+      ctx.moveTo(cx + 42, cy + 16); ctx.lineTo(cx + 88, cy + 24); ctx.lineTo(cx + 95, cy + 50);
+      ctx.moveTo(cx - 36, cy + 55); ctx.lineTo(cx - 75, cy + 90); ctx.lineTo(cx - 82, cy + 120);
+      ctx.moveTo(cx + 36, cy + 55); ctx.lineTo(cx + 75, cy + 90); ctx.lineTo(cx + 82, cy + 120);
       ctx.stroke();
 
-      const shellGrad = ctx.createRadialGradient(cx - 15, cy - 5, 10, cx, cy + 15, 70);
+      const shellGrad = ctx.createRadialGradient(cx - 20, cy - 10, 15, cx, cy + 20, 95);
       shellGrad.addColorStop(0, '#fef08a');
       shellGrad.addColorStop(0.3, '#facc15');
       shellGrad.addColorStop(0.7, '#ca8a04');
       shellGrad.addColorStop(1, '#713f12');
       ctx.fillStyle = shellGrad;
-      ctx.beginPath(); ctx.ellipse(cx, cy + 15, 48, 62, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, cy + 20, 64, 82, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2.5; ctx.stroke();
 
-      ctx.strokeStyle = '#451a03'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx, cy - 22); ctx.lineTo(cx, cy + 76); ctx.stroke();
+      ctx.strokeStyle = '#451a03'; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(cx, cy - 30); ctx.lineTo(cx, cy + 102); ctx.stroke();
 
       ctx.fillStyle = '#ca8a04';
-      ctx.beginPath(); ctx.ellipse(cx, cy - 28, 34, 18, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, cy - 38, 46, 24, 0, 0, Math.PI * 2); ctx.fill();
 
       ctx.fillStyle = '#a16207';
-      ctx.beginPath(); ctx.arc(cx, cy - 44, 18, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 58, 24, Math.PI, 0); ctx.closePath(); ctx.fill();
 
-      const gemGrad = ctx.createRadialGradient(cx - 4, cy + 6, 2, cx, cy + 10, 20);
+      const gemGrad = ctx.createRadialGradient(cx - 6, cy + 10, 4, cx, cy + 14, 28);
       gemGrad.addColorStop(0, '#93c5fd');
       gemGrad.addColorStop(0.3, '#3b82f6');
       gemGrad.addColorStop(0.8, '#1d4ed8');
       gemGrad.addColorStop(1, '#0f172a');
       ctx.fillStyle = gemGrad;
-      ctx.beginPath(); ctx.ellipse(cx, cy + 10, 18, 24, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, cy + 14, 24, 32, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2.5; ctx.stroke();
     });
 
     // --- ЕГИПЕТ: МАСКА ТУТАНХАМОНА ---
     make('art_egypt_mask', W, H, (ctx) => {
-      const cx = 120, cy = 145;
+      const cx = 160, cy = 195;
 
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(cx - 30, cy - 80); ctx.quadraticCurveTo(cx, cy - 92, cx + 30, cy - 80);
-      ctx.lineTo(cx + 68, cy - 24); ctx.lineTo(cx + 54, cy + 42); ctx.lineTo(cx + 22, cy + 32);
-      ctx.lineTo(cx + 15, cy + 85); ctx.lineTo(cx - 15, cy + 85); ctx.lineTo(cx - 22, cy + 32);
-      ctx.lineTo(cx - 54, cy + 42); ctx.lineTo(cx - 68, cy - 24);
+      ctx.moveTo(cx - 40, cy - 110); ctx.quadraticCurveTo(cx, cy - 126, cx + 40, cy - 110);
+      ctx.lineTo(cx + 92, cy - 32); ctx.lineTo(cx + 74, cy + 56); ctx.lineTo(cx + 30, cy + 44);
+      ctx.lineTo(cx + 20, cy + 115); ctx.lineTo(cx - 20, cy + 115); ctx.lineTo(cx - 30, cy + 44);
+      ctx.lineTo(cx - 74, cy + 56); ctx.lineTo(cx - 92, cy - 32);
       ctx.closePath(); ctx.clip();
 
-      ctx.fillStyle = '#1e3a8a'; ctx.fillRect(cx - 80, cy - 100, 160, 200);
-      const goldStripe = ctx.createLinearGradient(cx - 60, 0, cx + 60, 0);
+      ctx.fillStyle = '#1e3a8a'; ctx.fillRect(cx - 110, cy - 135, 220, 270);
+      const goldStripe = ctx.createLinearGradient(cx - 80, 0, cx + 80, 0);
       goldStripe.addColorStop(0, '#ca8a04'); goldStripe.addColorStop(0.5, '#fef08a'); goldStripe.addColorStop(1, '#a16207');
       ctx.fillStyle = goldStripe;
-      for (let y = cy - 100; y < cy + 100; y += 14) ctx.fillRect(cx - 80, y, 160, 7);
+      for (let y = cy - 135; y < cy + 135; y += 18) ctx.fillRect(cx - 110, y, 220, 9);
       ctx.restore();
 
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(cx - 30, cy - 80); ctx.quadraticCurveTo(cx, cy - 92, cx + 30, cy - 80);
-      ctx.lineTo(cx + 68, cy - 24); ctx.lineTo(cx + 54, cy + 42); ctx.lineTo(cx + 22, cy + 32);
-      ctx.lineTo(cx + 15, cy + 85); ctx.lineTo(cx - 15, cy + 85); ctx.lineTo(cx - 22, cy + 32);
-      ctx.lineTo(cx - 54, cy + 42); ctx.lineTo(cx - 68, cy - 24);
+      ctx.moveTo(cx - 40, cy - 110); ctx.quadraticCurveTo(cx, cy - 126, cx + 40, cy - 110);
+      ctx.lineTo(cx + 92, cy - 32); ctx.lineTo(cx + 74, cy + 56); ctx.lineTo(cx + 30, cy + 44);
+      ctx.lineTo(cx + 20, cy + 115); ctx.lineTo(cx - 20, cy + 115); ctx.lineTo(cx - 30, cy + 44);
+      ctx.lineTo(cx - 74, cy + 56); ctx.lineTo(cx - 92, cy - 32);
       ctx.closePath(); ctx.stroke();
 
-      const faceGrad = ctx.createRadialGradient(cx - 5, cy - 12, 5, cx, cy - 6, 32);
+      const faceGrad = ctx.createRadialGradient(cx - 6, cy - 16, 6, cx, cy - 8, 42);
       faceGrad.addColorStop(0, '#fef08a');
       faceGrad.addColorStop(0.4, '#eab308');
       faceGrad.addColorStop(0.85, '#ca8a04');
       faceGrad.addColorStop(1, '#854d0e');
       ctx.fillStyle = faceGrad;
-      ctx.beginPath(); ctx.ellipse(cx, cy - 8, 28, 36, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, cy - 10, 38, 48, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#854d0e'; ctx.lineWidth = 1.5; ctx.stroke();
 
       ctx.fillStyle = '#0f172a';
-      ctx.beginPath(); ctx.ellipse(cx - 13, cy - 11, 7, 3.5, 0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx + 13, cy - 11, 7, 3.5, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx - 18, cy - 15, 9, 5, 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 18, cy - 15, 9, 5, -0.1, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(cx - 13, cy - 11, 2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + 13, cy - 11, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 18, cy - 15, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + 18, cy - 15, 2.5, 0, Math.PI * 2); ctx.fill();
 
       ctx.fillStyle = '#991b1b';
-      ctx.beginPath(); ctx.ellipse(cx, cy + 10, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, cy + 14, 14, 5.5, 0, 0, Math.PI * 2); ctx.fill();
 
-      const bG = ctx.createLinearGradient(cx - 6, 0, cx + 6, 0);
+      const bG = ctx.createLinearGradient(cx - 8, 0, cx + 8, 0);
       bG.addColorStop(0, '#1e3a8a'); bG.addColorStop(0.5, '#facc15'); bG.addColorStop(1, '#1e3a8a');
       ctx.fillStyle = bG;
-      ctx.beginPath(); ctx.roundRect(cx - 6, cy + 22, 12, 28, 2); ctx.fill();
-      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(cx - 8, cy + 30, 16, 38, 3); ctx.fill();
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 1.5; ctx.stroke();
 
       ctx.fillStyle = '#ef4444';
-      ctx.beginPath(); ctx.arc(cx, cy - 62, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 85, 7, 0, Math.PI * 2); ctx.fill();
     });
 
     // --- ЕГИПЕТ: АНКХ ---
     make('art_egypt_ankh', W, H, (ctx) => {
-      const cx = 120, cy = 145;
-      const bronzeGrad = ctx.createLinearGradient(cx - 40, cy - 50, cx + 40, cy + 50);
+      const cx = 160, cy = 195;
+      const bronzeGrad = ctx.createLinearGradient(cx - 50, cy - 65, cx + 50, cy + 65);
       bronzeGrad.addColorStop(0, '#78350f');
       bronzeGrad.addColorStop(0.35, '#f59e0b');
       bronzeGrad.addColorStop(0.65, '#fef08a');
       bronzeGrad.addColorStop(1, '#92400e');
       ctx.fillStyle = bronzeGrad;
 
-      ctx.beginPath(); ctx.roundRect(cx - 10, cy - 18, 20, 120, 4); ctx.fill();
-      ctx.beginPath(); ctx.roundRect(cx - 45, cy - 12, 90, 18, 4); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(cx - 14, cy - 25, 28, 160, 5); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(cx - 60, cy - 16, 120, 24, 5); ctx.fill();
 
-      ctx.lineWidth = 17;
+      ctx.lineWidth = 22;
       ctx.strokeStyle = bronzeGrad;
-      ctx.beginPath(); ctx.ellipse(cx, cy - 50, 22, 34, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, cy - 68, 30, 46, 0, 0, Math.PI * 2); ctx.stroke();
 
-      const rubyGrad = ctx.createRadialGradient(cx - 2, cy - 6, 1, cx, cy - 3, 10);
+      const rubyGrad = ctx.createRadialGradient(cx - 3, cy - 8, 2, cx, cy - 4, 14);
       rubyGrad.addColorStop(0, '#f87171');
       rubyGrad.addColorStop(0.5, '#dc2626');
       rubyGrad.addColorStop(1, '#7f1d1d');
       ctx.fillStyle = rubyGrad;
-      ctx.beginPath(); ctx.arc(cx, cy - 3, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy - 4, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = 2.5; ctx.stroke();
     });
 
     // --- ЕГИПЕТ: БАСТЕТ ---
     make('art_egypt_bastet', W, H, (ctx) => {
-      const cx = 120, cy = 150;
-      const catGrad = ctx.createRadialGradient(cx - 8, cy + 12, 12, cx, cy + 30, 75);
+      const cx = 160, cy = 200;
+      const catGrad = ctx.createRadialGradient(cx - 10, cy + 16, 16, cx, cy + 40, 100);
       catGrad.addColorStop(0, '#374151');
       catGrad.addColorStop(0.4, '#1f2937');
       catGrad.addColorStop(1, '#090d16');
       ctx.fillStyle = catGrad;
 
       ctx.beginPath();
-      ctx.moveTo(cx - 18, cy - 18);
-      ctx.bezierCurveTo(cx - 42, cy + 18, cx - 38, cy + 78, cx - 30, cy + 100);
-      ctx.lineTo(cx + 30, cy + 100);
-      ctx.bezierCurveTo(cx + 38, cy + 78, cx + 42, cy + 18, cx + 18, cy - 18);
+      ctx.moveTo(cx - 24, cy - 24);
+      ctx.bezierCurveTo(cx - 56, cy + 24, cx - 50, cy + 105, cx - 40, cy + 135);
+      ctx.lineTo(cx + 40, cy + 135);
+      ctx.bezierCurveTo(cx + 50, cy + 105, cx + 56, cy + 24, cx + 24, cy - 24);
       ctx.closePath(); ctx.fill();
 
-      ctx.beginPath(); ctx.arc(cx, cy - 36, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy - 48, 30, 0, Math.PI * 2); ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(cx - 18, cy - 40); ctx.lineTo(cx - 12, cy - 68); ctx.lineTo(cx - 4, cy - 48); ctx.closePath(); ctx.fill();
+      ctx.moveTo(cx - 24, cy - 54); ctx.lineTo(cx - 16, cy - 90); ctx.lineTo(cx - 5, cy - 64); ctx.closePath(); ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(cx + 18, cy - 40); ctx.lineTo(cx + 12, cy - 68); ctx.lineTo(cx + 4, cy - 48); ctx.closePath(); ctx.fill();
+      ctx.moveTo(cx + 24, cy - 54); ctx.lineTo(cx + 16, cy - 90); ctx.lineTo(cx + 5, cy - 64); ctx.closePath(); ctx.fill();
 
       ctx.fillStyle = '#10b981';
-      ctx.beginPath(); ctx.ellipse(cx - 8, cy - 36, 4, 2.2, -0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx + 8, cy - 36, 4, 2.2, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx - 11, cy - 48, 5.5, 3, -0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + 11, cy - 48, 5.5, 3, 0.2, 0, Math.PI * 2); ctx.fill();
 
-      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(cx, cy - 18, 18, 0.2, Math.PI - 0.2); ctx.stroke();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4.5;
+      ctx.beginPath(); ctx.arc(cx, cy - 24, 24, 0.2, Math.PI - 0.2); ctx.stroke();
     });
 
     // --- ЕГИПЕТ: КАНОПА ---
     make('art_egypt_canopic', W, H, (ctx) => {
-      const cx = 120, cy = 150;
-      const alGrad = ctx.createLinearGradient(cx - 45, 0, cx + 45, 0);
+      const cx = 160, cy = 200;
+      const alGrad = ctx.createLinearGradient(cx - 60, 0, cx + 60, 0);
       alGrad.addColorStop(0, '#b45309');
       alGrad.addColorStop(0.3, '#fef3c7');
       alGrad.addColorStop(0.7, '#fffbeb');
@@ -319,94 +319,113 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = alGrad;
 
       ctx.beginPath();
-      ctx.moveTo(cx - 28, cy - 15);
-      ctx.bezierCurveTo(cx - 52, cy + 22, cx - 45, cy + 80, cx - 30, cy + 102);
-      ctx.lineTo(cx + 30, cy + 102);
-      ctx.bezierCurveTo(cx + 45, cy + 80, cx + 52, cy + 22, cx + 28, cy - 15);
+      ctx.moveTo(cx - 36, cy - 20);
+      ctx.bezierCurveTo(cx - 70, cy + 30, cx - 60, cy + 110, cx - 40, cy + 138);
+      ctx.lineTo(cx + 40, cy + 138);
+      ctx.bezierCurveTo(cx + 60, cy + 110, cx + 70, cy + 30, cx + 36, cy - 20);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2.5; ctx.stroke();
 
-      ctx.beginPath(); ctx.arc(cx, cy - 32, 24, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy - 44, 32, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2.5; ctx.stroke();
 
       ctx.fillStyle = '#ca8a04';
-      ctx.beginPath(); ctx.moveTo(cx - 5, cy - 30); ctx.lineTo(cx + 5, cy - 30); ctx.lineTo(cx, cy - 20); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx - 7, cy - 40); ctx.lineTo(cx + 7, cy - 40); ctx.lineTo(cx, cy - 26); ctx.closePath(); ctx.fill();
     });
 
     // --- АНТИЧНОСТЬ: АМФОРА ---
     make('art_antique_amphora', W, H, (ctx) => {
-      const cx = 120, cy = 150;
+      const cx = 160, cy = 200;
       ctx.fillStyle = '#c2410c';
       ctx.beginPath();
-      ctx.moveTo(cx - 20, cy - 50);
-      ctx.bezierCurveTo(cx - 50, cy - 10, cx - 45, cy + 58, cx - 20, cy + 88);
-      ctx.lineTo(cx + 20, cy + 88);
-      ctx.bezierCurveTo(cx + 45, cy + 58, cx + 50, cy - 10, cx + 20, cy - 50);
+      ctx.moveTo(cx - 28, cy - 70);
+      ctx.bezierCurveTo(cx - 70, cy - 14, cx - 62, cy + 80, cx - 28, cy + 120);
+      ctx.lineTo(cx + 28, cy + 120);
+      ctx.bezierCurveTo(cx + 62, cy + 80, cx + 70, cy - 14, cx + 28, cy - 70);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 3;
+      ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(cx - 30, cy - 10, 18, Math.PI * 0.5, Math.PI * 1.5);
-      ctx.arc(cx + 30, cy - 10, 18, Math.PI * 1.5, Math.PI * 0.5);
+      ctx.arc(cx - 42, cy - 14, 25, Math.PI * 0.5, Math.PI * 1.5);
+      ctx.arc(cx + 42, cy - 14, 25, Math.PI * 1.5, Math.PI * 0.5);
       ctx.stroke();
     });
 
     // --- АНТИЧНОСТЬ: ШЛЕМ ---
     make('art_antique_helmet', W, H, (ctx) => {
-      const cx = 120, cy = 150;
+      const cx = 160, cy = 200;
       ctx.fillStyle = '#b45309';
-      ctx.beginPath(); ctx.arc(cx, cy - 10, 40, Math.PI, 0);
-      ctx.lineTo(cx + 38, cy + 38); ctx.lineTo(cx + 14, cy + 50);
-      ctx.lineTo(cx + 6, cy + 16); ctx.lineTo(cx - 6, cy + 16);
-      ctx.lineTo(cx - 14, cy + 50); ctx.lineTo(cx - 38, cy + 38);
+      ctx.beginPath(); ctx.arc(cx, cy - 14, 55, Math.PI, 0);
+      ctx.lineTo(cx + 52, cy + 52); ctx.lineTo(cx + 20, cy + 68);
+      ctx.lineTo(cx + 8, cy + 22); ctx.lineTo(cx - 8, cy + 22);
+      ctx.lineTo(cx - 20, cy + 68); ctx.lineTo(cx - 52, cy + 52);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#dc2626'; ctx.fillRect(cx - 6, cy - 60, 12, 46);
+      ctx.fillStyle = '#dc2626'; ctx.fillRect(cx - 8, cy - 82, 16, 62);
     });
 
     // --- ЕВРОПА: КУБОК ---
     make('art_europe_grail', W, H, (ctx) => {
-      const cx = 120, cy = 150;
+      const cx = 160, cy = 200;
       ctx.fillStyle = '#e2b35b';
       ctx.beginPath();
-      ctx.arc(cx, cy - 15, 34, 0, Math.PI);
-      ctx.lineTo(cx + 6, cy + 44); ctx.lineTo(cx + 26, cy + 72);
-      ctx.lineTo(cx - 26, cy + 72); ctx.lineTo(cx - 6, cy + 44);
+      ctx.arc(cx, cy - 20, 48, 0, Math.PI);
+      ctx.lineTo(cx + 8, cy + 60); ctx.lineTo(cx + 36, cy + 98);
+      ctx.lineTo(cx - 36, cy + 98); ctx.lineTo(cx - 8, cy + 60);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 3.5; ctx.stroke();
     });
 
     // --- ЯПОНИЯ: МАСКА МЭНГУ ---
     make('art_japan_mask', W, H, (ctx) => {
-      const cx = 120, cy = 150;
+      const cx = 160, cy = 200;
       ctx.fillStyle = '#991b1b';
       ctx.beginPath();
-      ctx.moveTo(cx - 38, cy - 20); ctx.lineTo(cx + 38, cy - 20);
-      ctx.lineTo(cx + 28, cy + 48); ctx.lineTo(cx, cy + 66);
-      ctx.lineTo(cx - 28, cy + 48); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#facc15'; ctx.fillRect(cx - 20, cy + 10, 40, 6);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 14, cy + 22, 28, 6);
+      ctx.moveTo(cx - 52, cy - 28); ctx.lineTo(cx + 52, cy - 28);
+      ctx.lineTo(cx + 38, cy + 66); ctx.lineTo(cx, cy + 90);
+      ctx.lineTo(cx - 38, cy + 66); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#facc15'; ctx.fillRect(cx - 28, cy + 14, 56, 8);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 20, cy + 30, 40, 8);
     });
 
     // --- АЦТЕКИ: ИДОЛ ---
     make('art_aztec_idol', W, H, (ctx) => {
-      const cx = 120, cy = 150;
+      const cx = 160, cy = 200;
       ctx.fillStyle = '#065f46';
-      ctx.beginPath(); ctx.roundRect(cx - 34, cy - 50, 68, 100, 8); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(cx - 46, cy - 68, 92, 136, 12); ctx.fill();
       ctx.fillStyle = '#34d399';
-      ctx.fillRect(cx - 22, cy - 28, 16, 12); ctx.fillRect(cx + 6, cy - 28, 16, 12);
-      ctx.fillRect(cx - 18, cy + 8, 36, 14);
+      ctx.fillRect(cx - 30, cy - 38, 22, 16); ctx.fillRect(cx + 8, cy - 38, 22, 16);
+      ctx.fillRect(cx - 24, cy + 12, 48, 18);
     });
 
     // --- ВИКИНГИ: ТОПОР ---
     make('art_viking_axe', W, H, (ctx) => {
-      const cx = 120, cy = 150;
-      ctx.fillStyle = '#78350f'; ctx.fillRect(cx - 6, cy - 55, 12, 130);
+      const cx = 160, cy = 200;
+      ctx.fillStyle = '#78350f'; ctx.fillRect(cx - 8, cy - 75, 16, 175);
       ctx.fillStyle = '#64748b';
       ctx.beginPath();
-      ctx.moveTo(cx + 5, cy - 44);
-      ctx.quadraticCurveTo(cx + 50, cy - 50, cx + 55, cy - 10);
-      ctx.quadraticCurveTo(cx + 38, cy + 10, cx + 5, cy);
+      ctx.moveTo(cx + 7, cy - 60);
+      ctx.quadraticCurveTo(cx + 68, cy - 68, cx + 75, cy - 14);
+      ctx.quadraticCurveTo(cx + 52, cy + 14, cx + 7, cy);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2.5; ctx.stroke();
+    });
+
+    // --- РЕНЕССАНС: АСТРОЛЯБИЯ ---
+    make('art_renaissance_astrolabe', W, H, (ctx) => {
+      const cx = 160, cy = 200;
+      const bGrad = ctx.createRadialGradient(cx - 10, cy - 10, 8, cx, cy, 70);
+      bGrad.addColorStop(0, '#fef08a');
+      bGrad.addColorStop(0.5, '#eab308');
+      bGrad.addColorStop(1, '#854d0e');
+      ctx.fillStyle = bGrad;
+      ctx.beginPath(); ctx.arc(cx, cy, 65, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = '#451a03'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 60, cy); ctx.lineTo(cx + 60, cy);
+      ctx.moveTo(cx, cy - 60); ctx.lineTo(cx, cy + 60);
+      ctx.stroke();
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2); ctx.fill();
     });
 
     // Служебные
