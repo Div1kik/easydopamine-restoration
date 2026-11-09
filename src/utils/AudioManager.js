@@ -4,9 +4,10 @@ class AudioManagerClass {
   constructor() {
     this.ctx = null;
     this.lastSoundTime = {};
-    this.musicNode = null;
     this.musicGain = null;
-    this.isMusicPlaying = false;
+    this.currentTrack = null;
+    this.activeNodes = [];
+    this.loopTimer = null;
   }
 
   init() {
@@ -53,7 +54,7 @@ class AudioManagerClass {
     return buffer;
   }
 
-  // МЯГКАЯ КИСТЬ
+  // --- ЭФФЕКТЫ ИНСТРУМЕНТОВ ---
   playBrush() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -79,12 +80,10 @@ class AudioManagerClass {
     noise.connect(filter);
     filter.connect(gain);
     gain.connect(this.ctx.destination);
-
     noise.start(t);
     noise.stop(t + 0.14);
   }
 
-  // СКРЕБОК
   playScrub() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -125,7 +124,6 @@ class AudioManagerClass {
     osc.stop(t + 0.08);
   }
 
-  // СПРЕЙ
   playSpray() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -151,12 +149,10 @@ class AudioManagerClass {
     noise.connect(bpf);
     bpf.connect(gain);
     gain.connect(this.ctx.destination);
-
     noise.start(t);
     noise.stop(t + 0.22);
   }
 
-  // ЗАМША
   playCloth() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -181,7 +177,6 @@ class AudioManagerClass {
     noise.connect(lpf);
     lpf.connect(gain);
     gain.connect(this.ctx.destination);
-
     noise.start(t);
     noise.stop(t + 0.16);
   }
@@ -229,7 +224,31 @@ class AudioManagerClass {
     });
   }
 
-  // Одиночная сияющая нота для звезды
+  // КОЛОКОЛЬЧИК НА ВХОДЕ В ВИТРИНУ МАГАЗИНА
+  playShopBell() {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const bellTones = [1760, 2637.02]; // Двойной стеклянный перезвон
+    bellTones.forEach((freq, i) => {
+      const delay = i * 0.11;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t + delay);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.18, t + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.7);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t + delay);
+      osc.stop(t + delay + 0.75);
+    });
+  }
+
   playStarChime(step = 0) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -319,62 +338,120 @@ class AudioManagerClass {
     osc.stop(t + 0.09);
   }
 
-  // ФОНОВЫЙ САУНДТРЕК (Мягкий эмбиент-дрон)
-  playEraMusic(era = 'egypt') {
+  // --- МУЗЫКАЛЬНЫЙ ДВИЖОК ДЛЯ КАЖДОЙ ЭПОХИ И МЕНЮ ---
+  playEraMusic(era = 'menu') {
     if (this.isMusicDisabled()) return;
     this.unlockAudio();
-    if (!this.ctx || this.isMusicPlaying) return;
+    if (!this.ctx) return;
+
+    // Если этот трек уже звучит — не перезапускаем
+    if (this.currentTrack === era) return;
+    this.stopMusic();
+    this.currentTrack = era;
 
     try {
       const t = this.ctx.currentTime;
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.setValueAtTime(0.001, t);
-      this.musicGain.linearRampToValueAtTime(0.045, t + 2.0);
+      this.musicGain.linearRampToValueAtTime(0.045, t + 1.8);
+      this.musicGain.connect(this.ctx.destination);
 
-      // Глубокий резонансный фильтр
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(280, t);
+      // Настройка уникального гармонического ряда для каждой эпохи
+      let baseNotes = [110, 164.81, 220]; // Меню по умолчанию: A-E-A
+      let filterFreq = 300;
+      let oscType = 'sine';
 
-      // Генератор атмосферного аккорда
-      const freqs = [110, 164.81, 220]; // A2 + E3 + A3
-      this.activeOscs = [];
+      if (era === 'egypt') {
+        // Хиджаз / Древний Восток (D - F# - A - Bb)
+        baseNotes = [146.83, 185.00, 220.00, 233.08];
+        filterFreq = 360;
+        oscType = 'triangle';
+      } else if (era === 'antique') {
+        // Дорийский лад древнегреческой лиры (E - G - B - D)
+        baseNotes = [164.81, 196.00, 246.94, 293.66];
+        filterFreq = 420;
+        oscType = 'sine';
+      } else if (era === 'europe') {
+        // Органный средневековый канон (C - G - C - E)
+        baseNotes = [130.81, 196.00, 261.63, 329.63];
+        filterFreq = 250;
+        oscType = 'sawtooth';
+      } else if (era === 'japan') {
+        // Японская традиционная пентатоника Ёсэн (D - Eb - G - A)
+        baseNotes = [146.83, 155.56, 196.00, 220.00];
+        filterFreq = 480;
+        oscType = 'sine';
+      } else if (era === 'aztec') {
+        // Глухой шаманский низкий дрон (F - C - F)
+        baseNotes = [87.31, 130.81, 174.61];
+        filterFreq = 190;
+        oscType = 'triangle';
+      } else if (era === 'vikings') {
+        // Скандинавский смычковый дрон (A - E - B)
+        baseNotes = [110.00, 164.81, 246.94];
+        filterFreq = 220;
+        oscType = 'sawtooth';
+      } else if (era === 'renaissance') {
+        // Светлый лютневый мажор (G - B - D - G)
+        baseNotes = [196.00, 246.94, 293.66, 392.00];
+        filterFreq = 500;
+        oscType = 'triangle';
+      }
 
-      freqs.forEach(f => {
+      const masterFilter = this.ctx.createBiquadFilter();
+      masterFilter.type = 'lowpass';
+      masterFilter.frequency.setValueAtTime(filterFreq, t);
+
+      this.activeNodes = [];
+
+      baseNotes.forEach((freq, idx) => {
         const osc = this.ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(f, t);
-        osc.connect(filter);
+        osc.type = oscType;
+        osc.frequency.setValueAtTime(freq, t);
+
+        // Легкая расстройка (Chorus/Detune) для живого объёма
+        osc.detune.setValueAtTime((idx % 2 === 0 ? 3 : -3), t);
+
+        // Индивидуальный LFO для мягкого дыхания звука
+        const lfo = this.ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(0.15 + idx * 0.05, t);
+
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.setValueAtTime(0.012, t);
+        lfo.connect(lfoGain.gain);
+
+        osc.connect(masterFilter);
         osc.start(t);
-        this.activeOscs.push(osc);
+        lfo.start(t);
+
+        this.activeNodes.push(osc, lfo);
       });
 
-      filter.connect(this.musicGain);
-      this.musicGain.connect(this.ctx.destination);
-      this.isMusicPlaying = true;
+      masterFilter.connect(this.musicGain);
     } catch {
-      // Игнорируем блокировку до первого пользовательского ввода
+      // Игнорируем блокировку до первого пользовательского тапа
     }
   }
 
   stopMusic() {
-    if (!this.ctx || !this.isMusicPlaying) return;
+    if (!this.ctx || !this.currentTrack) return;
     try {
       const t = this.ctx.currentTime;
       if (this.musicGain) {
-        this.musicGain.gain.linearRampToValueAtTime(0.001, t + 0.6);
+        this.musicGain.gain.linearRampToValueAtTime(0.001, t + 0.5);
       }
       setTimeout(() => {
-        if (this.activeOscs) {
-          this.activeOscs.forEach(o => {
-            try { o.stop(); o.disconnect(); } catch {}
+        if (this.activeNodes) {
+          this.activeNodes.forEach(n => {
+            try { n.stop(); n.disconnect(); } catch {}
           });
-          this.activeOscs = null;
+          this.activeNodes = [];
         }
-        this.isMusicPlaying = false;
-      }, 700);
+        this.currentTrack = null;
+      }, 550);
     } catch {
-      this.isMusicPlaying = false;
+      this.currentTrack = null;
     }
   }
 }
