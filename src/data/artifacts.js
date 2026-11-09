@@ -9,6 +9,7 @@ export const REGIONS = [
 ];
 
 export const ARTIFACT_TEMPLATES = [
+  // --- ДРЕВНИЙ ЕГИПЕТ ---
   {
     id: 'egypt_scarab',
     regionId: 'egypt',
@@ -66,13 +67,116 @@ export const ARTIFACT_TEMPLATES = [
     id: 'egypt_canopic',
     regionId: 'egypt',
     name: 'Алебастровая канопа',
-    description: 'Ритуальный сосуд с резной крышкой.',
+    description: 'Ритуальный сосуд с резной крышкой сокола.',
     textureKey: 'art_egypt_canopic',
     marketValue: 220,
     tasks: [
       { name: 'Очистить поверхность скребком', requiredTool: 'tool_scraper', color: 0x78562d },
       { name: 'Смести остатки кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
       { name: 'Обработать защитным воском', requiredTool: 'tool_polish', color: 0xfde047 }
+    ]
+  },
+
+  // --- АНТИЧНОСТЬ ---
+  {
+    id: 'antique_amphora',
+    regionId: 'antique',
+    name: 'Греческая амфора',
+    description: 'Двуручный сосуд с черной росписью из Аттики.',
+    textureKey: 'art_antique_amphora',
+    marketValue: 300,
+    tasks: [
+      { name: 'Снять глиняный налет скребком', requiredTool: 'tool_scraper', color: 0x78562d },
+      { name: 'Очистить роспись кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
+      { name: 'Покрыть защитным лаком', requiredTool: 'tool_polish', color: 0xf59e0b }
+    ]
+  },
+  {
+    id: 'antique_helmet',
+    regionId: 'antique',
+    name: 'Шлем спартанца',
+    description: 'Коринфский боевой шлем с алым гребнем.',
+    textureKey: 'art_antique_helmet',
+    marketValue: 450,
+    tasks: [
+      { name: 'Сколоть окалину скребком', requiredTool: 'tool_scraper', color: 0x78562d },
+      { name: 'Смыть ржавчину раствором', requiredTool: 'tool_solvent', color: 0x059669 },
+      { name: 'Полировать бронзу замшей', requiredTool: 'tool_polish', color: 0xfacc15 }
+    ]
+  },
+
+  // --- ЕВРОПА (СРЕДНЕВЕКОВЬЕ) ---
+  {
+    id: 'europe_grail',
+    regionId: 'europe',
+    name: 'Рыцарский кубок',
+    description: 'Позолоченный кубок с гравировкой ордена.',
+    textureKey: 'art_europe_grail',
+    marketValue: 380,
+    tasks: [
+      { name: 'Очистить патину растворителем', requiredTool: 'tool_solvent', color: 0x059669 },
+      { name: 'Смести пыль кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
+      { name: 'Навести зеркальный блеск', requiredTool: 'tool_polish', color: 0xfde047 }
+    ]
+  },
+
+  // --- ЯПОНИЯ ---
+  {
+    id: 'japan_mask',
+    regionId: 'japan',
+    name: 'Маска Мэнгу',
+    description: 'Устрашающая личина самурая эпохи Эдо.',
+    textureKey: 'art_japan_mask',
+    marketValue: 420,
+    tasks: [
+      { name: 'Снять налет с лака скребком', requiredTool: 'tool_scraper', color: 0x78562d },
+      { name: 'Обработать шёлком спреем', requiredTool: 'tool_solvent', color: 0x059669 },
+      { name: 'Финишная полировка замшей', requiredTool: 'tool_polish', color: 0xd946ef }
+    ]
+  },
+
+  // --- АЦТЕКИ ---
+  {
+    id: 'aztec_idol',
+    regionId: 'aztec',
+    name: 'Нефритовый идол',
+    description: 'Священный тотем дождя и плодородия.',
+    textureKey: 'art_aztec_idol',
+    marketValue: 480,
+    tasks: [
+      { name: 'Сколоть слой известняка', requiredTool: 'tool_scraper', color: 0x78562d },
+      { name: 'Смести осадок кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
+      { name: 'Полировать нефрит воском', requiredTool: 'tool_polish', color: 0x34d399 }
+    ]
+  },
+
+  // --- ВИКИНГИ ---
+  {
+    id: 'viking_axe',
+    regionId: 'vikings',
+    name: 'Боевой топор',
+    description: 'Северная секира с рунической вязью на лезвии.',
+    textureKey: 'art_viking_axe',
+    marketValue: 400,
+    tasks: [
+      { name: 'Снять ржавчину скребком', requiredTool: 'tool_scraper', color: 0x78562d },
+      { name: 'Протравить металл спреем', requiredTool: 'tool_solvent', color: 0x059669 },
+      { name: 'Полировать рукоять и лезвие', requiredTool: 'tool_polish', color: 0x94a3b8 }
+    ]
+  },
+
+  // --- РЕНЕССАНС ---
+  {
+    id: 'renaissance_astrolabe',
+    regionId: 'renaissance',
+    name: 'Астролябия Галилея',
+    description: 'Высокоточный навигационный инструмент из резной латуни.',
+    textureKey: 'art_renaissance_astrolabe',
+    marketValue: 520,
+    tasks: [
+      { name: 'Удалить окислы растворителем', requiredTool: 'tool_solvent', color: 0x059669 },
+      { name: 'Смести минеральную пыль кистью', requiredTool: 'tool_brush', color: 0xa89f81 },
+      { name: 'Полировать деления замшей', requiredTool: 'tool_polish', color: 0xfacc15 }
     ]
   }
 ];
