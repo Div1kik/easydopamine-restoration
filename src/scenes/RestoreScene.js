@@ -54,7 +54,6 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0, 0.5).setDepth(30);
 
-    // Кнопка В ГЛАВНОЕ МЕНЮ вместо лавки
     const menuBtn = this.add.rectangle(width - 64, 34, 104, 34, 0x161e2c)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
@@ -110,15 +109,16 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. Точные габариты: 240 x 300 без искажения масштаба
-    this.artW = 240;
-    this.artH = 300;
+    // 4. КРУПНЫЙ АДЕКВАТНЫЙ РАЗМЕР АРТЕФАКТА (320 x 400)
+    this.artW = 320;
+    this.artH = 400;
     this.centerX = Math.round(width / 2);
     this.centerY = Math.round(height * 0.44);
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 130, 200, 36, 0x000000, 0.7).setDepth(5);
+    // Тень под крупным предметом
+    this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.75).setDepth(5);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(6);
@@ -157,9 +157,9 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка анализа (24 x 30): каждая ячейка равна ровно 10x10 пикселей!
-    this.gridCols = 24;
-    this.gridRows = 30;
+    // Сетка анализа (32 x 40): ячейка равна ровно 10x10 пикселей
+    this.gridCols = 32;
+    this.gridRows = 40;
     this.totalCells = this.gridCols * this.gridRows;
     this.cleanedGrid = new Uint8Array(this.totalCells);
     this.validCellsMask = new Uint8Array(this.totalCells);
@@ -200,9 +200,9 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        const eraseRadius = (this.activeTool === 'tool_scraper') ? 22 :
-                            (this.activeTool === 'tool_brush') ? 26 :
-                            (this.activeTool === 'tool_solvent') ? 24 : 26;
+        const eraseRadius = (this.activeTool === 'tool_scraper') ? 28 :
+                            (this.activeTool === 'tool_brush') ? 34 :
+                            (this.activeTool === 'tool_solvent') ? 30 : 36;
 
         const cellRadiusX = Math.ceil((eraseRadius / this.artW) * this.gridCols);
         const cellRadiusY = Math.ceil((eraseRadius / this.artH) * this.gridRows);
@@ -222,7 +222,6 @@ export class RestoreScene extends Phaser.Scene {
 
               if (dist <= eraseRadius) {
                 const idx = gy * this.gridCols + gx;
-                // Засчитываем ТОЛЬКО пиксели, где действительно нарисован артефакт
                 if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] === 0) {
                   this.cleanedGrid[idx] = 1;
                   this.cleanedCount++;
@@ -232,7 +231,6 @@ export class RestoreScene extends Phaser.Scene {
           }
         }
 
-        // Порог: 93% реального тела артефакта (без пустоты вокруг)
         const targetGoal = Math.max(this.targetValidCells * 0.93, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
@@ -294,8 +292,7 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
-    // Резервная форма, если чтение canvas заблокировано политикой браузера
-    if (this.targetValidCells < 40) {
+    if (this.targetValidCells < 50) {
       this.targetValidCells = 0;
       for (let gy = 0; gy < this.gridRows; gy++) {
         for (let gx = 0; gx < this.gridCols; gx++) {
@@ -325,9 +322,9 @@ export class RestoreScene extends Phaser.Scene {
     bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
 
     bg.fillStyle(0x18202c, 0.95);
-    bg.fillRoundedRect(width * 0.08, tableY + 14, width * 0.84, height * 0.56, 10);
+    bg.fillRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 12);
     bg.lineStyle(1, 0x334155, 0.5);
-    bg.strokeRoundedRect(width * 0.08, tableY + 14, width * 0.84, height * 0.56, 10);
+    bg.strokeRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 12);
   }
 
   processGlueAction(pointer) {
@@ -339,14 +336,14 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setPosition(pointer.x, pointer.y - 12);
     this.toolSprite.setAlpha(1);
 
-    const targetX = this.centerX + 25;
-    const targetY = this.centerY - 10;
+    const targetX = this.centerX + 35;
+    const targetY = this.centerY - 15;
     const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, targetX, targetY);
 
-    if (d < 45 && !this.glueApplied) {
+    if (d < 50 && !this.glueApplied) {
       this.glueApplied = true;
       this.breakHoleGfx.fillStyle(0xf59e0b, 0.75);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 20);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 26);
       if (AudioManager.playWash) AudioManager.playWash();
       this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ОТКОЛОТУЮ ДЕТАЛЬ В ПАЗ');
       this.progressBarFill.width = (this.scale.width * 0.65);
@@ -362,15 +359,15 @@ export class RestoreScene extends Phaser.Scene {
     this.progressBarFill.width = 0;
 
     const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
-    const targetX = this.centerX + 25;
-    const targetY = this.centerY - 10;
+    const targetX = this.centerX + 35;
+    const targetY = this.centerY - 15;
 
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
     this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
-    this.breakHoleGfx.fillCircle(targetX, targetY, 20);
+    this.breakHoleGfx.fillCircle(targetX, targetY, 26);
     this.breakHoleGfx.lineStyle(2, 0x8a7238, 0.7);
-    this.breakHoleGfx.strokeCircle(targetX, targetY, 20);
+    this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
 
     this.brokenPiece = this.add.image(targetX, targetY, shardTex).setDepth(19);
 
@@ -379,7 +376,7 @@ export class RestoreScene extends Phaser.Scene {
     this.tweens.add({
       targets: this.brokenPiece,
       x: width * 0.20,
-      y: this.centerY + 75,
+      y: this.centerY + 85,
       angle: 35,
       duration: 600,
       ease: 'Bounce.easeOut',
@@ -400,14 +397,14 @@ export class RestoreScene extends Phaser.Scene {
 
     this.brokenPiece.on('dragend', () => {
       const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
-      if (d < 40 && this.glueApplied) {
+      if (d < 45 && this.glueApplied) {
         this.brokenPiece.setPosition(targetX, targetY);
         this.brokenPiece.setAngle(0);
         this.brokenPiece.disableInteractive();
 
         this.breakHoleGfx.clear();
         this.breakHoleGfx.lineStyle(3, 0x22c55e, 1);
-        this.breakHoleGfx.strokeCircle(targetX, targetY, 20);
+        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
 
         if (AudioManager.playCoin) AudioManager.playCoin();
 
@@ -516,29 +513,29 @@ export class RestoreScene extends Phaser.Scene {
       dirtGfx.fillStyle(0x78562d, 0.98);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x4a2e12, 0.85);
-      for (let i = 0; i < 24; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(15, 35));
+      for (let i = 0; i < 26; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(20, 50));
       }
     } else if (task.requiredTool === 'tool_brush') {
       dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x6b634d, 0.7);
-      for (let i = 0; i < 24; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(10, 25));
+      for (let i = 0; i < 26; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(15, 35));
       }
     } else if (task.requiredTool === 'tool_solvent') {
       dirtGfx.fillStyle(0x2a593f, 0.92);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x438a63, 0.75);
-      for (let i = 0; i < 20; i++) {
-        dirtGfx.fillEllipse(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), 40, 25);
+      for (let i = 0; i < 22; i++) {
+        dirtGfx.fillEllipse(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), 55, 35);
       }
     } else {
       dirtGfx.fillStyle(0x181818, 0.55);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x333333, 0.40);
-      for (let i = 0; i < 16; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), 25);
+      for (let i = 0; i < 18; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), 35);
       }
     }
 
