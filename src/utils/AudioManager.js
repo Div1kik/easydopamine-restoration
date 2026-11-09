@@ -1,8 +1,12 @@
+import { Storage } from './Storage.js';
+
 class AudioManagerClass {
   constructor() {
     this.ctx = null;
-    this.isMuted = false;
     this.lastSoundTime = {};
+    this.musicNode = null;
+    this.musicGain = null;
+    this.isMusicPlaying = false;
   }
 
   init() {
@@ -21,7 +25,14 @@ class AudioManagerClass {
     }
   }
 
-  // Ограничитель частоты воспроизведения, чтобы звуки не слипались в рокот
+  isSfxDisabled() {
+    return Storage.isSfxMuted ? Storage.isSfxMuted() : false;
+  }
+
+  isMusicDisabled() {
+    return Storage.isMusicMuted ? Storage.isMusicMuted() : false;
+  }
+
   throttle(key, minIntervalMs) {
     const now = performance.now();
     if (this.lastSoundTime[key] && now - this.lastSoundTime[key] < minIntervalMs) {
@@ -31,7 +42,6 @@ class AudioManagerClass {
     return true;
   }
 
-  // Генератор белого шума для процедурных шелестов
   createNoiseBuffer(durationSec = 0.2) {
     if (!this.ctx) return null;
     const bufferSize = Math.floor(this.ctx.sampleRate * durationSec);
@@ -43,9 +53,9 @@ class AudioManagerClass {
     return buffer;
   }
 
-  // 1. МЯГКАЯ КИСТЬ (Шелест смахивания пыли)
+  // МЯГКАЯ КИСТЬ
   playBrush() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('brush', 110)) return;
 
@@ -55,7 +65,6 @@ class AudioManagerClass {
     if (!noiseBuf) return;
     noise.buffer = noiseBuf;
 
-    // Полосовой фильтр диапазона мягкого ворса
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'bandpass';
     filter.frequency.setValueAtTime(1400, t);
@@ -75,15 +84,13 @@ class AudioManagerClass {
     noise.stop(t + 0.14);
   }
 
-  // 2. ЛАТУННЫЙ СКРЕБОК (Сухое срезание породы без рокота)
+  // СКРЕБОК
   playScrub() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('scraper', 100)) return;
 
     const t = this.ctx.currentTime;
-
-    // Компонент металлического касания
     const osc = this.ctx.createOscillator();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(420, t);
@@ -93,7 +100,6 @@ class AudioManagerClass {
     oscGain.gain.setValueAtTime(0.08, t);
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
 
-    // Компонент отшелушивания корки
     const noise = this.ctx.createBufferSource();
     const nBuf = this.createNoiseBuffer(0.08);
     if (nBuf) {
@@ -119,9 +125,9 @@ class AudioManagerClass {
     osc.stop(t + 0.08);
   }
 
-  // 3. ХИМСПРЕЙ / ПОЛИМЕРИЗАТОР (Мягкое аэрозольное шипение «пшик»)
+  // СПРЕЙ
   playSpray() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('spray', 160)) return;
 
@@ -150,9 +156,9 @@ class AudioManagerClass {
     noise.stop(t + 0.22);
   }
 
-  // 4. ЗАМШЕВАЯ ПРОТИРКА (Глухой бархатистый шорох)
+  // ЗАМША
   playCloth() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('cloth', 130)) return;
 
@@ -162,7 +168,6 @@ class AudioManagerClass {
     if (!nBuf) return;
     noise.buffer = nBuf;
 
-    // Глубокий срез высоких частот для мягкого бархатистого звука
     const lpf = this.ctx.createBiquadFilter();
     lpf.type = 'lowpass';
     lpf.frequency.setValueAtTime(550, t);
@@ -181,9 +186,8 @@ class AudioManagerClass {
     noise.stop(t + 0.16);
   }
 
-  // КЛЕЙ / НАНЕСЕНИЕ
   playWash() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -203,9 +207,8 @@ class AudioManagerClass {
     osc.stop(t + 0.13);
   }
 
-  // ЗВОН МОНЕТЫ / УСПЕШНОЕ ДЕЙСТВИЕ
   playCoin() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -226,9 +229,32 @@ class AudioManagerClass {
     });
   }
 
-  // ХРУСТАЛЬНЫЙ ПЕРЕЛИВ ЗАВЕРШЕНИЯ (Шик победы)
+  // Одиночная сияющая нота для звезды
+  playStarChime(step = 0) {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx) return;
+
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    const freq = notes[step % notes.length];
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.16, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.61);
+  }
+
   playShine() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -251,9 +277,8 @@ class AudioManagerClass {
     });
   }
 
-  // КЛИК ПО КНОПКЕ
   playClick() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -273,9 +298,8 @@ class AudioManagerClass {
     osc.stop(t + 0.05);
   }
 
-  // ОТКОЛ ДЕТАЛИ
   playBreakSnap() {
-    if (this.isMuted) return;
+    if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -295,8 +319,64 @@ class AudioManagerClass {
     osc.stop(t + 0.09);
   }
 
-  playEraMusic() {}
-  stopMusic() {}
+  // ФОНОВЫЙ САУНДТРЕК (Мягкий эмбиент-дрон)
+  playEraMusic(era = 'egypt') {
+    if (this.isMusicDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx || this.isMusicPlaying) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.setValueAtTime(0.001, t);
+      this.musicGain.linearRampToValueAtTime(0.045, t + 2.0);
+
+      // Глубокий резонансный фильтр
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(280, t);
+
+      // Генератор атмосферного аккорда
+      const freqs = [110, 164.81, 220]; // A2 + E3 + A3
+      this.activeOscs = [];
+
+      freqs.forEach(f => {
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, t);
+        osc.connect(filter);
+        osc.start(t);
+        this.activeOscs.push(osc);
+      });
+
+      filter.connect(this.musicGain);
+      this.musicGain.connect(this.ctx.destination);
+      this.isMusicPlaying = true;
+    } catch {
+      // Игнорируем блокировку до первого пользовательского ввода
+    }
+  }
+
+  stopMusic() {
+    if (!this.ctx || !this.isMusicPlaying) return;
+    try {
+      const t = this.ctx.currentTime;
+      if (this.musicGain) {
+        this.musicGain.gain.linearRampToValueAtTime(0.001, t + 0.6);
+      }
+      setTimeout(() => {
+        if (this.activeOscs) {
+          this.activeOscs.forEach(o => {
+            try { o.stop(); o.disconnect(); } catch {}
+          });
+          this.activeOscs = null;
+        }
+        this.isMusicPlaying = false;
+      }, 700);
+    } catch {
+      this.isMusicPlaying = false;
+    }
+  }
 }
 
 export const AudioManager = new AudioManagerClass();
