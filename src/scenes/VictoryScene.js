@@ -1,6 +1,4 @@
-import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
-import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -9,148 +7,104 @@ export class VictoryScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    this.artData = (data && data.artifact) ? data.artifact : {
-      name: 'Золотой скарабей',
-      textureKey: 'art_egypt_scarab',
-      marketValue: 180
-    };
-    this.stars = (data && data.stars) ? data.stars : 3;
+    const artifact = (data && data.artifact) ? data.artifact : { name: 'Артефакт', marketValue: 200 };
+    const starsCount = (data && data.stars) ? data.stars : 3;
 
-    const baseReward = this.artData.marketValue || 180;
-    this.goldReward = Math.round(baseReward * 0.6);
-    this.xpReward = 160 + (this.stars * 30);
-    this.rewardClaimed = false;
+    // Фон экрана победы
+    this.add.rectangle(width / 2, height / 2, width, height, 0x07090e).setDepth(0);
 
-    // Начисление валюты и опыта
-    const oldLevel = Storage.getMasterLevel ? Storage.getMasterLevel() : 1;
-    Storage.addCoins(this.goldReward);
-    Storage.addXP(this.xpReward);
-    const newLevel = Storage.getMasterLevel ? Storage.getMasterLevel() : 1;
-    const leveledUp = newLevel > oldLevel;
+    // Заголовок
+    this.add.text(width / 2, height * 0.12, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
+      fontSize: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#e2b35b',
+      fontStyle: 'bold',
+      letterSpacing: 2
+    }).setOrigin(0.5).setDepth(10);
 
-    // Фанфары победы
-    AudioManager.playVictory();
+    // ЗОЛОТЫЕ ЗВЕЗДЫ (устранение зеленых квадратов)
+    const starStartX = width / 2 - 56;
+    for (let i = 0; i < 3; i++) {
+      const starKey = (i < starsCount) ? 'icon_star' : 'icon_star_empty';
+      const star = this.add.image(starStartX + i * 56, height * 0.20, starKey)
+        .setScale(0)
+        .setDepth(10);
 
-    // Полупрозрачный темный фон с золотым свечением
-    this.add.rectangle(width / 2, height / 2, width, height, 0x0a0c10, 0.94);
-
-    // Конфетти
-    const emitter = this.add.particles(width / 2, height * 0.26, 'particle_dust', {
-      speed: { min: 140, max: 280 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 1.8, end: 0.2 },
-      lifespan: 1200,
-      gravityY: 180,
-      quantity: 35,
-      tint: [0xfacc15, 0xef4444, 0x3b82f6, 0x22c55e]
-    });
-    this.time.delayedCall(700, () => emitter.stop());
-
-    // Отреставрированный сияющий артефакт
-    const art = this.add.image(width / 2, height * 0.27, this.artData.textureKey || 'art_egypt_scarab')
-      .setScale(0);
-
-    this.tweens.add({
-      targets: art,
-      scale: 0.72,
-      duration: 550,
-      ease: 'Back.easeOut'
-    });
-
-    // 3 Звезды
-    const starStartX = width / 2 - (this.stars - 1) * 24;
-    for (let i = 0; i < this.stars; i++) {
-      const s = this.add.image(starStartX + i * 48, height * 0.44, 'icon_star').setScale(0);
       this.tweens.add({
-        targets: s,
-        scale: 1.25,
-        delay: 350 + i * 140,
-        duration: 350,
-        ease: 'Back.easeOut',
-        onStart: () => AudioManager.playCoin()
+        targets: star,
+        scale: 0.9,
+        duration: 400,
+        delay: 200 + i * 150,
+        ease: 'Back.easeOut'
       });
     }
 
-    // Заголовки
-    this.add.text(width / 2, height * 0.51, leveledUp ? 'НОВЫЙ УРОВЕНЬ МАСТЕРА!' : 'АРТЕФАКТ ВОССТАНОВЛЕН!', {
-      fontSize: '20px',
-      fontStyle: 'bold',
-      fontFamily: 'sans-serif',
-      color: leveledUp ? '#f59e0b' : '#22c55e'
-    }).setOrigin(0.5);
+    // Артефакт во всей красе
+    const tex = this.textures.exists(artifact.textureKey) ? artifact.textureKey : 'art_egypt_scarab';
+    const artImg = this.add.image(width / 2, height * 0.44, tex)
+      .setScale(0.85)
+      .setDepth(10);
 
-    this.add.text(width / 2, height * 0.56, this.artData.name, {
-      fontSize: '17px',
-      fontFamily: 'sans-serif',
-      color: '#f8fafc'
-    }).setOrigin(0.5);
-
-    // Блок наград
-    this.rewardText = this.add.text(width / 2, height * 0.62, `+${this.goldReward} золота   •   +${this.xpReward} XP`, {
-      fontSize: '17px',
-      fontFamily: 'sans-serif',
-      color: '#facc15',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    // Удвоение награды за просмотр рекламы
-    this.doubleBtn = this.add.rectangle(width / 2, height * 0.70, 260, 46, 0xd97706)
-      .setStrokeStyle(1.5, 0xffffff, 0.4)
-      .setInteractive({ useHandCursor: true });
-
-    this.doubleText = this.add.text(width / 2, height * 0.70, 'УДВОИТЬ НАГРАДУ x2', {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-      letterSpacing: 1
-    }).setOrigin(0.5);
-
-    this.doubleBtn.on('pointerdown', () => {
-      if (this.rewardClaimed) return;
-      YandexSDK.showRewardedVideo({
-        onRewarded: () => {
-          this.rewardClaimed = true;
-          Storage.addCoins(this.goldReward);
-          Storage.addXP(this.xpReward);
-          AudioManager.playCoin();
-          this.rewardText.setText(`+${this.goldReward * 2} золота   •   +${this.xpReward * 2} XP`);
-          this.doubleBtn.setAlpha(0.4);
-          this.doubleText.setText('УДВОЕНО!');
-        }
-      });
+    // Мягкое свечение под артефактом
+    this.tweens.add({
+      targets: artImg,
+      scaleX: 0.88,
+      scaleY: 0.88,
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
 
-    // Кнопка 1: Отнести в антикварную лавку на продажу
-    const shopBtn = this.add.rectangle(width / 2, height * 0.79, 260, 48, 0x16a34a)
-      .setStrokeStyle(1.5, 0xffffff, 0.5)
-      .setInteractive({ useHandCursor: true });
-
-    this.add.text(width / 2, height * 0.79, 'ВЫСТАВИТЬ НА ПОЛКУ В ЛАВКУ', {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
+    // Название и оценка стоимости
+    this.add.text(width / 2, height * 0.64, artifact.name, {
+      fontSize: '22px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(10);
 
-    shopBtn.on('pointerdown', () => {
-      this.scene.start('MuseumScene');
+    this.add.text(width / 2, height * 0.69, `Музейная оценка: +${artifact.marketValue || 200} 💰`, {
+      fontSize: '15px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#22c55e',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(10);
+
+    // КНОПКА: В ГЛАВНОЕ МЕНЮ (как запрошено, остается на экране поздравления)
+    const menuBtn = this.add.rectangle(width / 2, height * 0.79, width * 0.84, 48, 0x161e2c)
+      .setStrokeStyle(1.5, 0x475569, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(20);
+
+    this.add.text(width / 2, height * 0.79, '🏠 В главное меню', {
+      fontSize: '15px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(21);
+
+    menuBtn.on('pointerdown', () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('MenuScene');
     });
 
-    // Кнопка 2: Взять следующий заказ на верстак
-    const nextBtn = this.add.rectangle(width / 2, height * 0.87, 260, 44, 0x334155)
-      .setStrokeStyle(1.5, 0xffffff, 0.3)
-      .setInteractive({ useHandCursor: true });
+    // КНОПКА: СЛЕДУЮЩИЙ АРТЕФАКТ
+    const nextBtn = this.add.rectangle(width / 2, height * 0.87, width * 0.84, 48, 0x10b981)
+      .setStrokeStyle(1.5, 0x34d399, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(20);
 
-    this.add.text(width / 2, height * 0.87, 'СЛЕДУЮЩИЙ ЗАКАЗ', {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
-      color: '#f1f5f9',
+    this.add.text(width / 2, height * 0.87, '▶ К следующему артефакту', {
+      fontSize: '15px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(21);
 
     nextBtn.on('pointerdown', () => {
-      this.scene.start('RestoreScene');
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('EraSelectScene');
     });
   }
 }
