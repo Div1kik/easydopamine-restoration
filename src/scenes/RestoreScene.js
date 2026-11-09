@@ -46,42 +46,37 @@ export class RestoreScene extends Phaser.Scene {
     this.createAtmosphericWorkbench(width, height, tier);
 
     // 2. Верхняя навигация
-    const homeBtnBg = this.add.circle(32, 34, 18, 0x141a24)
-      .setStrokeStyle(1.5, 0x334155, 0.8)
-      .setInteractive({ useHandCursor: true }).setDepth(30);
-    this.add.image(32, 34, 'icon_home').setScale(0.6).setDepth(31);
-
-    homeBtnBg.on('pointerdown', () => {
-      if (AudioManager.stopMusic) AudioManager.stopMusic();
-      this.scene.start('EraSelectScene');
-    });
-
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.coinsText = this.add.text(60, 24, `${coins} 💰`, {
-      fontSize: '15px',
-      fontFamily: 'sans-serif',
+    this.coinsText = this.add.text(24, 34, `${coins} 💰`, {
+      fontSize: '16px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
-    }).setDepth(30);
+    }).setOrigin(0, 0.5).setDepth(30);
 
-    const shopBtn = this.add.rectangle(width - 48, 34, 72, 30, 0x181e2b)
-      .setStrokeStyle(1.5, 0xd4af37, 0.9)
-      .setInteractive({ useHandCursor: true }).setDepth(30);
-    this.add.text(width - 48, 34, '🛒 Лавка', {
-      fontSize: '11.5px',
-      fontFamily: 'sans-serif',
-      color: '#fef08a',
+    // Кнопка В ГЛАВНОЕ МЕНЮ вместо лавки
+    const menuBtn = this.add.rectangle(width - 64, 34, 104, 34, 0x161e2c)
+      .setStrokeStyle(1.5, 0x475569, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    this.add.text(width - 64, 34, '🏠 В меню', {
+      fontSize: '13px',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(31);
 
-    shopBtn.on('pointerdown', () => {
-      this.scene.start('ShopScene', { returnToRestore: true });
+    menuBtn.on('pointerdown', () => {
+      if (AudioManager.stopMusic) AudioManager.stopMusic();
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('MenuScene');
     });
 
     // 3. Шапка задачи
     this.add.text(width / 2, 54, (this.artifactData.regionName || 'ДРЕВНИЙ ЕГИПЕТ').toUpperCase(), {
       fontSize: '11px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#c5a059',
       fontStyle: 'bold',
       letterSpacing: 2
@@ -89,14 +84,14 @@ export class RestoreScene extends Phaser.Scene {
 
     this.add.text(width / 2, 74, this.artifactData.name, {
       fontSize: '18px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
     this.taskNotice = this.add.text(width / 2, 94, '', {
       fontSize: '11.5px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#22c55e',
       fontStyle: 'bold',
       align: 'center',
@@ -110,26 +105,27 @@ export class RestoreScene extends Phaser.Scene {
 
     this.toolWarning = this.add.text(width / 2, 130, '', {
       fontSize: '11px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ef4444',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. Рабочая зона (200x240)
-    this.artW = 200;
-    this.artH = 240;
+    // 4. Точные габариты: 240 x 300 без искажения масштаба
+    this.artW = 240;
+    this.artH = 300;
     this.centerX = Math.round(width / 2);
     this.centerY = Math.round(height * 0.44);
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 105, 170, 32, 0x000000, 0.7).setDepth(5);
+    this.add.ellipse(this.centerX, this.centerY + 130, 200, 36, 0x000000, 0.7).setDepth(5);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(6);
 
     this.breakHoleGfx = this.add.graphics().setDepth(7).setVisible(false);
 
+    // Слой грязи строго совпадает по размерам с артефактом
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0).setDepth(8);
 
@@ -161,9 +157,9 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolsTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // 5. Мелкая точная сетка (30x36) для честной очистки
-    this.gridCols = 30;
-    this.gridRows = 36;
+    // Сетка анализа (24 x 30): каждая ячейка равна ровно 10x10 пикселей!
+    this.gridCols = 24;
+    this.gridRows = 30;
     this.totalCells = this.gridCols * this.gridRows;
     this.cleanedGrid = new Uint8Array(this.totalCells);
     this.validCellsMask = new Uint8Array(this.totalCells);
@@ -171,7 +167,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 6. Обработка стирания с физическим радиусом и честным порогом 96%
+    // 5. Очистка строго по контуру артефакта
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -194,7 +190,7 @@ export class RestoreScene extends Phaser.Scene {
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
-      if (localX >= 2 && localX <= this.artW - 2 && localY >= 2 && localY <= this.artH - 2) {
+      if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
         if (this.activeTool === 'tool_scraper' && AudioManager.playScrub) AudioManager.playScrub();
@@ -204,8 +200,10 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        // Расчет ячеек в реальном радиусе стирания инструмента
-        const eraseRadius = (this.activeTool === 'tool_scraper') ? 14 : ((this.activeTool === 'tool_brush') ? 18 : 15);
+        const eraseRadius = (this.activeTool === 'tool_scraper') ? 22 :
+                            (this.activeTool === 'tool_brush') ? 26 :
+                            (this.activeTool === 'tool_solvent') ? 24 : 26;
+
         const cellRadiusX = Math.ceil((eraseRadius / this.artW) * this.gridCols);
         const cellRadiusY = Math.ceil((eraseRadius / this.artH) * this.gridRows);
 
@@ -224,6 +222,7 @@ export class RestoreScene extends Phaser.Scene {
 
               if (dist <= eraseRadius) {
                 const idx = gy * this.gridCols + gx;
+                // Засчитываем ТОЛЬКО пиксели, где действительно нарисован артефакт
                 if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] === 0) {
                   this.cleanedGrid[idx] = 1;
                   this.cleanedCount++;
@@ -233,12 +232,11 @@ export class RestoreScene extends Phaser.Scene {
           }
         }
 
-        // Честный порог: требуется очистить 96% всей поверхности артефакта
-        const targetGoal = Math.max(this.targetValidCells * 0.96, 1);
+        // Порог: 93% реального тела артефакта (без пустоты вокруг)
+        const targetGoal = Math.max(this.targetValidCells * 0.93, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
-        // Переход наступает ТОЛЬКО при реальной очистке всей фигуры
         if (ratio >= 1.0 && !this.isTaskTransition) {
           this.isTaskTransition = true;
           this.toolSprite.setAlpha(0);
@@ -288,7 +286,7 @@ export class RestoreScene extends Phaser.Scene {
           const alpha = imgData[(sampleY * w + sampleX) * 4 + 3];
 
           const idx = gy * this.gridCols + gx;
-          if (alpha > 40) {
+          if (alpha > 35) {
             this.validCellsMask[idx] = 1;
             this.targetValidCells++;
           }
@@ -296,13 +294,14 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
+    // Резервная форма, если чтение canvas заблокировано политикой браузера
     if (this.targetValidCells < 40) {
       this.targetValidCells = 0;
       for (let gy = 0; gy < this.gridRows; gy++) {
         for (let gx = 0; gx < this.gridCols; gx++) {
           const nx = (gx / (this.gridCols - 1)) * 2 - 1;
           const ny = (gy / (this.gridRows - 1)) * 2 - 1;
-          if ((nx * nx * 1.5 + ny * ny) <= 0.8) {
+          if ((nx * nx * 1.4 + ny * ny) <= 0.8) {
             const idx = gy * this.gridCols + gx;
             this.validCellsMask[idx] = 1;
             this.targetValidCells++;
