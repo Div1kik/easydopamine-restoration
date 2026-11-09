@@ -6,8 +6,19 @@ class AudioManagerClass {
     this.lastSoundTime = {};
     this.musicGain = null;
     this.currentTrack = null;
+    this.pendingTrack = 'menu';
     this.activeNodes = [];
-    this.loopTimer = null;
+    this.musicInterval = null;
+
+    // Глобальный перехват первого тапа для гарантированного снятия блокировки автоплея Chrome
+    const autoUnlock = () => {
+      this.unlockAudio();
+      if (!this.isMusicDisabled() && !this.isMusicPlaying && this.pendingTrack) {
+        this.playEraMusic(this.pendingTrack);
+      }
+    };
+    window.addEventListener('pointerdown', autoUnlock, { once: true });
+    window.addEventListener('touchstart', autoUnlock, { once: true });
   }
 
   init() {
@@ -52,6 +63,44 @@ class AudioManagerClass {
       output[i] = Math.random() * 2 - 1;
     }
     return buffer;
+  }
+
+  // --- МЯГКИЙ БАРХАТНЫЙ КОЛОКОЛЬЧИК АНТИКВАРНОЙ ЛАВКИ ---
+  playShopBell() {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Тёплые, не режущие ухо латунные ноты (A5 и D6 с мягкой обёрткой)
+    const tones = [
+      { f: 880, delay: 0, dur: 1.1, gain: 0.12 },
+      { f: 1174.66, delay: 0.12, dur: 0.9, gain: 0.09 },
+      { f: 1760, delay: 0.14, dur: 0.6, gain: 0.04 }
+    ];
+
+    tones.forEach((tone) => {
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(tone.f, t + tone.delay);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t + tone.delay);
+      gain.gain.linearRampToValueAtTime(tone.gain, t + tone.delay + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + tone.delay + tone.dur);
+
+      // Мягкий фильтр для среза излишней визгливости
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(2200, t + tone.delay);
+
+      osc.connect(f);
+      f.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(t + tone.delay);
+      osc.stop(t + tone.delay + tone.dur + 0.05);
+    });
   }
 
   // --- ЭФФЕКТЫ ИНСТРУМЕНТОВ ---
@@ -224,31 +273,6 @@ class AudioManagerClass {
     });
   }
 
-  // КОЛОКОЛЬЧИК НА ВХОДЕ В ВИТРИНУ МАГАЗИНА
-  playShopBell() {
-    if (this.isSfxDisabled()) return;
-    this.unlockAudio();
-    if (!this.ctx) return;
-
-    const t = this.ctx.currentTime;
-    const bellTones = [1760, 2637.02]; // Двойной стеклянный перезвон
-    bellTones.forEach((freq, i) => {
-      const delay = i * 0.11;
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, t + delay);
-
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.18, t + delay);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.7);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(t + delay);
-      osc.stop(t + delay + 0.75);
-    });
-  }
-
   playStarChime(step = 0) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -338,63 +362,63 @@ class AudioManagerClass {
     osc.stop(t + 0.09);
   }
 
-  // --- МУЗЫКАЛЬНЫЙ ДВИЖОК ДЛЯ КАЖДОЙ ЭПОХИ И МЕНЮ ---
+  // --- ЖИВОЙ САУНДТРЕК ЭПОХ (БЕЗ ОШИБОК ПОДКЛЮЧЕНИЯ НОД) ---
   playEraMusic(era = 'menu') {
+    this.pendingTrack = era;
     if (this.isMusicDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
-    // Если этот трек уже звучит — не перезапускаем
-    if (this.currentTrack === era) return;
+    if (this.currentTrack === era && this.isMusicPlaying) return;
     this.stopMusic();
     this.currentTrack = era;
 
     try {
       const t = this.ctx.currentTime;
       this.musicGain = this.ctx.createGain();
-      this.musicGain.gain.setValueAtTime(0.001, t);
-      this.musicGain.linearRampToValueAtTime(0.045, t + 1.8);
+      this.musicGain.gain.setValueAtTime(0.0001, t);
+      // Плавное нарастание музыки без щелчков
+      this.musicGain.gain.linearRampToValueAtTime(0.065, t + 2.0);
       this.musicGain.connect(this.ctx.destination);
 
-      // Настройка уникального гармонического ряда для каждой эпохи
-      let baseNotes = [110, 164.81, 220]; // Меню по умолчанию: A-E-A
-      let filterFreq = 300;
+      let baseNotes = [110, 164.81, 220]; // Меню: A2 + E3 + A3
+      let filterFreq = 340;
       let oscType = 'sine';
 
       if (era === 'egypt') {
-        // Хиджаз / Древний Восток (D - F# - A - Bb)
+        // Мистический хиджаз
         baseNotes = [146.83, 185.00, 220.00, 233.08];
-        filterFreq = 360;
+        filterFreq = 380;
         oscType = 'triangle';
       } else if (era === 'antique') {
-        // Дорийский лад древнегреческой лиры (E - G - B - D)
+        // Дорийская лира
         baseNotes = [164.81, 196.00, 246.94, 293.66];
         filterFreq = 420;
         oscType = 'sine';
       } else if (era === 'europe') {
-        // Органный средневековый канон (C - G - C - E)
+        // Средневековый соборный хорал
         baseNotes = [130.81, 196.00, 261.63, 329.63];
-        filterFreq = 250;
-        oscType = 'sawtooth';
+        filterFreq = 280;
+        oscType = 'triangle';
       } else if (era === 'japan') {
-        // Японская традиционная пентатоника Ёсэн (D - Eb - G - A)
+        // Пентатоника Ёсэн
         baseNotes = [146.83, 155.56, 196.00, 220.00];
-        filterFreq = 480;
+        filterFreq = 460;
         oscType = 'sine';
       } else if (era === 'aztec') {
-        // Глухой шаманский низкий дрон (F - C - F)
+        // Низкий шаманский гул
         baseNotes = [87.31, 130.81, 174.61];
-        filterFreq = 190;
+        filterFreq = 220;
         oscType = 'triangle';
       } else if (era === 'vikings') {
-        // Скандинавский смычковый дрон (A - E - B)
+        // Скандинавский варган и смычковый дрон
         baseNotes = [110.00, 164.81, 246.94];
-        filterFreq = 220;
-        oscType = 'sawtooth';
+        filterFreq = 260;
+        oscType = 'triangle';
       } else if (era === 'renaissance') {
-        // Светлый лютневый мажор (G - B - D - G)
+        // Светлая лютня
         baseNotes = [196.00, 246.94, 293.66, 392.00];
-        filterFreq = 500;
+        filterFreq = 520;
         oscType = 'triangle';
       }
 
@@ -408,29 +432,22 @@ class AudioManagerClass {
         const osc = this.ctx.createOscillator();
         osc.type = oscType;
         osc.frequency.setValueAtTime(freq, t);
+        osc.detune.setValueAtTime((idx % 2 === 0 ? 4 : -4), t);
 
-        // Легкая расстройка (Chorus/Detune) для живого объёма
-        osc.detune.setValueAtTime((idx % 2 === 0 ? 3 : -3), t);
+        const voiceGain = this.ctx.createGain();
+        voiceGain.gain.setValueAtTime(0.28, t);
 
-        // Индивидуальный LFO для мягкого дыхания звука
-        const lfo = this.ctx.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.setValueAtTime(0.15 + idx * 0.05, t);
-
-        const lfoGain = this.ctx.createGain();
-        lfoGain.gain.setValueAtTime(0.012, t);
-        lfo.connect(lfoGain.gain);
-
-        osc.connect(masterFilter);
+        osc.connect(voiceGain);
+        voiceGain.connect(masterFilter);
         osc.start(t);
-        lfo.start(t);
 
-        this.activeNodes.push(osc, lfo);
+        this.activeNodes.push(osc);
       });
 
       masterFilter.connect(this.musicGain);
-    } catch {
-      // Игнорируем блокировку до первого пользовательского тапа
+      this.isMusicPlaying = true;
+    } catch (e) {
+      console.warn('Audio start error:', e);
     }
   }
 
@@ -439,19 +456,21 @@ class AudioManagerClass {
     try {
       const t = this.ctx.currentTime;
       if (this.musicGain) {
-        this.musicGain.gain.linearRampToValueAtTime(0.001, t + 0.5);
+        this.musicGain.gain.linearRampToValueAtTime(0.0001, t + 0.6);
       }
       setTimeout(() => {
         if (this.activeNodes) {
-          this.activeNodes.forEach(n => {
+          this.activeNodes.forEach((n) => {
             try { n.stop(); n.disconnect(); } catch {}
           });
           this.activeNodes = [];
         }
         this.currentTrack = null;
-      }, 550);
+        this.isMusicPlaying = false;
+      }, 650);
     } catch {
       this.currentTrack = null;
+      this.isMusicPlaying = false;
     }
   }
 }
