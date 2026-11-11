@@ -70,9 +70,7 @@ export class MuseumScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(32);
 
     backBtn.on('pointerdown', () => {
-      if (AudioManager.playClick) {
-        AudioManager.playClick();
-      }
+      if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
   }
@@ -80,7 +78,8 @@ export class MuseumScene extends Phaser.Scene {
   updateHeader() {
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.infoText.setText(`Товаров на витрине: ${inventory.length} • Казна: ${coins} 🪙`);
+    const maxSlots = Storage.getMaxMuseumCapacity ? Storage.getMaxMuseumCapacity() : 6;
+    this.infoText.setText(`Экспонаты: ${inventory.length}/${maxSlots} • Казна: ${coins} 🪙`);
   }
 
   setupScroll() {
@@ -145,7 +144,7 @@ export class MuseumScene extends Phaser.Scene {
       const t2 = this.add.text(
         width / 2,
         height * 0.38 - this.listTopY + 14,
-        'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на витрину магазина.',
+        'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на витрину музея.',
         {
           fontSize: '12px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -166,8 +165,10 @@ export class MuseumScene extends Phaser.Scene {
       const cardY = idx * (cardH + spacing) + cardH / 2 + 6;
       const card = this.add.container(width / 2, cardY);
 
+      const isDamaged = (item.stars === 1);
+
       const cardBg = this.add.rectangle(0, 0, cardW, cardH, 0x111622, 0.96)
-        .setStrokeStyle(1, 0x273142, 0.8);
+        .setStrokeStyle(1.5, isDamaged ? 0xef4444 : 0x273142, 0.8);
 
       const tex = this.textures.exists(item.textureKey)
         ? item.textureKey
@@ -186,38 +187,48 @@ export class MuseumScene extends Phaser.Scene {
         }
       );
 
-      const sellPrice = item.marketValue || 200;
+      const sellPrice = item.marketValue || 100;
+
+      // Отображение статуса качества и звезд
+      const starsBadge = item.stars ? '⭐'.repeat(item.stars) : '⭐⭐⭐';
+      const statusColor = isDamaged ? '#ef4444' : '#22c55e';
+      const statusText = isDamaged ? ' • СКОЛЫ (НЕТ БИЛЕТОВ)' : ' • В ЭКСПОЗИЦИИ';
 
       const val = this.add.text(
         -cardW / 2 + 80,
         10,
-        `Ценность: ${sellPrice} 🪙`,
+        `${sellPrice} 🪙  ${starsBadge}${statusText}`,
         {
-          fontSize: '12px',
+          fontSize: '11px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          color: '#facc15',
+          color: statusColor,
           fontStyle: 'bold'
         }
       );
+
+      // Кнопка продажи / сдачи скупщику
+      const btnBgColor = isDamaged ? 0x261418 : 0x16241a;
+      const btnStroke = isDamaged ? 0xef4444 : 0x22c55e;
+      const btnLabel = isDamaged ? 'СКУПЩИКУ' : 'ПРОДАТЬ';
 
       const sellBtnBg = this.add.rectangle(
         cardW / 2 - 50,
         0,
         80,
         36,
-        0x16241a
+        btnBgColor
       )
-        .setStrokeStyle(1.5, 0x22c55e, 0.8)
+        .setStrokeStyle(1.5, btnStroke, 0.8)
         .setInteractive({ useHandCursor: true });
 
       const sellBtnTxt = this.add.text(
         cardW / 2 - 50,
         0,
-        'ПРОДАТЬ',
+        btnLabel,
         {
-          fontSize: '11px',
+          fontSize: '10.5px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          color: '#22c55e',
+          color: isDamaged ? '#fca5a5' : '#22c55e',
           fontStyle: 'bold'
         }
       ).setOrigin(0.5);
@@ -229,19 +240,16 @@ export class MuseumScene extends Phaser.Scene {
           isSold = true;
           sellBtnBg.disableInteractive();
 
-          // 1. Звук монет
           if (AudioManager.playCoin) AudioManager.playCoin();
 
-          // 2. Мгновенное начисление и удаление из Storage
           Storage.addCoins(sellPrice);
           Storage.removeArtifactFromInventory(item.instanceId);
 
-          // 3. Мгновенно обновляем шапку
           this.updateHeader();
 
-          // 4. Визуальная анимация продажи
           sellBtnBg.setFillStyle(0x334155, 0.5);
-          sellBtnTxt.setText('ПРОДАНО').setColor('#94a3b8');
+          sellBtnTxt.setText('ПРОДАНО');
+          sellBtnTxt.setColor('#94a3b8');
 
           this.tweens.add({
             targets: card,
