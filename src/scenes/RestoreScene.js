@@ -39,6 +39,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.currentTaskIndex = 0;
     this.lastTouchPos = null;
+    this.lastCleanPos = null;
     this.glueApplied = false;
     this.isTaskTransition = false;
 
@@ -195,7 +196,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Очистка строго по контуру артефакта
+    // 5. Очистка строго по контуру артефакта с плавным расчетом шкалы
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -215,6 +216,13 @@ export class RestoreScene extends Phaser.Scene {
         return;
       }
 
+      // Фильтр микроколебаний пальца на одном месте
+      if (this.lastCleanPos) {
+        const moveDist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
+        if (moveDist < 4) return;
+      }
+      this.lastCleanPos = { x: pointer.x, y: pointer.y };
+
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
@@ -228,9 +236,10 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        const eraserRadius = (this.activeTool === 'tool_scraper') ? 28 :
-                             (this.activeTool === 'tool_brush') ? 34 :
-                             (this.activeTool === 'tool_solvent') ? 30 : 36;
+        // Сбалансированные радиусы стирания сетки
+        const eraserRadius = (this.activeTool === 'tool_scraper') ? 16 :
+                             (this.activeTool === 'tool_brush') ? 20 :
+                             (this.activeTool === 'tool_solvent') ? 18 : 22;
 
         const cellRadiusX = Math.ceil(eraserRadius / this.artW * this.gridCols);
         const cellRadiusY = Math.ceil(eraserRadius / this.artH * this.gridRows);
@@ -259,7 +268,8 @@ export class RestoreScene extends Phaser.Scene {
           }
         }
 
-        const targetGoal = Math.max(this.targetValidCells * 0.93, 1);
+        // Порог завершения 98.5% — статус-бар доходит до конца синхронно с чистотой артефакта
+        const targetGoal = Math.max(this.targetValidCells * 0.985, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
@@ -281,6 +291,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
+      this.lastCleanPos = null;
       this.tweens.add({
         targets: this.toolSprite,
         alpha: 0,
