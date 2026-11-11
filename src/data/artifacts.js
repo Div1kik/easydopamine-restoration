@@ -59,7 +59,6 @@ export const ARTIFACT_TEMPLATES = [
   { id: 'renaissance_goblet', regionId: 'renaissance', name: 'Венецианское стекло', description: 'Филигранный кубок с витыми стеклянными нитями.', textureKey: 'art_renaissance_goblet', marketValue: 440 }
 ];
 
-// ПРОЦЕДУРНЫЙ ГЕНЕРАТОР ЗАДАЧ (создает уникальный сценарий очистки каждый раз)
 export function generateArtifactOrder(preferredRegion, recentHistory = [], requestedTemplateId = null) {
   let baseTemplate = null;
   if (requestedTemplateId) {
@@ -71,34 +70,50 @@ export function generateArtifactOrder(preferredRegion, recentHistory = [], reque
     baseTemplate = pool[Math.floor(Math.random() * pool.length)];
   }
 
-  // Базовые пресеты инструментов для очистки
-  const taskScraper = { name: 'Сколоть окаменевший пласт породы', requiredTool: 'tool_scraper', color: 0x78562d };
-  const taskBrush   = { name: 'Смести минеральную пыль и песок', requiredTool: 'tool_brush', color: 0xa89f81 };
-  const taskSolvent = { name: 'Смыть химические окислы растворителем', requiredTool: 'tool_solvent', color: 0x2a593f };
-  const taskPolish  = { name: 'Натереть воском и навести глянец', requiredTool: 'tool_polish', color: 0x181818 };
+  // Дублируем описание в hint и name для 100% совместимости
+  const taskScraper = {
+    name: 'Сколоть окаменевший пласт породы',
+    hint: 'Сколоть окаменевший пласт породы',
+    requiredTool: 'tool_scraper',
+    color: 0x78562d
+  };
+  const taskBrush = {
+    name: 'Смести минеральную пыль и песок',
+    hint: 'Смести минеральную пыль и песок',
+    requiredTool: 'tool_brush',
+    color: 0xa89f81
+  };
+  const taskSolvent = {
+    name: 'Смыть химические окислы растворителем',
+    hint: 'Смыть химические окислы растворителем',
+    requiredTool: 'tool_solvent',
+    color: 0x2a593f
+  };
+  const taskPolish = {
+    name: 'Натереть воском и навести глянец',
+    hint: 'Натереть воском и навести глянец',
+    requiredTool: 'tool_polish',
+    color: 0x181818
+  };
 
   const taskBreak = {
     name: 'Закрепить отколовшийся фрагмент',
+    hint: 'Закрепить отколовшийся фрагмент',
     type: 'break_and_assemble',
     requiredTool: 'tool_glue',
     shardTexture: baseTemplate.textureKey
   };
 
-  // Процедурные архетипы реставрации: замша ВСЕГДА идёт только на финише
   const roll = Math.random();
   let chosenTasks = [];
 
   if (roll < 0.30) {
-    // 1. Драматический скол: смели пыль кистью -> откололась деталь -> приклеили -> отполировали замшей
     chosenTasks = [taskBrush, taskBreak, taskPolish];
   } else if (roll < 0.60) {
-    // 2. Древняя окаменелость: сняли пласт скребком -> растворили въевшуюся грязь спреем -> финишная замша
     chosenTasks = [taskScraper, taskSolvent, taskPolish];
   } else if (roll < 0.85) {
-    // 3. Полная музейная чистка: скребок -> мягкая кисть -> финишная замша
     chosenTasks = [taskScraper, taskBrush, taskPolish];
   } else {
-    // 4. Глубокая реставрация: скребок -> растворитель -> клей отколовшегося фрагмента -> финишная замша
     chosenTasks = [taskScraper, taskSolvent, taskBreak, taskPolish];
   }
 
