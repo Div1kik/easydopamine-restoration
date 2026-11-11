@@ -32,7 +32,7 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
     }
 
-    // Проверка на дубликат в истории
+    // Проверка на повторный образец (дубликат)
     const isDuplicate = history.some(item => (item.templateId || item.id) === this.artifactData.id);
     this.isDuplicate = !this.activeContract && isDuplicate;
 
@@ -55,6 +55,8 @@ export class RestoreScene extends Phaser.Scene {
     this.isTaskTransition = false;
     this.mistakesCount = 0;
     this.lastMistakeTime = 0;
+    this.isKintsugiMode = false;
+    this.hasKintsugiMastery = false;
 
     // 1. Фон верстака
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
@@ -216,7 +218,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Очистка по контуру со свободным выбором инструмента и штрафом за ошибки
+    // 5. Очистка по контуру
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -231,7 +233,6 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
       this.toolSprite.setAlpha(1);
 
-      // Проверка на неправильный инструмент
       if (this.activeTool !== currentTask.requiredTool) {
         this.toolWarning.setText(`⚠️ ОШИБКА: Нужен ${this.getToolName(currentTask.requiredTool)}!`);
 
@@ -239,8 +240,6 @@ export class RestoreScene extends Phaser.Scene {
           this.lastMistakeTime = this.time.now;
           this.mistakesCount++;
           if (AudioManager.playScrub) AudioManager.playScrub();
-
-          // Визуальный скрежет (красная микро-вспышка)
           this.cameras.main.shake(120, 0.004);
         }
         return;
@@ -290,7 +289,6 @@ export class RestoreScene extends Phaser.Scene {
               if (dist <= eraserRadius) {
                 const idx = gy * this.gridCols + gx;
                 if (this.validCellsMask[idx] === 1) {
-                  // Плотность: 2 прохода
                   if (this.cleanedGrid[idx] < 2) {
                     this.cleanedGrid[idx]++;
                     if (this.cleanedGrid[idx] === 2) {
@@ -415,7 +413,7 @@ export class RestoreScene extends Phaser.Scene {
 
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
-      this.toolWarning.setText('Выберите КЛЕЙ в лотке!');
+      this.toolWarning.setText('Выберите КЛЕЙ или ЗОЛОТОЙ ЛАК в лотке!');
       return;
     }
 
@@ -428,10 +426,21 @@ export class RestoreScene extends Phaser.Scene {
 
     if (d < 50 && !this.glueApplied) {
       this.glueApplied = true;
-      this.breakHoleGfx.fillStyle(0xf59e0b, 0.75);
+
+      // Цвет заливки стыка
+      const fillColor = this.isKintsugiMode ? 0xfacc15 : 0xf59e0b;
+      this.breakHoleGfx.fillStyle(fillColor, 0.85);
       this.breakHoleGfx.fillCircle(targetX, targetY, 26);
+
+      if (this.isKintsugiMode) {
+        this.breakHoleGfx.lineStyle(2, 0xfffbeb, 1);
+        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+        this.particles.setParticleTint(0xfacc15);
+        this.particles.emitParticleAt(targetX, targetY, 8);
+      }
+
       if (AudioManager.playWash) AudioManager.playWash();
-      this.taskNotice.setText('КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ОТКОЛОТУЮ ДЕТАЛЬ В ПАЗ');
+      this.taskNotice.setText(this.isKintsugiMode ? '✨ ЗОЛОТОЙ ЛАК НАНЕСЕН! ВЕРНИТЕ ДЕТАЛЬ В ПАЗ' : 'КЛЕЙ НАНЕСЕН! ВЕРНИТЕ ДЕТАЛЬ В ПАЗ');
       this.progressBarFill.width = (this.scale.width * 0.65);
       this.toolWarning.setText('');
     }
@@ -480,6 +489,9 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
 
+    // Плашка выбора Кинцуги
+    this.showKintsugiChoiceWidget(width);
+
     this.tweens.add({
       targets: this.brokenPiece,
       x: width * 0.22,
@@ -488,14 +500,14 @@ export class RestoreScene extends Phaser.Scene {
       ease: 'Bounce.easeOut',
       onComplete: () => {
         shardMaskShape.setPosition(this.brokenPiece.x, this.brokenPiece.y);
-        this.taskNotice.setText('ДЕТАЛЬ ОТЛОМИЛАСЬ! НАНЕСИТЕ КЛЕЙ НА СКОЛ');
+        this.taskNotice.setText('ДЕТАЛЬ ОТЛОМИЛАСЬ! ВЫБЕРИТЕ КЛЕЙ ИЛИ ЗОЛОТО');
         this.selectTool('tool_glue', 'slot_glue', 'mask_glue', true);
       }
     });
 
     hitZone.on('drag', (pointer, dragX, dragY) => {
       if (!this.glueApplied) {
-        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ НА МЕСТО СКОЛА!');
+        this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ ИЛИ ЗОЛОТОЙ ЛАК!');
         return;
       }
       this.brokenPiece.x = pointer.x;
@@ -510,11 +522,20 @@ export class RestoreScene extends Phaser.Scene {
         shardMaskShape.setPosition(targetX, targetY);
         hitZone.disableInteractive();
 
-        this.breakHoleGfx.clear();
-        this.breakHoleGfx.lineStyle(3, 0x22c55e, 1);
-        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+        if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
-        if (AudioManager.playCoin) AudioManager.playCoin();
+        if (this.isKintsugiMode) {
+          this.hasKintsugiMastery = true;
+          this.breakHoleGfx.clear();
+          this.breakHoleGfx.lineStyle(3, 0xfacc15, 1);
+          this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+          if (AudioManager.playShine) AudioManager.playShine();
+        } else {
+          this.breakHoleGfx.clear();
+          this.breakHoleGfx.lineStyle(3, 0x22c55e, 1);
+          this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+          if (AudioManager.playCoin) AudioManager.playCoin();
+        }
 
         this.time.delayedCall(450, () => {
           this.breakHoleGfx.setVisible(false);
@@ -526,6 +547,43 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.assemblyContainer.add([this.brokenPiece]);
+  }
+
+  showKintsugiChoiceWidget(width) {
+    if (this.kintsugiBanner) this.kintsugiBanner.destroy();
+
+    this.kintsugiBanner = this.add.container(width / 2, this.centerY - 130).setDepth(25);
+
+    const bannerBg = this.add.rectangle(0, 0, width * 0.86, 42, 0x141a26, 0.96)
+      .setStrokeStyle(1.5, 0xe2b35b, 0.8);
+
+    const kintsugiBtn = this.add.rectangle(width * 0.43 - 54, 0, 94, 28, 0xd4af37)
+      .setStrokeStyle(1, 0xfde047)
+      .setInteractive({ useHandCursor: true });
+
+    const kintsugiTxt = this.add.text(width * 0.43 - 54, 0, '✨ КИНЦУГИ', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#000000',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const infoTxt = this.add.text(-width * 0.43 + 12, 0, 'Золотой шов: +60% к цене', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold'
+    }).setOrigin(0, 0.5);
+
+    kintsugiBtn.on('pointerdown', () => {
+      this.isKintsugiMode = !this.isKintsugiMode;
+      kintsugiBtn.setFillStyle(this.isKintsugiMode ? 0x22c55e : 0xd4af37);
+      kintsugiTxt.setText(this.isKintsugiMode ? 'ВЫБРАНО ✓' : '✨ КИНЦУГИ');
+      infoTxt.setText(this.isKintsugiMode ? 'Мастерское золото активировано!' : 'Золотой шов: +60% к цене');
+      if (AudioManager.playClick) AudioManager.playClick();
+    });
+
+    this.kintsugiBanner.add([bannerBg, infoTxt, kintsugiBtn, kintsugiTxt]);
   }
 
   createToolTray(trayY) {
@@ -573,7 +631,6 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // Свободное переключение инструмента без искусственного запрета
   selectTool(toolId, iconKey, maskKey, isSilent = false) {
     this.activeTool = toolId;
     this.activeMaskKey = maskKey;
@@ -618,13 +675,17 @@ export class RestoreScene extends Phaser.Scene {
       tool_polish: 'slot_polish'
     };
 
-    // Автоматически ставим нужный инструмент на старте шага
     this.selectTool(task.requiredTool, toolIcons[task.requiredTool] || 'slot_scraper', task.requiredTool.replace('tool_', 'mask_'), true);
 
     if (task.type === 'break_and_assemble') {
       this.dirtLayer.clear();
       this.setupBreakAndAssembleStage(task);
       return;
+    }
+
+    if (this.kintsugiBanner) {
+      this.kintsugiBanner.destroy();
+      this.kintsugiBanner = null;
     }
 
     this.assemblyContainer.setVisible(false);
@@ -702,7 +763,6 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playShine) AudioManager.playShine();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
 
-      // Оценка звёзд строго по совершённым ошибкам
       let earnedStars = 3;
       let qualityMultiplier = 1.0;
 
@@ -714,8 +774,11 @@ export class RestoreScene extends Phaser.Scene {
         qualityMultiplier = 0.8;
       }
 
-      const finalPrice = Math.max(10, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier));
+      // Множитель Кинцуги (+60%)
+      const kintsugiBonus = this.hasKintsugiMastery ? 1.6 : 1.0;
+      const finalPrice = Math.max(10, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
       this.artifactData.marketValue = finalPrice;
+      this.artifactData.isKintsugi = this.hasKintsugiMastery;
 
       try {
         Storage.addArtifactToInventory({
@@ -725,7 +788,9 @@ export class RestoreScene extends Phaser.Scene {
           name: this.artifactData.name,
           museumDesc: this.artifactData.description || '',
           textureKey: this.artifactData.textureKey,
-          marketValue: finalPrice
+          marketValue: finalPrice,
+          stars: earnedStars,
+          isKintsugi: this.hasKintsugiMastery
         });
 
         Storage.addHistoryEntry({
@@ -747,6 +812,7 @@ export class RestoreScene extends Phaser.Scene {
           stars: earnedStars,
           isDuplicate: this.isDuplicate,
           isContract: !!this.activeContract,
+          isKintsugi: this.hasKintsugiMastery,
           contractBonusXP: this.activeContract ? this.activeContract.bonusXP : 0
         });
       });
