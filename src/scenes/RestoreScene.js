@@ -10,7 +10,7 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // --- ДАННЫЕ И СЕССИЯ (НЕ ТРОГАЕМ) ---
+    // --- ДАННЫЕ И СЕССИЯ ---
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
@@ -58,17 +58,24 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
 
+    // Проверка FTUE: первая ли это реставрация в текущей сессии
+    const ftueKey = `art_ftue_mat_${this.artifactData.regionId || 'egypt'}`;
+    const isFirstTime = !sessionStorage.getItem(ftueKey);
+    if (isFirstTime) {
+      sessionStorage.setItem(ftueKey, '1');
+    }
+    this.isRitualIntro = isFirstTime;
+
     // =========================================================================
     // 1. АРХИТЕКТУРА ИЗОЛИРОВАННЫХ ЗОН ЭКРАНА (LAYOUT ANCHORS)
     // =========================================================================
     const topBarHeight = 52;
     const infoPanelHeight = 94;
-    const headerTotalHeight = topBarHeight + infoPanelHeight; // 146px сверху
+    const headerTotalHeight = topBarHeight + infoPanelHeight;
     const trayHeight = 84;
-    const trayY = height - trayHeight / 2 - 12; // Лоток аккуратно внизу
+    const trayY = height - trayHeight / 2 - 12;
     const trayTopLimit = height - trayHeight - 24;
 
-    // Безопасный вертикальный центр для размещения рабочего стола и артефакта
     const workspaceAvailableHeight = trayTopLimit - headerTotalHeight;
     this.centerX = Math.round(width / 2);
     this.centerY = Math.round(headerTotalHeight + workspaceAvailableHeight / 2);
@@ -78,15 +85,16 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Фоновое полотно мастерской
+    // =========================================================================
+    // 2. ФОН И СТОЛ МАСТЕРА (КОЖАНЫЙ МАТ)
+    // =========================================================================
     this.renderAtmosphericWorkshop(width, height, headerTotalHeight, trayTopLimit);
 
     // =========================================================================
-    // 2. ВЕРХНИЙ БАР: СИСТЕМНЫЕ КНОПКИ И МОНЕТЫ
+    // 3. ВЕРХНИЙ БАР: СИСТЕМНЫЕ КНОПКИ И МОНЕТЫ
     // =========================================================================
     const topBarCont = this.add.container(0, 0).setDepth(40);
 
-    // Баланс монет (строго слева)
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.coinsText = this.add.text(18, 26, `🪙 ${coins}`, {
       fontSize: '15px',
@@ -96,11 +104,9 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     topBarCont.add(this.coinsText);
 
-    // Блок системных кнопок (строго справа с аккуратными отступами)
     const btnSize = 32;
     const rightMargin = 16;
-    
-    // Кнопка: В меню
+
     const menuBtn = this.add.rectangle(width - rightMargin - 44, 26, 88, btnSize, 0x141b26)
       .setStrokeStyle(1, 0x334155, 0.8)
       .setInteractive({ useHandCursor: true });
@@ -117,7 +123,6 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Кнопка: Музыка
     const musicBtnX = width - rightMargin - 88 - 10 - btnSize / 2;
     const musicBtn = this.add.rectangle(musicBtnX, 26, btnSize, btnSize, 0x141b26)
       .setStrokeStyle(1, 0x334155, 0.8)
@@ -132,7 +137,6 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    // Кнопка: SFX
     const sfxBtnX = musicBtnX - btnSize - 8;
     const sfxBtn = this.add.rectangle(sfxBtnX, 26, btnSize, btnSize, 0x141b26)
       .setStrokeStyle(1, 0x334155, 0.8)
@@ -150,7 +154,7 @@ export class RestoreScene extends Phaser.Scene {
     topBarCont.add([menuBtn, menuTxt, musicBtn, musicIcon, sfxBtn, sfxIcon]);
 
     // =========================================================================
-    // 3. ИНФОРМАЦИОННАЯ ШАПКА ЗАДАНИЯ (СТРОГО ПОД TOPBAR БЕЗ НАЕЗДОВ)
+    // 4. ИНФОРМАЦИОННАЯ ШАПКА
     // =========================================================================
     const infoCont = this.add.container(0, topBarHeight).setDepth(40);
 
@@ -182,7 +186,6 @@ export class RestoreScene extends Phaser.Scene {
       color: '#cbd5e1'
     }).setOrigin(0.5);
 
-    // Прогресс-бар
     const barWidth = Math.min(width * 0.72, 280);
     this.progressBarBg = this.add.rectangle(width / 2, 66, barWidth, 6, 0x0f172a);
     this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 66, 0, 6, 0x10b981)
@@ -198,11 +201,10 @@ export class RestoreScene extends Phaser.Scene {
     infoCont.add([badgeLbl, artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
 
     // =========================================================================
-    // 4. РАБОЧЕЕ ПРОСТРАНСТВО И АРТЕФАКТ
+    // 5. РАБОЧЕЕ ПРОСТРАНСТВО И АРТЕФАКТ
     // =========================================================================
-    // Контактная тень (Ambient Occlusion)
-    this.add.ellipse(this.centerX, this.centerY + this.artH * 0.40, this.artW * 0.85, 36, 0x000000, 0.45).setDepth(6);
-    this.add.ellipse(this.centerX, this.centerY + this.artH * 0.38, this.artW * 0.60, 22, 0x000000, 0.65).setDepth(6);
+    this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.40, this.artW * 0.85, 36, 0x000000, 0.45).setDepth(6);
+    this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.38, this.artW * 0.60, 22, 0x000000, 0.65).setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
@@ -241,12 +243,11 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer = this.add.container(0, 0).setDepth(18).setVisible(false);
 
     // =========================================================================
-    // 5. ЛОТОК ИНСТРУМЕНТОВ
+    // 6. ЛОТОК ИНСТРУМЕНТОВ
     // =========================================================================
     this.createToolTray(trayY, width);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey, true);
 
-    // Расчет сетки
     this.gridCols = 32;
     this.gridRows = 40;
     this.totalCells = this.gridCols * this.gridRows;
@@ -257,11 +258,22 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0);
 
     // =========================================================================
-    // 6. ИНТЕРАКТИВНОЕ СТИРАНИЕ
+    // 7. РИТУАЛ РАЗВОРАЧИВАНИЯ МАТА (FTUE / ПЕРВОЕ ВПЕЧАТЛЕНИЕ)
+    // =========================================================================
+    if (this.isRitualIntro) {
+      this.playMatUnrollSequence();
+    }
+
+    // =========================================================================
+    // 8. ИНТЕРАКТИВНОЕ СТИРАНИЕ
     // =========================================================================
     const processInteraction = (pointer) => {
+      if (this.isAnimatingMat) {
+        this.skipMatIntro();
+        return;
+      }
       if (!pointer.isDown || this.isTaskTransition) return;
-      if (pointer.y > trayTopLimit) return; // Не залезаем на лоток
+      if (pointer.y > trayTopLimit) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
 
@@ -372,6 +384,74 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
+  // --- АНИМАЦИЯ РАЗВОРАЧИВАНИЯ МАТА ---
+  playMatUnrollSequence() {
+    this.isAnimatingMat = true;
+
+    // Прячем временно артефакт и тени
+    this.cleanArt.setAlpha(0);
+    this.dirtLayer.setAlpha(0);
+    this.contactShadow1.setAlpha(0);
+    this.contactShadow2.setAlpha(0);
+
+    // Сворачиваем мат в рулон
+    this.matContainer.setScale(0.08, 1);
+    this.matContainer.setAlpha(0.7);
+
+    if (AudioManager.playCloth) AudioManager.playCloth();
+
+    this.matIntroTween = this.tweens.add({
+      targets: this.matContainer,
+      scaleX: 1,
+      alpha: 1,
+      duration: 520,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        // Артефакт плавно опускается на стол
+        this.cleanArt.setY(this.centerY - 24);
+        this.dirtLayer.setY(this.topLeftY - 24);
+
+        this.tweens.add({
+          targets: [this.cleanArt],
+          y: this.centerY,
+          alpha: 1,
+          duration: 320,
+          ease: 'Quad.easeOut'
+        });
+
+        this.tweens.add({
+          targets: [this.dirtLayer],
+          y: this.topLeftY,
+          alpha: 1,
+          duration: 320,
+          ease: 'Quad.easeOut'
+        });
+
+        this.tweens.add({
+          targets: [this.contactShadow1, this.contactShadow2],
+          alpha: { from: 0, to: 0.65 },
+          duration: 350,
+          ease: 'Quad.easeOut',
+          onComplete: () => {
+            this.isAnimatingMat = false;
+          }
+        });
+      }
+    });
+  }
+
+  skipMatIntro() {
+    if (!this.isAnimatingMat) return;
+    if (this.matIntroTween) this.matIntroTween.stop();
+
+    this.matContainer.setScale(1, 1).setAlpha(1);
+    this.cleanArt.setY(this.centerY).setAlpha(1);
+    this.dirtLayer.setY(this.topLeftY).setAlpha(1);
+    this.contactShadow1.setAlpha(0.45);
+    this.contactShadow2.setAlpha(0.65);
+    this.isAnimatingMat = false;
+  }
+
   getToolName(toolId) {
     const map = {
       tool_scraper: 'Скребок',
@@ -432,45 +512,66 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // Фоновое полотно мастерской с правильными границами
+  // --- КОЖАНЫЙ МАТ ВЕРСТАКА И ОКРУЖЕНИЕ ---
   renderAtmosphericWorkshop(width, height, topY, bottomY) {
+    // 1. Фон мастерской
     const bg = this.add.graphics().setDepth(0);
-
-    // Глубокий антрацитовый фон
-    bg.fillStyle(0x080b12, 1);
+    bg.fillStyle(0x070a10, 1);
     bg.fillRect(0, 0, width, height);
 
-    // Рабочая столешница
+    // 2. Контейнер мата (для анимации разворачивания)
     const matPadding = 12;
-    const matX = matPadding;
-    const matY = topY + 8;
     const matW = width - matPadding * 2;
-    const matH = bottomY - matY - 6;
+    const matH = bottomY - topY - 14;
+    const matCenterY = topY + 8 + matH / 2;
 
-    bg.fillStyle(0x101622, 1);
-    bg.fillRoundedRect(matX, matY, matW, matH, 12);
+    this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
 
-    // Двойная благородная рамка
-    bg.lineStyle(1.5, 0xc5a059, 0.6);
-    bg.strokeRoundedRect(matX, matY, matW, matH, 12);
-    bg.lineStyle(1, 0x1e293b, 0.4);
-    bg.strokeRoundedRect(matX + 4, matY + 4, matW - 8, matH - 8, 8);
+    const matGfx = this.add.graphics();
+    const halfW = matW / 2;
+    const halfH = matH / 2;
 
-    // Микро-сетка
-    const grid = this.add.graphics().setDepth(1);
+    // Глубокое фактурное кожаное сукно
+    matGfx.fillStyle(0x0f1520, 1);
+    matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 12);
+
+    // Тонкая латунная прошивка по периметру
+    matGfx.lineStyle(1.5, 0xc5a059, 0.7);
+    matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 12);
+    matGfx.lineStyle(1, 0x1e293b, 0.4);
+    matGfx.strokeRoundedRect(-halfW + 4, -halfH + 4, matW - 8, matH - 8, 8);
+
+    // Угловые заклёпки
+    const rivets = [
+      { x: -halfW + 12, y: -halfH + 12 },
+      { x: halfW - 12, y: -halfH + 12 },
+      { x: -halfW + 12, y: halfH - 12 },
+      { x: halfW - 12, y: halfH - 12 }
+    ];
+    rivets.forEach(r => {
+      matGfx.fillStyle(0xd4af37, 0.9);
+      matGfx.fillCircle(r.x, r.y, 3);
+      matGfx.lineStyle(1, 0x5a3f1a, 0.8);
+      matGfx.strokeCircle(r.x, r.y, 3);
+    });
+
+    // Микро-сетка ювелира
+    const grid = this.add.graphics();
     grid.lineStyle(1, 0x1e293b, 0.22);
     const step = 26;
-    for (let x = matX + 16; x < matX + matW - 16; x += step) {
-      grid.lineBetween(x, matY + 12, x, matY + matH - 12);
+    for (let x = -halfW + 16; x < halfW - 16; x += step) {
+      grid.lineBetween(x, -halfH + 12, x, halfH - 12);
     }
-    for (let y = matY + 16; y < matY + matH - 16; y += step) {
-      grid.lineBetween(matX + 12, y, matX + matW - 12, y);
+    for (let y = -halfH + 16; y < halfH - 16; y += step) {
+      grid.lineBetween(-halfW + 12, y, halfW - 12, y);
     }
 
-    // Софит реставратора (свет направлен ровно в центр артефакта)
+    this.matContainer.add([matGfx, grid]);
+
+    // Тёплый софит мастера (Spotlight)
     this.add.circle(this.centerX, this.centerY, Math.min(width * 0.48, 220), 0xfff4e0, 0.04)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setDepth(2);
+      .setDepth(3);
   }
 
   processGlueAction(pointer) {
@@ -655,7 +756,7 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
     ];
 
-    const trayBg = this.add.rectangle(width / 2, trayY, width * 0.94, 76, 0x0d121c, 0.98)
+    this.add.rectangle(width / 2, trayY, width * 0.94, 76, 0x0d121c, 0.98)
       .setStrokeStyle(1.5, 0x1e293b, 0.9)
       .setDepth(22);
 
