@@ -11,7 +11,7 @@ export class VictoryScene extends Phaser.Scene {
     const artifact = (data && data.artifact)
       ? data.artifact
       : { name: 'Артефакт', marketValue: 100 };
-    const starsCount = (data && data.stars) ? data.stars : 3;
+    const starsCount = (data && data.stars !== undefined) ? data.stars : 3;
     const isDuplicate = !!(data && data.isDuplicate);
     const isContract = !!(data && data.isContract);
 
@@ -124,23 +124,25 @@ export class VictoryScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Музейная оценка с пометкой качества / дубликата
+    // Оценка и бейдж
     let valueDesc = `Музейная оценка: +${artifact.marketValue || 100} 🪙`;
     if (isContract) {
       valueDesc += ' (Премия по контракту гильдии)';
     } else if (isDuplicate) {
       valueDesc += ' (Повторный дубликат: -55%)';
+    } else if (starsCount === 1) {
+      valueDesc += ' (Много сколов: -40%)';
     }
 
     this.add.text(width / 2, height * 0.585, valueDesc, {
-      fontSize: '12.5px',
+      fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: isDuplicate ? '#94a3b8' : '#22c55e',
+      color: (starsCount === 1 || isDuplicate) ? '#94a3b8' : '#22c55e',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Блок Прогресса Опыта и Уровня
-    this.createExperienceBar(width, height, isContract);
+    // Прогресс Опыта со срезкой за ошибки
+    this.createExperienceBar(width, height, isContract, starsCount);
 
     // Кнопка: В главное меню
     const menuBtn = this.add.rectangle(
@@ -191,11 +193,16 @@ export class VictoryScene extends Phaser.Scene {
     });
   }
 
-  createExperienceBar(width, height, isContract) {
+  createExperienceBar(width, height, isContract, starsCount) {
     const xpBoxY = height * 0.67;
     const barW = width * 0.78;
 
-    const xpAward = isContract ? 180 : 100;
+    // Срезка XP: 3 звезды = 100, 2 звезды = 70, 1 звезда = 40 (бонус контракта +80)
+    let baseXp = 100;
+    if (starsCount === 2) baseXp = 70;
+    else if (starsCount === 1) baseXp = 40;
+
+    const xpAward = isContract ? (baseXp + 80) : baseXp;
     const initialLvl = Storage.getLevelData();
 
     this.add.text(width / 2 - barW / 2, xpBoxY - 14, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
