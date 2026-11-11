@@ -69,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     // Кнопки переключения звука
     this.createAudioToggles(width);
 
-    // Функция создания основных кнопок
+    // Фабрика кнопок меню
     const createBtn = (y, text, colorBg, colorStroke, textColor, onClick) => {
       const btnW = width * 0.82;
       const btnH = 48;
@@ -103,22 +103,22 @@ export class MenuScene extends Phaser.Scene {
 
     const startY = height * 0.51;
 
-    // 1. «НА ВЕРСТАК» — быстрый вход в случайный/начатый артефакт
+    // 1. «НА ВЕРСТАК» — сразу в работу
     createBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
       this.startQuickRestore();
     });
 
-    // 2. «ЭКСПЕДИЦИИ» — функционал старого «Верстака» из КТ 10 (открывает все эпохи и выбор находок)
+    // 2. «ЭКСПЕДИЦИИ» — наш привычный экран выбора эпох
     createBtn(startY + 56, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
-      this.scene.start('RestoreScene');
+      this.scene.start('EraSelectScene');
     });
 
-    // 3. Лавка
+    // 3. «ЛАВКА МАСТЕРА»
     createBtn(startY + 112, '🛒 ЛАВКА МАСТЕРА', 0x1e1b4b, 0x6366f1, '#ffffff', () => {
       this.scene.start('ShopScene');
     });
 
-    // 4. Музей
+    // 4. «ЗАЛ СЛАВЫ (МУЗЕЙ)»
     createBtn(startY + 168, '🏛️ ЗАЛ СЛАВЫ (МУЗЕЙ)', 0x14532d, 0x22c55e, '#ffffff', () => {
       this.scene.start('MuseumScene');
     });
@@ -143,7 +143,7 @@ export class MenuScene extends Phaser.Scene {
     this.renderContractWidget(width, height * 0.89, dpr);
   }
 
-  // Быстрая игра: сразу берет незавершенный или случайный артефакт
+  // Быстрый запуск реставрации
   startQuickRestore() {
     const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
     if (saved && saved.templateId && saved.regionId) {
@@ -159,7 +159,7 @@ export class MenuScene extends Phaser.Scene {
 
       this.scene.start('RestoreScene', { regionId: target.regionId, templateId: target.id });
     } else {
-      this.scene.start('RestoreScene');
+      this.scene.start('EraSelectScene');
     }
   }
 
@@ -572,7 +572,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ЗВУК
+  // ЗВУКОВЫЕ ТУМБЛЕРЫ
   // =========================================================================
   createAudioToggles(width) {
     const musicBtn = this.add.circle(width - 70, 36, 17, AudioManager.isMusicOn() ? 0x142033 : 0x221a24)
