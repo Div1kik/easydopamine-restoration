@@ -10,7 +10,7 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
-    // --- ДАННЫЕ И СЕССИЯ ---
+    // --- 1. ДАННЫЕ И СЕССИЯ (ПОЛНАЯ СОХРАННОСТЬ ЛОГИКИ) ---
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
@@ -58,7 +58,7 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
 
-    // Проверка FTUE: первая ли это реставрация в текущей сессии
+    // FTUE проверка разворачивания мата
     const ftueKey = `art_ftue_mat_${this.artifactData.regionId || 'egypt'}`;
     const isFirstTime = !sessionStorage.getItem(ftueKey);
     if (isFirstTime) {
@@ -66,15 +66,18 @@ export class RestoreScene extends Phaser.Scene {
     }
     this.isRitualIntro = isFirstTime;
 
+    // Генерация детализированных 2.5D текстур инструментов
+    this.generateHighResToolTextures();
+
     // =========================================================================
-    // 1. АРХИТЕКТУРА ИЗОЛИРОВАННЫХ ЗОН ЭКРАНА (LAYOUT ANCHORS)
+    // 2. БЕЗОПАСНАЯ ВЁРСТКА ЭКРАНА (LAYOUT ANCHORS)
     // =========================================================================
     const topBarHeight = 52;
-    const infoPanelHeight = 94;
+    const infoPanelHeight = 96;
     const headerTotalHeight = topBarHeight + infoPanelHeight;
-    const trayHeight = 84;
-    const trayY = height - trayHeight / 2 - 12;
-    const trayTopLimit = height - trayHeight - 24;
+    const trayHeight = 88;
+    const trayY = height - trayHeight / 2 - 14;
+    const trayTopLimit = height - trayHeight - 26;
 
     const workspaceAvailableHeight = trayTopLimit - headerTotalHeight;
     this.centerX = Math.round(width / 2);
@@ -85,37 +88,38 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // =========================================================================
-    // 2. ФОН И СТОЛ МАСТЕРА (КОЖАНЫЙ МАТ)
-    // =========================================================================
+    // Стол и кожаный мат
     this.renderAtmosphericWorkshop(width, height, headerTotalHeight, trayTopLimit);
 
     // =========================================================================
-    // 3. ВЕРХНИЙ БАР: СИСТЕМНЫЕ КНОПКИ И МОНЕТЫ
+    // 3. ВЕРХНИЙ БАР (ТОЧНАЯ ТИПОГРАФИКА И СИСТЕМНЫЕ КНОПКИ)
     // =========================================================================
     const topBarCont = this.add.container(0, 0).setDepth(40);
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.coinsText = this.add.text(18, 26, `🪙 ${coins}`, {
-      fontSize: '15px',
+      fontSize: '16px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
     }).setOrigin(0, 0.5);
+    this.coinsText.setShadow(0, 2, 'rgba(0,0,0,0.85)', 4);
     topBarCont.add(this.coinsText);
 
-    const btnSize = 32;
+    const btnSize = 34;
     const rightMargin = 16;
 
-    const menuBtn = this.add.rectangle(width - rightMargin - 44, 26, 88, btnSize, 0x141b26)
-      .setStrokeStyle(1, 0x334155, 0.8)
+    const menuBtn = this.add.rectangle(width - rightMargin - 46, 26, 92, btnSize, 0x131924)
+      .setStrokeStyle(1.5, 0x334155, 0.9)
       .setInteractive({ useHandCursor: true });
-    const menuTxt = this.add.text(width - rightMargin - 44, 26, '📁 Меню', {
+
+    const menuTxt = this.add.text(width - rightMargin - 46, 26, '📁 Меню', {
       fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#cbd5e1',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      color: '#e2e8f0',
       fontStyle: 'bold'
     }).setOrigin(0.5);
+    menuTxt.setShadow(0, 1, 'rgba(0,0,0,0.8)', 2);
 
     menuBtn.on('pointerdown', () => {
       if (AudioManager.stopMusic) AudioManager.stopMusic();
@@ -123,11 +127,11 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    const musicBtnX = width - rightMargin - 88 - 10 - btnSize / 2;
-    const musicBtn = this.add.rectangle(musicBtnX, 26, btnSize, btnSize, 0x141b26)
-      .setStrokeStyle(1, 0x334155, 0.8)
+    const musicBtnX = width - rightMargin - 92 - 10 - btnSize / 2;
+    const musicBtn = this.add.rectangle(musicBtnX, 26, btnSize, btnSize, 0x131924)
+      .setStrokeStyle(1.5, 0x334155, 0.9)
       .setInteractive({ useHandCursor: true });
-    const musicIcon = this.add.text(musicBtnX, 26, AudioManager.isMusicOn() ? '🎵' : '🔇', { fontSize: '13px' })
+    const musicIcon = this.add.text(musicBtnX, 26, AudioManager.isMusicOn() ? '🎵' : '🔇', { fontSize: '14px' })
       .setOrigin(0.5);
 
     musicBtn.on('pointerdown', (p, lx, ly, ev) => {
@@ -138,10 +142,10 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     const sfxBtnX = musicBtnX - btnSize - 8;
-    const sfxBtn = this.add.rectangle(sfxBtnX, 26, btnSize, btnSize, 0x141b26)
-      .setStrokeStyle(1, 0x334155, 0.8)
+    const sfxBtn = this.add.rectangle(sfxBtnX, 26, btnSize, btnSize, 0x131924)
+      .setStrokeStyle(1.5, 0x334155, 0.9)
       .setInteractive({ useHandCursor: true });
-    const sfxIcon = this.add.text(sfxBtnX, 26, AudioManager.isSfxOn() ? '🔊' : '🔈', { fontSize: '13px' })
+    const sfxIcon = this.add.text(sfxBtnX, 26, AudioManager.isSfxOn() ? '🔊' : '🔈', { fontSize: '14px' })
       .setOrigin(0.5);
 
     sfxBtn.on('pointerdown', (p, lx, ly, ev) => {
@@ -154,7 +158,7 @@ export class RestoreScene extends Phaser.Scene {
     topBarCont.add([menuBtn, menuTxt, musicBtn, musicIcon, sfxBtn, sfxIcon]);
 
     // =========================================================================
-    // 4. ИНФОРМАЦИОННАЯ ШАПКА
+    // 4. ИНФОРМАЦИОННАЯ ШАПКА ЗАДАНИЯ
     // =========================================================================
     const infoCont = this.add.container(0, topBarHeight).setDepth(40);
 
@@ -166,42 +170,46 @@ export class RestoreScene extends Phaser.Scene {
     }
 
     const badgeLbl = this.add.text(width / 2, 8, badgeText, {
-      fontSize: '10px',
+      fontSize: '10.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: this.activeContract ? '#facc15' : (this.isDuplicate ? '#94a3b8' : '#c5a059'),
       fontStyle: 'bold',
       letterSpacing: 2
     }).setOrigin(0.5);
+    badgeLbl.setShadow(0, 1, 'rgba(0,0,0,0.9)', 3);
 
-    const artTitle = this.add.text(width / 2, 28, this.artifactData.name, {
-      fontSize: '17px',
+    const artTitle = this.add.text(width / 2, 29, this.artifactData.name, {
+      fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
+    artTitle.setShadow(0, 2, 'rgba(0,0,0,0.85)', 4);
 
-    this.taskNotice = this.add.text(width / 2, 48, '', {
-      fontSize: '11.5px',
+    this.taskNotice = this.add.text(width / 2, 50, '', {
+      fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#cbd5e1'
     }).setOrigin(0.5);
+    this.taskNotice.setShadow(0, 1, 'rgba(0,0,0,0.8)', 2);
 
+    // Прогресс-бар
     const barWidth = Math.min(width * 0.72, 280);
-    this.progressBarBg = this.add.rectangle(width / 2, 66, barWidth, 6, 0x0f172a);
-    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 66, 0, 6, 0x10b981)
+    this.progressBarBg = this.add.rectangle(width / 2, 68, barWidth, 6, 0x0f172a);
+    this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 68, 0, 6, 0x10b981)
       .setOrigin(0, 0.5);
 
-    this.toolWarning = this.add.text(width / 2, 80, '', {
-      fontSize: '10px',
+    this.toolWarning = this.add.text(width / 2, 83, '', {
+      fontSize: '10.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#ef4444',
+      color: '#f87171',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
     infoCont.add([badgeLbl, artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
 
     // =========================================================================
-    // 5. РАБОЧЕЕ ПРОСТРАНСТВО И АРТЕФАКТ
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
     // =========================================================================
     this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.40, this.artW * 0.85, 36, 0x000000, 0.45).setDepth(6);
     this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.38, this.artW * 0.60, 22, 0x000000, 0.65).setDepth(6);
@@ -225,28 +233,23 @@ export class RestoreScene extends Phaser.Scene {
     maskImage.setDisplaySize(this.artW, this.artH);
     this.dirtLayer.setMask(maskImage.createBitmapMask());
 
-    this.particles = this.add.particles(0, 0, 'particle_dust', {
-      lifespan: { min: 200, max: 350 },
-      speed: { min: 40, max: 90 },
-      scale: { start: 1.0, end: 0 },
-      emitting: false
-    }).setDepth(9);
+    // Система текстурных частиц реставрации
+    this.createRestorationVFX();
 
     const firstTask = this.artifactData.tasks[0];
     this.activeTool = firstTask.requiredTool || 'tool_scraper';
     this.activeMaskKey = this.activeTool.replace('tool_', 'mask_');
 
-    const toolTex = (this.activeTool === 'tool_scraper') ? 'slot_scraper' : 'slot_brush';
-    this.toolSprite = this.add.image(this.centerX, this.centerY, toolTex)
-      .setOrigin(0.5, 0.95).setScale(0.7).setAlpha(0).setDepth(20);
+    this.toolSprite = this.add.image(this.centerX, this.centerY, `tex_${this.activeTool}`)
+      .setOrigin(0.5, 0.88).setScale(0.85).setAlpha(0).setDepth(20);
 
     this.assemblyContainer = this.add.container(0, 0).setDepth(18).setVisible(false);
 
     // =========================================================================
-    // 6. ЛОТОК ИНСТРУМЕНТОВ
+    // 6. ОБЪЁМНЫЙ ЛОТОК ИНСТРУМЕНТОВ
     // =========================================================================
     this.createToolTray(trayY, width);
-    this.selectTool(this.activeTool, toolTex, this.activeMaskKey, true);
+    this.selectTool(this.activeTool, `tex_${this.activeTool}`, this.activeMaskKey, true);
 
     this.gridCols = 32;
     this.gridRows = 40;
@@ -257,15 +260,12 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // =========================================================================
-    // 7. РИТУАЛ РАЗВОРАЧИВАНИЯ МАТА (FTUE / ПЕРВОЕ ВПЕЧАТЛЕНИЕ)
-    // =========================================================================
     if (this.isRitualIntro) {
       this.playMatUnrollSequence();
     }
 
     // =========================================================================
-    // 8. ИНТЕРАКТИВНОЕ СТИРАНИЕ
+    // 7. ИНТЕРАКТИВНОЕ СТИРАНИЕ И VFX ПОД ПАЛЬЦЕМ
     // =========================================================================
     const processInteraction = (pointer) => {
       if (this.isAnimatingMat) {
@@ -311,12 +311,7 @@ export class RestoreScene extends Phaser.Scene {
       if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
-        if (this.activeTool === 'tool_scraper' && AudioManager.playScrub) AudioManager.playScrub();
-        else if (this.activeTool === 'tool_brush' && AudioManager.playBrush) AudioManager.playBrush();
-        else if (this.activeTool === 'tool_solvent' && AudioManager.playSpray) AudioManager.playSpray();
-        else if (this.activeTool === 'tool_polish' && AudioManager.playCloth) AudioManager.playCloth();
-
-        this.particles.emitParticleAt(pointer.x, pointer.y, 2);
+        this.emitToolVFX(pointer.x, pointer.y);
 
         const eraserRadius = (this.activeTool === 'tool_scraper') ? 20 :
                              (this.activeTool === 'tool_brush') ? 24 :
@@ -384,17 +379,269 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // --- АНИМАЦИЯ РАЗВОРАЧИВАНИЯ МАТА ---
+  // =========================================================================
+  // 8. ГЕНЕРАЦИЯ ВЫСОКОДЕТАЛИЗИРОВАННЫХ 2.5D ТЕКСТУР ИНСТРУМЕНТОВ
+  // =========================================================================
+  generateHighResToolTextures() {
+    const makeTex = (key, drawFn) => {
+      if (this.textures.exists(key)) return;
+      const cvs = this.textures.createCanvas(key, 64, 64);
+      const ctx = cvs.getContext();
+      drawFn(ctx);
+      cvs.refresh();
+    };
+
+    // 1. Скребок (сталь, латунный больстер, морёный дуб)
+    makeTex('tex_tool_scraper', (ctx) => {
+      ctx.clearRect(0, 0, 64, 64);
+      // Рукоять
+      ctx.fillStyle = '#4a2e16';
+      ctx.beginPath();
+      ctx.roundRect(28, 30, 8, 30, 3);
+      ctx.fill();
+      // Латунное кольцо
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(27, 26, 10, 5);
+      // Стальное лезвие
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(32, 4);
+      ctx.lineTo(46, 26);
+      ctx.lineTo(18, 26);
+      ctx.closePath();
+      ctx.fill();
+      // Стальной блик
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(32, 4);
+      ctx.lineTo(35, 26);
+      ctx.lineTo(31, 26);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // 2. Кисть (лакированная ручка, полированный металл, градиентный ворс)
+    makeTex('tex_tool_brush', (ctx) => {
+      ctx.clearRect(0, 0, 64, 64);
+      // Ручка
+      ctx.fillStyle = '#854d0e';
+      ctx.beginPath();
+      ctx.roundRect(29, 32, 6, 28, 3);
+      ctx.fill();
+      // Металлическая обойма
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(26, 22, 12, 11);
+      // Ворс белки/соболя
+      const grad = ctx.createLinearGradient(0, 6, 0, 22);
+      grad.addColorStop(0, '#451a03');
+      grad.addColorStop(0.6, '#b45309');
+      grad.addColorStop(1, '#fef08a');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(32, 14, 9, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 3. Спрей (янтарное аптекарское стекло, латунный пульверизатор)
+    makeTex('tex_tool_solvent', (ctx) => {
+      ctx.clearRect(0, 0, 64, 64);
+      // Флакон
+      ctx.fillStyle = '#065f46';
+      ctx.beginPath();
+      ctx.roundRect(22, 22, 20, 36, 6);
+      ctx.fill();
+      // Горлышко
+      ctx.fillStyle = '#047857';
+      ctx.fillRect(28, 14, 8, 8);
+      // Медный распылитель
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(25, 10, 14, 5);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(36, 6, 9, 5);
+      // Блик на стекле
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(24, 25, 3, 30);
+    });
+
+    // 4. Клей / Золотой лак (керамический горшочек с золотом)
+    makeTex('tex_tool_glue', (ctx) => {
+      ctx.clearRect(0, 0, 64, 64);
+      // Баночка
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(20, 24, 24, 34, 5);
+      ctx.fill();
+      // Золотая этикетка
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(24, 34, 16, 14);
+      // Горлышко
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(26, 16, 12, 8);
+      // Лопатка с каплей лака
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(32, 12, 6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // 5. Замша (мягкий фактурный свёрток охры со складками)
+    makeTex('tex_tool_polish', (ctx) => {
+      ctx.clearRect(0, 0, 64, 64);
+      // Основа ткани
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.roundRect(18, 18, 28, 28, 8);
+      ctx.fill();
+      // Внутренние складки
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath();
+      ctx.ellipse(32, 32, 10, 6, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(26, 26, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // =========================================================================
+  // 9. СИСТЕМА ЧАСТИЦ И СВЕТОВЫХ БЛИКОВ (VFX)
+  // =========================================================================
+  createRestorationVFX() {
+    this.particles = this.add.particles(0, 0, 'particle_dust', {
+      lifespan: { min: 200, max: 350 },
+      speed: { min: 40, max: 90 },
+      scale: { start: 1.0, end: 0 },
+      emitting: false
+    }).setDepth(9);
+  }
+
+  emitToolVFX(x, y) {
+    if (this.activeTool === 'tool_scraper') {
+      if (AudioManager.playScrub) AudioManager.playScrub();
+      this.particles.setParticleTint(0x8a6233);
+      this.particles.emitParticleAt(x, y, 3);
+    } else if (this.activeTool === 'tool_brush') {
+      if (AudioManager.playBrush) AudioManager.playBrush();
+      this.particles.setParticleTint(0xd4af37);
+      this.particles.emitParticleAt(x, y, 2);
+    } else if (this.activeTool === 'tool_solvent') {
+      if (AudioManager.playSpray) AudioManager.playSpray();
+      this.particles.setParticleTint(0x34d399);
+      this.particles.emitParticleAt(x, y, 3);
+    } else if (this.activeTool === 'tool_polish') {
+      if (AudioManager.playCloth) AudioManager.playCloth();
+      this.particles.setParticleTint(0xffffff);
+      this.particles.emitParticleAt(x, y, 1);
+    }
+  }
+
+  // =========================================================================
+  // 10. ФИЗИЧЕСКИЙ ЛОТОК МАСТЕРА И ВЫДВИЖЕНИЕ ИНСТРУМЕНТОВ
+  // =========================================================================
+  createToolTray(trayY, width) {
+    const tools = [
+      { id: 'tool_scraper', icon: 'tex_tool_scraper', mask: 'mask_scraper', label: 'Скребок' },
+      { id: 'tool_brush', icon: 'tex_tool_brush', mask: 'mask_brush', label: 'Кисть' },
+      { id: 'tool_solvent', icon: 'tex_tool_solvent', mask: 'mask_solvent', label: 'Спрей' },
+      { id: 'tool_glue', icon: 'tex_tool_glue', mask: 'mask_glue', label: 'Клей' },
+      { id: 'tool_polish', icon: 'tex_tool_polish', mask: 'mask_polish', label: 'Замша' }
+    ];
+
+    // Полка верстака из темного дуба с латунным кантом
+    this.add.rectangle(width / 2, trayY, width * 0.94, 82, 0x0c1017, 0.98)
+      .setStrokeStyle(1.5, 0x1e2738, 0.9)
+      .setDepth(22);
+
+    const stepX = (width * 0.90) / tools.length;
+    const startX = width * 0.05 + stepX / 2;
+
+    this.traySlots = [];
+
+    tools.forEach((t, i) => {
+      const slotX = startX + i * stepX;
+      const isSelected = (t.id === this.activeTool);
+
+      // Контейнер слота для анимации выдвижения
+      const slotCont = this.add.container(slotX, trayY).setDepth(23);
+
+      // Ложемент инструмента (выемка в дереве)
+      const slotWell = this.add.rectangle(0, 0, 52, 58, 0x080c12)
+        .setStrokeStyle(1, 0x1a2333, 0.8);
+
+      // Плашка инструмента
+      const slotBg = this.add.rectangle(0, 0, 50, 56, 0x141a24)
+        .setStrokeStyle(1.5, isSelected ? 0xd4af37 : 0x243042, isSelected ? 1 : 0.6)
+        .setInteractive({ useHandCursor: true });
+
+      const iconImg = this.add.image(0, -6, t.icon).setScale(0.85);
+
+      const lbl = this.add.text(0, 18, t.label, {
+        fontSize: '9.5px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        color: isSelected ? '#facc15' : '#64748b',
+        fontStyle: 'bold'
+      }).setOrigin(0.5);
+
+      slotCont.add([slotWell, slotBg, iconImg, lbl]);
+
+      slotBg.on('pointerdown', () => {
+        this.selectTool(t.id, t.icon, t.mask, false);
+      });
+
+      this.traySlots.push({
+        id: t.id,
+        cont: slotCont,
+        bg: slotBg,
+        label: lbl,
+        baseY: trayY
+      });
+    });
+  }
+
+  selectTool(toolId, iconKey, maskKey, isSilent = false) {
+    this.activeTool = toolId;
+    this.activeMaskKey = maskKey;
+
+    if (this.textures.exists(iconKey)) {
+      this.toolSprite.setTexture(iconKey);
+    }
+
+    if (!isSilent && AudioManager.playClick) {
+      AudioManager.playClick();
+    }
+
+    // Анимация поднятия активного инструмента
+    this.traySlots.forEach(slot => {
+      const active = (slot.id === toolId);
+      slot.bg.setStrokeStyle(1.5, active ? 0xd4af37 : 0x243042, active ? 1 : 0.6);
+      slot.label.setColor(active ? '#facc15' : '#64748b');
+
+      this.tweens.add({
+        targets: slot.cont,
+        y: active ? (slot.baseY - 7) : slot.baseY,
+        duration: 180,
+        ease: 'Cubic.easeOut'
+      });
+    });
+
+    const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+    if (currentTask && toolId === currentTask.requiredTool) {
+      this.toolWarning.setText('');
+    }
+  }
+
+  // =========================================================================
+  // 11. ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ И ЛОГИКА ЭТАПОВ
+  // =========================================================================
   playMatUnrollSequence() {
     this.isAnimatingMat = true;
 
-    // Прячем временно артефакт и тени
     this.cleanArt.setAlpha(0);
     this.dirtLayer.setAlpha(0);
     this.contactShadow1.setAlpha(0);
     this.contactShadow2.setAlpha(0);
 
-    // Сворачиваем мат в рулон
     this.matContainer.setScale(0.08, 1);
     this.matContainer.setAlpha(0.7);
 
@@ -407,7 +654,6 @@ export class RestoreScene extends Phaser.Scene {
       duration: 520,
       ease: 'Back.easeOut',
       onComplete: () => {
-        // Артефакт плавно опускается на стол
         this.cleanArt.setY(this.centerY - 24);
         this.dirtLayer.setY(this.topLeftY - 24);
 
@@ -512,14 +758,11 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // --- КОЖАНЫЙ МАТ ВЕРСТАКА И ОКРУЖЕНИЕ ---
   renderAtmosphericWorkshop(width, height, topY, bottomY) {
-    // 1. Фон мастерской
     const bg = this.add.graphics().setDepth(0);
     bg.fillStyle(0x070a10, 1);
     bg.fillRect(0, 0, width, height);
 
-    // 2. Контейнер мата (для анимации разворачивания)
     const matPadding = 12;
     const matW = width - matPadding * 2;
     const matH = bottomY - topY - 14;
@@ -531,17 +774,14 @@ export class RestoreScene extends Phaser.Scene {
     const halfW = matW / 2;
     const halfH = matH / 2;
 
-    // Глубокое фактурное кожаное сукно
     matGfx.fillStyle(0x0f1520, 1);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 12);
 
-    // Тонкая латунная прошивка по периметру
     matGfx.lineStyle(1.5, 0xc5a059, 0.7);
     matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 12);
     matGfx.lineStyle(1, 0x1e293b, 0.4);
     matGfx.strokeRoundedRect(-halfW + 4, -halfH + 4, matW - 8, matH - 8, 8);
 
-    // Угловые заклёпки
     const rivets = [
       { x: -halfW + 12, y: -halfH + 12 },
       { x: halfW - 12, y: -halfH + 12 },
@@ -555,7 +795,6 @@ export class RestoreScene extends Phaser.Scene {
       matGfx.strokeCircle(r.x, r.y, 3);
     });
 
-    // Микро-сетка ювелира
     const grid = this.add.graphics();
     grid.lineStyle(1, 0x1e293b, 0.22);
     const step = 26;
@@ -568,7 +807,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.matContainer.add([matGfx, grid]);
 
-    // Тёплый софит мастера (Spotlight)
     this.add.circle(this.centerX, this.centerY, Math.min(width * 0.48, 220), 0xfff4e0, 0.04)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(3);
@@ -662,7 +900,7 @@ export class RestoreScene extends Phaser.Scene {
       onComplete: () => {
         shardMaskShape.setPosition(this.brokenPiece.x, this.brokenPiece.y);
         this.taskNotice.setText('ДЕТАЛЬ ОТЛОМИЛАСЬ! ВЫБЕРИТЕ КЛЕЙ ИЛИ ЗОЛОТО');
-        this.selectTool('tool_glue', 'slot_glue', 'mask_glue', true);
+        this.selectTool('tool_glue', 'tex_tool_glue', 'mask_glue', true);
       }
     });
 
@@ -747,74 +985,6 @@ export class RestoreScene extends Phaser.Scene {
     this.kintsugiBanner.add([bannerBg, infoTxt, kintsugiBtn, kintsugiTxt]);
   }
 
-  createToolTray(trayY, width) {
-    const tools = [
-      { id: 'tool_scraper', icon: 'slot_scraper', mask: 'mask_scraper', label: 'Скребок' },
-      { id: 'tool_brush', icon: 'slot_brush_soft', mask: 'mask_brush', label: 'Кисть' },
-      { id: 'tool_solvent', icon: 'slot_solvent', mask: 'mask_solvent', label: 'Спрей' },
-      { id: 'tool_glue', icon: 'slot_glue', mask: 'mask_glue', label: 'Клей' },
-      { id: 'tool_polish', icon: 'slot_polish', mask: 'mask_polish', label: 'Замша' }
-    ];
-
-    this.add.rectangle(width / 2, trayY, width * 0.94, 76, 0x0d121c, 0.98)
-      .setStrokeStyle(1.5, 0x1e293b, 0.9)
-      .setDepth(22);
-
-    const stepX = (width * 0.90) / tools.length;
-    const startX = width * 0.05 + stepX / 2;
-
-    this.traySlots = [];
-
-    tools.forEach((t, i) => {
-      const slotX = startX + i * stepX;
-      const isSelected = (t.id === this.activeTool);
-
-      const slotBg = this.add.rectangle(slotX, trayY, 50, 52, 0x141b26)
-        .setStrokeStyle(1.5, isSelected ? 0x10b981 : 0x27354a, isSelected ? 1 : 0.6)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(23);
-
-      this.add.image(slotX, trayY - 6, t.icon).setScale(0.58).setDepth(24);
-
-      const lbl = this.add.text(slotX, trayY + 18, t.label, {
-        fontSize: '9.5px',
-        fontFamily: 'sans-serif',
-        color: isSelected ? '#10b981' : '#64748b',
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(24);
-
-      slotBg.on('pointerdown', () => {
-        this.selectTool(t.id, t.icon, t.mask, false);
-      });
-
-      this.traySlots.push({ id: t.id, bg: slotBg, label: lbl });
-    });
-  }
-
-  selectTool(toolId, iconKey, maskKey, isSilent = false) {
-    this.activeTool = toolId;
-    this.activeMaskKey = maskKey;
-
-    if (this.textures.exists(iconKey)) {
-      this.toolSprite.setTexture(iconKey);
-    }
-
-    if (!isSilent && AudioManager.playClick) {
-      AudioManager.playClick();
-    }
-
-    this.traySlots.forEach(slot => {
-      const active = (slot.id === toolId);
-      slot.bg.setStrokeStyle(1.5, active ? 0x10b981 : 0x27354a, active ? 1 : 0.6);
-      slot.label.setColor(active ? '#10b981' : '#64748b');
-    });
-
-    const currentTask = this.artifactData.tasks[this.currentTaskIndex];
-    if (currentTask && toolId === currentTask.requiredTool) {
-      this.toolWarning.setText('');
-    }
-  }
-
   startTask(taskIdx) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
@@ -827,15 +997,7 @@ export class RestoreScene extends Phaser.Scene {
     const taskTitle = task.hint || task.name || 'Очистите артефакт';
     this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${taskTitle}`);
 
-    const toolIcons = {
-      tool_scraper: 'slot_scraper',
-      tool_brush: 'slot_brush_soft',
-      tool_solvent: 'slot_solvent',
-      tool_glue: 'slot_glue',
-      tool_polish: 'slot_polish'
-    };
-
-    this.selectTool(task.requiredTool, toolIcons[task.requiredTool] || 'slot_scraper', task.requiredTool.replace('tool_', 'mask_'), true);
+    this.selectTool(task.requiredTool, `tex_${task.requiredTool}`, task.requiredTool.replace('tool_', 'mask_'), true);
 
     if (task.type === 'break_and_assemble') {
       this.dirtLayer.clear();
@@ -898,8 +1060,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.dirtLayer.draw(dirtGfx, 0, 0);
     dirtGfx.destroy();
-
-    this.particles.setParticleTint(task.color || 0xc5a059);
   }
 
   completeTaskTransition() {
