@@ -9,7 +9,6 @@ export class BootScene extends Phaser.Scene {
     } catch (err) {
       console.error('Ошибка в createRestorationAssets:', err);
     }
-    // Гарантированный переход в меню
     this.scene.start('MenuScene');
   }
 
@@ -29,7 +28,6 @@ export class BootScene extends Phaser.Scene {
       }
     };
 
-    // Безопасное скругление прямоугольников без сбоев на мобильных устройствах
     const drawRoundRect = (ctx, x, y, width, height, radius = 8) => {
       ctx.beginPath();
       ctx.moveTo(x + radius, y);
@@ -799,25 +797,85 @@ export class BootScene extends Phaser.Scene {
     });
 
     // --- 6. ВИКИНГИ ---
+    // 6.1 РОГ ДЛЯ ЭЛЯ (ПОЛИРОВАННЫЙ ТУРИЙ РОГ В СЕРЕБРЯНОЙ ОПРАВЕ)
     make('art_viking_horn', W, H, (ctx) => {
-      const hg = ctx.createLinearGradient(cx - 140, cy, cx + 140, cy);
-      hg.addColorStop(0, '#fef3c7'); hg.addColorStop(0.5, '#78350f'); hg.addColorStop(1, '#1c1917');
-      ctx.fillStyle = hg;
+      const hornGrad = ctx.createLinearGradient(cx - 150, cy - 150, cx + 150, cy + 200);
+      hornGrad.addColorStop(0, '#fef3c7');
+      hornGrad.addColorStop(0.3, '#d97706');
+      hornGrad.addColorStop(0.7, '#451a03');
+      hornGrad.addColorStop(1, '#1c1917');
+      ctx.fillStyle = hornGrad;
+
       ctx.beginPath();
-      ctx.moveTo(cx - 125, cy - 180);
-      ctx.quadraticCurveTo(cx + 195, cy - 80, cx + 155, cy + 250);
-      ctx.quadraticCurveTo(cx + 85, cy + 265, cx + 35, cy + 125);
-      ctx.quadraticCurveTo(cx - 40, cy + 30, cx - 125, cy - 80);
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 22;
-      ctx.beginPath(); ctx.moveTo(cx - 125, cy - 180); ctx.lineTo(cx - 125, cy - 80); ctx.stroke();
+      ctx.moveTo(cx - 130, cy - 220);
+      ctx.bezierCurveTo(cx + 190, cy - 140, cx + 220, cy + 180, cx + 110, cy + 270);
+      ctx.quadraticCurveTo(cx + 60, cy + 280, cx + 30, cy + 180);
+      ctx.bezierCurveTo(cx - 20, cy + 60, cx - 50, cy - 30, cx - 130, cy - 110);
+      ctx.closePath();
+      ctx.fill();
+
+      // Серебряный чеканный раструб
+      const silverGrad = ctx.createLinearGradient(cx - 140, 0, cx - 120, 0);
+      silverGrad.addColorStop(0, '#64748b'); silverGrad.addColorStop(0.5, '#f8fafc'); silverGrad.addColorStop(1, '#94a3b8');
+      ctx.fillStyle = silverGrad;
+      ctx.beginPath();
+      ctx.ellipse(cx - 130, cy - 165, 30, 60, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 14; ctx.stroke();
+
+      // Опоясывающее серебряное кольцо с рунами
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 22;
+      ctx.beginPath();
+      ctx.moveTo(cx - 15, cy - 20); ctx.lineTo(cx + 70, cy + 30);
+      ctx.stroke();
+
+      // Литой наконечник в виде клюва ворона
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(cx + 110, cy + 270);
+      ctx.lineTo(cx + 140, cy + 320);
+      ctx.lineTo(cx + 80, cy + 285);
+      ctx.closePath();
+      ctx.fill();
     });
 
+    // 6.2 ФИБУЛА ЯРЛА (МАССИВНАЯ ПОДКОВООБРАЗНАЯ ЗАСТЁЖКА С ВИТЫМ УЗОРОМ)
     make('art_viking_brooch', W, H, (ctx) => {
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 30; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(cx, cy, 155, 0.4, Math.PI * 2 - 0.4); ctx.stroke();
-      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 20;
-      ctx.beginPath(); ctx.moveTo(cx - 180, cy + 100); ctx.lineTo(cx + 170, cy - 110); ctx.stroke();
+      const ringGrad = ctx.createRadialGradient(cx, cy, 60, cx, cy, 190);
+      ringGrad.addColorStop(0, '#94a3b8'); ringGrad.addColorStop(0.6, '#f1f5f9'); ringGrad.addColorStop(1, '#475569');
+      ctx.strokeStyle = ringGrad;
+      ctx.lineWidth = 36;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 155, 0.55, Math.PI * 2 - 0.55);
+      ctx.stroke();
+
+      // Шарообразные гранёные окончания подковы
+      ctx.fillStyle = '#e2e8f0';
+      const endAngle1 = 0.55;
+      const endAngle2 = Math.PI * 2 - 0.55;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(endAngle1) * 155, cy + Math.sin(endAngle1) * 155, 26, 0, Math.PI * 2);
+      ctx.arc(cx + Math.cos(endAngle2) * 155, cy + Math.sin(endAngle2) * 155, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Длинная кованая булавка фибулы
+      const needleGrad = ctx.createLinearGradient(cx - 200, cy + 160, cx + 180, cy - 180);
+      needleGrad.addColorStop(0, '#334155'); needleGrad.addColorStop(0.5, '#f8fafc'); needleGrad.addColorStop(1, '#94a3b8');
+      ctx.strokeStyle = needleGrad;
+      ctx.lineWidth = 22;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 170, cy + 180);
+      ctx.lineTo(cx + 170, cy - 180);
+      ctx.stroke();
+
+      // Кольцо-шарнир иглы
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(cx - 90, cy + 95, 28, 0, Math.PI * 2);
+      ctx.stroke();
     });
 
     make('art_viking_axe', W, H, (ctx) => {
@@ -900,59 +958,238 @@ export class BootScene extends Phaser.Scene {
     });
 
     // --- 7. РЕНЕССАНС ---
+    // 7.1 МОРСКОЙ КОМПАС (ОРЕХОВЫЙ ФУТЛЯР С ЛАТУННОЙ КАРТУШКОЙ)
     make('art_renaissance_compass', W, H, (ctx) => {
-      ctx.fillStyle = '#451a03'; drawRoundRect(ctx, cx - 160, cy - 160, 320, 320, 22); ctx.fill();
-      const lg = ctx.createRadialGradient(cx, cy, 30, cx, cy, 120);
-      lg.addColorStop(0, '#fef08a'); lg.addColorStop(0.7, '#eab308'); lg.addColorStop(1, '#854d0e');
-      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(cx, cy, 124, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#dc2626';
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 20, cy); ctx.lineTo(cx, cy - 105); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - 20, cy); ctx.lineTo(cx, cy + 105); ctx.closePath(); ctx.fill();
-    });
+      // Квадратный полированный футляр из темного ореха
+      const boxGrad = ctx.createLinearGradient(cx - 170, cy - 170, cx + 170, cy + 170);
+      boxGrad.addColorStop(0, '#582910'); boxGrad.addColorStop(0.5, '#78350f'); boxGrad.addColorStop(1, '#2b1206');
+      ctx.fillStyle = boxGrad;
+      drawRoundRect(ctx, cx - 165, cy - 165, 330, 330, 24); ctx.fill();
 
-    make('art_renaissance_goblet', W, H, (ctx) => {
-      const gg = ctx.createLinearGradient(cx - 110, cy, cx + 110, cy);
-      gg.addColorStop(0, 'rgba(147, 197, 253, 0.55)'); gg.addColorStop(0.5, 'rgba(255, 255, 255, 0.85)'); gg.addColorStop(1, 'rgba(59, 130, 246, 0.55)');
-      ctx.fillStyle = gg;
+      // Латунные уголки шкатулки
+      ctx.fillStyle = '#d4af37';
+      const corners = [
+        { x: cx - 160, y: cy - 160 }, { x: cx + 125, y: cy - 160 },
+        { x: cx - 160, y: cy + 125 }, { x: cx + 125, y: cy + 125 }
+      ];
+      corners.forEach(c => {
+        drawRoundRect(ctx, c.x, c.y, 35, 35, 6); ctx.fill();
+      });
+
+      // Латунный круглый чан компаса
+      const bowlGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 140);
+      bowlGrad.addColorStop(0, '#fef08a'); bowlGrad.addColorStop(0.7, '#eab308'); bowlGrad.addColorStop(1, '#854d0e');
+      ctx.fillStyle = bowlGrad;
+      ctx.beginPath(); ctx.arc(cx, cy, 138, 0, Math.PI * 2); ctx.fill();
+
+      // Белый циферблат с делениями
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.arc(cx, cy, 115, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
+
+      // Роза ветров (8-лучевая звезда)
+      drawStar(ctx, cx, cy, 8, 95, 28);
+      ctx.fillStyle = '#b45309'; ctx.fill();
+
+      // Стальная стрелка с синей и алой половинами
+      ctx.fillStyle = '#dc2626'; // Север
       ctx.beginPath();
-      ctx.moveTo(cx - 105, cy - 170); ctx.lineTo(cx + 105, cy - 170);
-      ctx.bezierCurveTo(cx + 90, cy + 30, cx + 25, cy + 70, cx + 16, cy + 85);
-      ctx.lineTo(cx - 16, cy + 85);
-      ctx.bezierCurveTo(cx - 25, cy + 70, cx - 90, cy + 30, cx - 105, cy - 170);
+      ctx.moveTo(cx, cy); ctx.lineTo(cx + 18, cy); ctx.lineTo(cx, cy - 105);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(cx - 12, cy + 85, 24, 135);
-      ctx.beginPath(); ctx.ellipse(cx, cy + 240, 95, 32, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e3a8a'; // Юг
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx - 18, cy); ctx.lineTo(cx, cy + 105);
+      ctx.closePath(); ctx.fill();
     });
 
+    // 7.2 ВЕНЕЦИАНСКИЙ КУБОК (МУРАНСКОЕ СТЕКЛО С РУБИНОВЫМИ НИТЯМИ)
+    make('art_renaissance_goblet', W, H, (ctx) => {
+      // Полупрозрачная хрустальная чаша
+      const glassGrad = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);
+      glassGrad.addColorStop(0, 'rgba(191, 219, 254, 0.45)');
+      glassGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
+      glassGrad.addColorStop(0.7, 'rgba(147, 197, 253, 0.5)');
+      glassGrad.addColorStop(1, 'rgba(96, 165, 250, 0.45)');
+      ctx.fillStyle = glassGrad;
+
+      ctx.beginPath();
+      ctx.moveTo(cx - 120, cy - 220); ctx.lineTo(cx + 120, cy - 220);
+      ctx.bezierCurveTo(cx + 110, cy + 20, cx + 35, cy + 70, cx + 22, cy + 85);
+      ctx.lineTo(cx - 22, cy + 85);
+      ctx.bezierCurveTo(cx - 35, cy + 70, cx - 110, cy + 20, cx - 120, cy - 220);
+      ctx.closePath(); ctx.fill();
+
+      // Внутренние рубиновые спирали в стекле
+      ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - 80, cy - 200); ctx.quadraticCurveTo(cx, cy - 60, cx + 60, cy - 160);
+      ctx.moveTo(cx + 80, cy - 200); ctx.quadraticCurveTo(cx, cy - 40, cx - 60, cy - 140);
+      ctx.stroke();
+
+      // Фигурная барочная золотая ножка с балясиной
+      const goldGrad = ctx.createLinearGradient(cx - 50, 0, cx + 50, 0);
+      goldGrad.addColorStop(0, '#ca8a04'); goldGrad.addColorStop(0.5, '#fde047'); goldGrad.addColorStop(1, '#854d0e');
+      ctx.fillStyle = goldGrad;
+
+      // Узел ножки
+      ctx.beginPath(); ctx.ellipse(cx, cy + 120, 32, 24, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(cx - 14, cy + 85, 28, 160);
+
+      // Круглое ступенчатое основание
+      ctx.beginPath(); ctx.ellipse(cx, cy + 265, 125, 38, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 4; ctx.stroke();
+    });
+
+    // 7.3 ЛАТУННАЯ АСТРОЛЯБИЯ (ТОЧНЫЙ НАВИГАЦИОННЫЙ ПРИБОР)
     make('art_renaissance_astrolabe', W, H, (ctx) => {
-      const ag = ctx.createRadialGradient(cx, cy, 30, cx, cy, 180);
-      ag.addColorStop(0, '#fef08a'); ag.addColorStop(0.6, '#d97706'); ag.addColorStop(1, '#78350f');
-      ctx.fillStyle = ag; ctx.beginPath(); ctx.arc(cx, cy, 175, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#b45309'; ctx.lineWidth = 20;
-      ctx.beginPath(); ctx.arc(cx, cy - 210, 45, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#451a03'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(cx, cy, 135, 0, Math.PI * 2); ctx.arc(cx, cy, 75, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx - 155, cy); ctx.lineTo(cx + 155, cy); ctx.moveTo(cx, cy - 155); ctx.lineTo(cx + 155); ctx.stroke();
+      // Мощное подвесное кольцо (армилла)
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 22;
+      ctx.beginPath(); ctx.arc(cx, cy - 240, 52, 0, Math.PI * 2); ctx.stroke();
+
+      // Основной латунный диск (матер)
+      const brassGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 210);
+      brassGrad.addColorStop(0, '#fef08a');
+      brassGrad.addColorStop(0.5, '#eab308');
+      brassGrad.addColorStop(0.85, '#b45309');
+      brassGrad.addColorStop(1, '#78350f');
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath(); ctx.arc(cx, cy, 195, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 6; ctx.stroke();
+
+      // Градуированный лимб с делениями
+      ctx.strokeStyle = '#451a03'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, 175, 0, Math.PI * 2); ctx.stroke();
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 18) {
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * 175, cy + Math.sin(a) * 175);
+        ctx.lineTo(cx + Math.cos(a) * 192, cy + Math.sin(a) * 192);
+        ctx.stroke();
+      }
+
+      // Ажурная паутина (рети) с указателями звезд
+      ctx.strokeStyle = '#291205'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 70, 0, Math.PI * 2);
+      ctx.moveTo(cx - 170, cy); ctx.lineTo(cx + 170, cy);
+      ctx.moveTo(cx, cy - 170); ctx.lineTo(cx, cy + 170);
+      ctx.stroke();
+
+      // Алидада (вращающаяся линейка визирования)
+      ctx.fillStyle = '#78350f';
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(0.65);
+      drawRoundRect(ctx, -195, -12, 390, 24, 6); ctx.fill();
+      ctx.restore();
+
+      // Центральный винт
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
     });
 
+    // 7.4 НЮРНБЕРГСКОЕ ЯЙЦО (ПЕРВЫЕ КАРМАННЫЕ ЧАСЫ ПЕТЕРА ХЕНЛЯЙНА)
     make('art_renaissance_clock', W, H, (ctx) => {
-      const og = ctx.createRadialGradient(cx - 40, cy - 40, 30, cx, cy, 180);
-      og.addColorStop(0, '#fef08a'); og.addColorStop(0.6, '#eab308'); og.addColorStop(1, '#854d0e');
-      ctx.fillStyle = og; ctx.beginPath(); ctx.ellipse(cx, cy, 135, 190, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(cx, cy, 82, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 82, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#020617'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 54); ctx.moveTo(cx, cy); ctx.lineTo(cx + 36, cy); ctx.stroke();
+      // Овальный позолоченный корпус часов
+      const goldEgg = ctx.createRadialGradient(cx - 40, cy - 40, 40, cx, cy, 220);
+      goldEgg.addColorStop(0, '#fffbeb');
+      goldEgg.addColorStop(0.35, '#fde047');
+      goldEgg.addColorStop(0.7, '#eab308');
+      goldEgg.addColorStop(1, '#854d0e');
+      ctx.fillStyle = goldEgg;
+
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 150, 215, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#713f12'; ctx.lineWidth = 6; ctx.stroke();
+
+      // Резная ажурная кайма вокруг циферблата
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(cx, cy, 105, 0, Math.PI * 2); ctx.stroke();
+
+      // Серебряный циферблат
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.arc(cx, cy, 95, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 3; ctx.stroke();
+
+      // Часовые деления и римские метки
+      ctx.strokeStyle = '#09090b'; ctx.lineWidth = 3;
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * 82, cy + Math.sin(a) * 82);
+        ctx.lineTo(cx + Math.cos(a) * 92, cy + Math.sin(a) * 92);
+        ctx.stroke();
+      }
+
+      // Одиночная фигурная стрелка эпохи Возрождения
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + 8, cy - 25);
+      ctx.lineTo(cx, cy - 70); // Острие вверх
+      ctx.lineTo(cx - 8, cy - 25);
+      ctx.closePath();
+      ctx.fill();
+
+      // Заводная головка и дужка сверху
+      ctx.fillStyle = '#eab308';
+      drawRoundRect(ctx, cx - 22, cy - 245, 44, 34, 6); ctx.fill();
+      ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.arc(cx, cy - 260, 28, 0, Math.PI * 2); ctx.stroke();
     });
 
+    // 7.5 ПОРТРЕТ ФЛОРЕНТИЙКИ (ЖИВОПИСЬ НА ДЕРЕВЯННОЙ ПАНЕЛИ В БАГЕТЕ)
     make('art_renaissance_mona', W, H, (ctx) => {
-      ctx.fillStyle = '#b45309'; drawRoundRect(ctx, cx - 145, cy - 225, 290, 450, 14); ctx.fill();
-      ctx.strokeStyle = '#fde047'; ctx.lineWidth = 14; ctx.stroke();
-      ctx.fillStyle = '#064e3b'; ctx.fillRect(cx - 120, cy - 200, 240, 400);
-      ctx.fillStyle = '#1c1917'; ctx.beginPath(); ctx.ellipse(cx, cy + 60, 95, 125, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fed7aa'; ctx.beginPath(); ctx.ellipse(cx, cy - 55, 54, 68, 0, 0, Math.PI * 2); ctx.fill();
+      // Резная широкая рама из мореного золоченого дуба
+      const frameGrad = ctx.createLinearGradient(cx - 170, cy - 260, cx + 170, cy + 260);
+      frameGrad.addColorStop(0, '#78350f');
+      frameGrad.addColorStop(0.5, '#d4af37');
+      frameGrad.addColorStop(1, '#451a03');
+      ctx.fillStyle = frameGrad;
+      drawRoundRect(ctx, cx - 160, cy - 250, 320, 500, 18); ctx.fill();
+
+      // Внутренний золотой профилированный кант
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = 8;
+      ctx.strokeRect(cx - 138, cy - 228, 276, 456);
+
+      // Тополиная доска под живопись (темно-оливковый фон)
+      const canvasBg = ctx.createRadialGradient(cx, cy - 40, 20, cx, cy, 210);
+      canvasBg.addColorStop(0, '#1e293b'); canvasBg.addColorStop(0.7, '#0f172a'); canvasBg.addColorStop(1, '#020617');
+      ctx.fillStyle = canvasBg;
+      ctx.fillRect(cx - 130, cy - 220, 260, 440);
+
+      // Силуэт платья из темно-бордового бархата
+      ctx.fillStyle = '#881337';
+      ctx.beginPath();
+      ctx.moveTo(cx - 95, cy + 215);
+      ctx.lineTo(cx + 95, cy + 215);
+      ctx.bezierCurveTo(cx + 80, cy + 60, cx + 55, cy - 10, cx + 32, cy - 40);
+      ctx.lineTo(cx - 32, cy - 40);
+      ctx.bezierCurveTo(cx - 55, cy - 10, cx - 80, cy + 60, cx - 95, cy + 215);
+      ctx.closePath();
+      ctx.fill();
+
+      // Шея и благородный лик флорентийской дамы
+      const skinGrad = ctx.createLinearGradient(cx - 40, cy - 120, cx + 40, cy - 60);
+      skinGrad.addColorStop(0, '#ffedd5'); skinGrad.addColorStop(1, '#fed7aa');
+      ctx.fillStyle = skinGrad;
+      ctx.beginPath(); ctx.ellipse(cx, cy - 80, 58, 72, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Шелковое покрывало и прическа с вуалью
+      ctx.fillStyle = '#1c1917';
+      ctx.beginPath();
+      ctx.moveTo(cx - 65, cy - 80);
+      ctx.quadraticCurveTo(cx, cy - 170, cx + 65, cy - 80);
+      ctx.bezierCurveTo(cx + 75, cy + 20, cx + 60, cy + 90, cx + 45, cy + 110);
+      ctx.lineTo(cx - 45, cy + 110);
+      ctx.bezierCurveTo(cx - 60, cy + 90, cx - 75, cy + 20, cx - 65, cy - 80);
+      ctx.closePath();
+      ctx.fill();
+
+      // Изумрудный кулон на золотой нити
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(cx, cy - 10, 36, 0.2, Math.PI - 0.2); ctx.stroke();
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath(); ctx.arc(cx, cy + 26, 8, 0, Math.PI * 2); ctx.fill();
     });
   }
 }
