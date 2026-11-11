@@ -22,7 +22,6 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
-    // Передаем reqTemplate третьим аргументом, чтобы не подменялся выбранный артефакт
     if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
       this.artifactData = ArtifactsModule.generateArtifactOrder(prefRegion, history, reqTemplate);
     } else {
@@ -216,10 +215,9 @@ export class RestoreScene extends Phaser.Scene {
         return;
       }
 
-      // Фильтр микроколебаний пальца на одном месте
       if (this.lastCleanPos) {
         const moveDist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
-        if (moveDist < 4) return;
+        if (moveDist < 3) return;
       }
       this.lastCleanPos = { x: pointer.x, y: pointer.y };
 
@@ -236,10 +234,10 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        // Сбалансированные радиусы стирания сетки
-        const eraserRadius = (this.activeTool === 'tool_scraper') ? 16 :
-                             (this.activeTool === 'tool_brush') ? 20 :
-                             (this.activeTool === 'tool_solvent') ? 18 : 22;
+        // Скорректированные радиусы захвата ячеек
+        const eraserRadius = (this.activeTool === 'tool_scraper') ? 20 :
+                             (this.activeTool === 'tool_brush') ? 24 :
+                             (this.activeTool === 'tool_solvent') ? 22 : 26;
 
         const cellRadiusX = Math.ceil(eraserRadius / this.artW * this.gridCols);
         const cellRadiusY = Math.ceil(eraserRadius / this.artH * this.gridRows);
@@ -268,8 +266,8 @@ export class RestoreScene extends Phaser.Scene {
           }
         }
 
-        // Порог завершения 98.5% — статус-бар доходит до конца синхронно с чистотой артефакта
-        const targetGoal = Math.max(this.targetValidCells * 0.985, 1);
+        // Порог прохождения 84%: когда визуально фигура дотерта, статус-бар уверенно доходит до 100%
+        const targetGoal = Math.max(this.targetValidCells * 0.84, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
@@ -411,12 +409,11 @@ export class RestoreScene extends Phaser.Scene {
     this.breakHoleGfx.lineStyle(2, 0x8a7238, 0.7);
     this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
 
-    // Осколок: создаем компактный фрагмент с круговой маской 52x52 пикселя
+    // Осколок: компактный фрагмент с круговой маской 52x52 пикселя
     const pieceContainer = this.add.container(targetX, targetY).setDepth(19);
 
     const pieceImg = this.add.image(0, 0, shardTex)
       .setDisplaySize(this.artW, this.artH);
-    // Сдвиг изображения внутри контейнера, чтобы вырезалась именно область скола
     pieceImg.setPosition(-(targetX - this.centerX), -(targetY - this.centerY));
 
     const shardMaskShape = this.make.graphics({ add: false });
@@ -426,12 +423,10 @@ export class RestoreScene extends Phaser.Scene {
     const shardMask = shardMaskShape.createGeometryMask();
     pieceContainer.setMask(shardMask);
 
-    // Визуальная обводка края скола
     const pieceBorder = this.add.graphics();
     pieceBorder.lineStyle(2, 0xc5a059, 0.85);
     pieceBorder.strokeCircle(0, 0, 26);
 
-    // Интерактивная зона для перетаскивания (ровно размер скола)
     const hitZone = this.add.circle(0, 0, 32, 0x000000, 0.001)
       .setInteractive({ draggable: true, useHandCursor: true });
 
@@ -440,7 +435,6 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
 
-    // Отлет небольшого фрагмента влево
     this.tweens.add({
       targets: this.brokenPiece,
       x: width * 0.22,
