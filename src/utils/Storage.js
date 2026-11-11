@@ -12,7 +12,8 @@ export const Storage = {
     CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards',
     ACTIVE_CONTRACT: 'art_active_contract',
     EXPEDITION_STOCKS: 'art_expedition_stocks',
-    KINTSUGI_LACQUER: 'art_kintsugi_lacquer'
+    KINTSUGI_LACQUER: 'art_kintsugi_lacquer',
+    UNLOCKED_REGIONS: 'art_unlocked_regions'
   },
 
   // --- ДЕНЬГИ ---
@@ -42,6 +43,14 @@ export const Storage = {
     return updated;
   },
 
+  buyKintsugiLacquer(count = 1, pricePerOne = 750) {
+    const totalCost = count * pricePerOne;
+    if (this.getCoins() < totalCost) return false;
+    this.addCoins(-totalCost);
+    this.addKintsugiLacquer(count);
+    return true;
+  },
+
   useKintsugiLacquer() {
     const cur = this.getKintsugiLacquer();
     if (cur > 0) {
@@ -52,66 +61,72 @@ export const Storage = {
   },
 
   // =========================================================================
+  // БАЛАНС ЭПОХ И ПОРОГ ВХОЖДЕНИЯ (50 УРОВНЕЙ)
+  // =========================================================================
+  REGION_UNLOCK_REQS: {
+    egypt: { minLevel: 1, cost: 0, name: 'Древний Египет' },
+    antique: { minLevel: 4, cost: 450, name: 'Античность' },
+    europe: { minLevel: 9, cost: 1400, name: 'Средневековье' },
+    japan: { minLevel: 16, cost: 3800, name: 'Япония' },
+    aztec: { minLevel: 24, cost: 8500, name: 'Ацтеки' },
+    vikings: { minLevel: 34, cost: 18000, name: 'Викинги' },
+    renaissance: { minLevel: 44, cost: 38000, name: 'Ренессанс' }
+  },
+
+  getUnlockedRegions() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.KEYS.UNLOCKED_REGIONS));
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {}
+    return ['egypt'];
+  },
+
+  isRegionUnlocked(regionId) {
+    if (regionId === 'egypt') return true;
+    const unlocked = this.getUnlockedRegions();
+    return unlocked.includes(regionId);
+  },
+
+  canUnlockRegion(regionId) {
+    const req = this.REGION_UNLOCK_REQS[regionId];
+    if (!req) return false;
+    const currentLevel = this.getLevelData().level;
+    const coins = this.getCoins();
+    return (currentLevel >= req.minLevel && coins >= req.cost && !this.isRegionUnlocked(regionId));
+  },
+
+  unlockRegion(regionId) {
+    if (!this.canUnlockRegion(regionId)) return false;
+    const req = this.REGION_UNLOCK_REQS[regionId];
+    this.addCoins(-req.cost);
+    const unlocked = this.getUnlockedRegions();
+    if (!unlocked.includes(regionId)) {
+      unlocked.push(regionId);
+      localStorage.setItem(this.KEYS.UNLOCKED_REGIONS, JSON.stringify(unlocked));
+    }
+    return true;
+  },
+
+  // =========================================================================
   // 50 УРОВНЕЙ И ПРОГРЕССИЯ
   // =========================================================================
   getLevelConfig(level) {
     const titles = [
-      'Ученик реставратора',      // 1
-      'Подмастерье древностей',    // 2
-      'Помощник хранителя',       // 3
-      'Младший реставратор',      // 4
-      'Музейный эксперт',         // 5
-      'Мастер реликвий',          // 6
-      'Старший архивариус',       // 7
-      'Королевский реставратор',  // 8
-      'Магистр древностей',       // 9
-      'Легендарный реставратор',  // 10
-      'Хранитель эпох I',         // 11
-      'Хранитель эпох II',        // 12
-      'Хранитель эпох III',       // 13
-      'Знаток артефактов',        // 14
-      'Мастер золотого шва',      // 15
-      'Хранитель тайн Востока',   // 16
-      'Смотритель Пантеона',      // 17
-      'Верховный реставратор',    // 18
-      'Архитектор вечности',      // 19
-      'Грандмастер реликвий',     // 20
-      'Лорд-хранитель Лувра',     // 21
-      'Искатель Первозданного',   // 22
-      'Магистр Кинцуги',          // 23
-      'Владыка залов времени',    // 24
-      'Оракул древностей',        // 25
-      'Мастер древней стали',     // 26
-      'Алхимик реставрации',      // 27
-      'Хранитель саги ярлов',     // 28
-      'Патриарх музейного дела',  // 29
-      'Живая легенда музея',      // 30
-      'Титан реставрации I',      // 31
-      'Титан реставрации II',     // 32
-      'Титан реставрации III',    // 33
-      'Мастер бессмертных ваз',   // 34
-      'Хранитель святилищ',       // 35
-      'Имперский антиквар',       // 36
-      'Великий магистр древностей',// 37
-      'Покоритель веков',         // 38
-      'Летописец цивилизаций',    // 39
-      'Владыка бессмертия',       // 40
-      'Демиург времени I',        // 41
-      'Демиург времени II',       // 42
-      'Демиург времени III',      // 43
-      'Верховный демиург',        // 44
-      'Хранитель нитей судьбы',   // 45
-      'Вечный архивариус',        // 46
-      'Повелитель реликвий',      // 47
-      'Абсолютный реставратор',   // 48
-      'Творец вечности',          // 49
-      'Бессмертный Хранитель'     // 50
+      'Ученик реставратора', 'Подмастерье древностей', 'Помощник хранителя', 'Младший реставратор', 'Музейный эксперт',
+      'Мастер реликвий', 'Старший архивариус', 'Королевский реставратор', 'Магистр древностей', 'Легендарный реставратор',
+      'Хранитель эпох I', 'Хранитель эпох II', 'Хранитель эпох III', 'Знаток артефактов', 'Мастер золотого шва',
+      'Хранитель тайн Востока', 'Смотритель Пантеона', 'Верховный реставратор', 'Архитектор вечности', 'Грандмастер реликвий',
+      'Лорд-хранитель Лувра', 'Искатель Первозданного', 'Магистр Кинцуги', 'Владыка залов времени', 'Оракул древностей',
+      'Мастер древней стали', 'Алхимик реставрации', 'Хранитель саги ярлов', 'Патриарх музейного дела', 'Живая легенда музея',
+      'Титан реставрации I', 'Титан реставрации II', 'Титан реставрации III', 'Мастер бессмертных ваз', 'Хранитель святилищ',
+      'Имперский антиквар', 'Великий магистр древностей', 'Покоритель веков', 'Летописец цивилизаций', 'Владыка бессмертия',
+      'Демиург времени I', 'Демиург времени II', 'Демиург времени III', 'Верховный демиург', 'Хранитель нитей судьбы',
+      'Вечный архивариус', 'Повелитель реликвий', 'Абсолютный реставратор', 'Творец вечности', 'Бессмертный Хранитель'
     ];
 
     const idx = Math.max(1, Math.min(level, 50));
     const title = titles[idx - 1] || `Мастер ранга ${idx}`;
 
-    // Формула опыта: плавный прогрессивный рост от 0 до 50 уровня
     let minXP = 0;
     if (idx === 1) minXP = 0;
     else if (idx === 2) minXP = 100;
@@ -124,7 +139,6 @@ export const Storage = {
     else if (idx === 9) minXP = 3200;
     else if (idx === 10) minXP = 4250;
     else {
-      // Для уровней 11-50: квадратичный шаг с шагом ~1200..2500 XP
       minXP = 4250 + Math.round((idx - 10) * 1250 + Math.pow(idx - 10, 1.45) * 180);
     }
 
@@ -183,7 +197,6 @@ export const Storage = {
     const newLevel = newLevelData.level;
     const leveledUp = newLevel > prevLevel;
 
-    // Автоматическая выдача наград при повышении уровня
     if (leveledUp) {
       for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
         this.grantLevelReward(lvl);
@@ -199,11 +212,9 @@ export const Storage = {
   },
 
   grantLevelReward(level) {
-    // Базовая награда: 100 монет * уровень
-    const bonusCoins = level * 120;
+    const bonusCoins = level * 150;
     this.addCoins(bonusCoins);
 
-    // Каждые 3 уровня даем 1 Золотой лак Кинцуги, а на круглых (5, 10, 15...) — 2 шт.
     let lacquerBonus = 0;
     if (level % 5 === 0) {
       lacquerBonus = 2;
@@ -293,29 +304,18 @@ export const Storage = {
 
     if (!templates || templates.length === 0) return null;
 
-    const currentLvl = this.getLevelData().level;
-    const allowedRegions = ['egypt'];
-    if (currentLvl >= 2) allowedRegions.push('antique');
-    if (currentLvl >= 4) allowedRegions.push('europe');
-    if (currentLvl >= 6) allowedRegions.push('japan');
-    if (currentLvl >= 8) allowedRegions.push('aztec');
-    if (currentLvl >= 10) allowedRegions.push('vikings');
-    if (currentLvl >= 12) allowedRegions.push('renaissance');
-
-    const pool = templates.filter(t => allowedRegions.includes(t.regionId));
+    // Контракты выпадают только по открытым игроком эпохам
+    const unlocked = this.getUnlockedRegions();
+    const pool = templates.filter(t => unlocked.includes(t.regionId));
     const target = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : templates[0];
 
     const clients = [
-      'Мэр Александрии',
-      'Королевский музей',
-      'Частный коллекционер',
-      'Гильдия архивариусов',
-      'Императорский посол'
+      'Мэр Александрии', 'Королевский музей', 'Частный коллекционер', 'Гильдия архивариусов', 'Императорский посол'
     ];
     const client = clients[Math.floor(Math.random() * clients.length)];
 
     const basePrice = target.marketValue || 100;
-    const bonusReward = 90;
+    const bonusReward = Math.round(basePrice * 0.4) + 60;
     const contractPrice = basePrice + bonusReward;
     const cooldownDuration = 2 * 60 * 60 * 1000;
 
@@ -326,7 +326,7 @@ export const Storage = {
       name: target.name,
       client,
       rewardCoins: contractPrice,
-      bonusXP: 80,
+      bonusXP: 90,
       completed: false,
       createdAt: now,
       nextAvailableAt: now + cooldownDuration
