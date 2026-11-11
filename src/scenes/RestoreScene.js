@@ -59,8 +59,8 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
 
+    // Разворачивание мата верстака работает ВСЕГДА
     this.isRitualIntro = true;
-
 
     this.generateAntiAliasedToolTextures();
 
@@ -86,7 +86,7 @@ export class RestoreScene extends Phaser.Scene {
     this.renderAtmosphericWorkshop(width, height, headerTotalHeight, trayTopLimit);
 
     // =========================================================================
-    // 3. ВЕРХНИЙ БАР (СГЛАЖЕННЫЙ ТЕКСТ HI-DPI)
+    // 3. ВЕРХНИЙ БАР (СГЛАЖЕННЫЙ ТЕКСТ)
     // =========================================================================
     const topBarCont = this.add.container(0, 0).setDepth(40);
 
@@ -158,11 +158,22 @@ export class RestoreScene extends Phaser.Scene {
     topBarCont.add([menuBtn, menuTxt, musicBtn, musicIcon, sfxBtn, sfxIcon]);
 
     // =========================================================================
-    // 4. ИНФОРМАЦИОННАЯ ШАПКА ЗАДАНИЯ (ЧЕТКИЙ ВЕКТОРНЫЙ РЕНДЕР)
+    // 4. ИНФОРМАЦИОННАЯ ШАПКА (ТОЧНОЕ ОПРЕДЕЛЕНИЕ ЭПОХИ)
     // =========================================================================
     const infoCont = this.add.container(0, topBarHeight).setDepth(40);
 
-    let badgeText = (this.artifactData.regionName || 'ДРЕВНИЙ ЕГИПЕТ').toUpperCase();
+    const regionNamesMap = {
+      egypt: 'Древний Египет',
+      antique: 'Античность',
+      europe: 'Европа',
+      japan: 'Япония',
+      aztec: 'Ацтеки',
+      vikings: 'Викинги',
+      renaissance: 'Ренессанс'
+    };
+    const currentRegionName = regionNamesMap[this.artifactData.regionId] || this.artifactData.regionName || 'Реставрация';
+
+    let badgeText = currentRegionName.toUpperCase();
     if (this.activeContract) {
       badgeText = `📜 КОНТРАКТ: ${this.activeContract.client.toUpperCase()}`;
     } else if (this.isDuplicate) {
@@ -212,10 +223,10 @@ export class RestoreScene extends Phaser.Scene {
     infoCont.add([badgeLbl, artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
 
     // =========================================================================
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (ТЕНЬ ПОД НИМ, А НЕ НА НЁМ)
     // =========================================================================
-    this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.40, this.artW * 0.85, 36, 0x000000, 0.45).setDepth(6);
-    this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.38, this.artW * 0.60, 22, 0x000000, 0.65).setDepth(6);
+    this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.44, this.artW * 0.88, 38, 0x000000, 0.45).setDepth(6);
+    this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.42, this.artW * 0.65, 24, 0x000000, 0.65).setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
@@ -438,138 +449,76 @@ export class RestoreScene extends Phaser.Scene {
     makeHD('tex_hd_tool_scraper', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
       const hGrad = ctx.createLinearGradient(54, 60, 74, 60);
-      hGrad.addColorStop(0, '#2b1810');
-      hGrad.addColorStop(0.5, '#5c3319');
-      hGrad.addColorStop(1, '#1f100a');
+      hGrad.addColorStop(0, '#2b1810'); hGrad.addColorStop(0.5, '#5c3319'); hGrad.addColorStop(1, '#1f100a');
       ctx.fillStyle = hGrad;
-      ctx.beginPath();
-      ctx.roundRect(56, 60, 16, 60, 6);
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(56, 60, 16, 60, 6); ctx.fill();
 
       const bGrad = ctx.createLinearGradient(52, 50, 76, 50);
-      bGrad.addColorStop(0, '#b48a28');
-      bGrad.addColorStop(0.5, '#fde047');
-      bGrad.addColorStop(1, '#856417');
-      ctx.fillStyle = bGrad;
-      ctx.fillRect(53, 50, 22, 10);
+      bGrad.addColorStop(0, '#b48a28'); bGrad.addColorStop(0.5, '#fde047'); bGrad.addColorStop(1, '#856417');
+      ctx.fillStyle = bGrad; ctx.fillRect(53, 50, 22, 10);
 
       ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.moveTo(64, 8);
-      ctx.lineTo(92, 50);
-      ctx.lineTo(36, 50);
-      ctx.closePath();
-      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(64, 8); ctx.lineTo(92, 50); ctx.lineTo(36, 50); ctx.closePath(); ctx.fill();
 
       const sGrad = ctx.createLinearGradient(36, 8, 92, 50);
-      sGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
-      sGrad.addColorStop(0.45, 'rgba(241,245,249,0.3)');
-      sGrad.addColorStop(1, 'rgba(15,23,42,0.6)');
+      sGrad.addColorStop(0, 'rgba(255,255,255,0.85)'); sGrad.addColorStop(0.45, 'rgba(241,245,249,0.3)'); sGrad.addColorStop(1, 'rgba(15,23,42,0.6)');
       ctx.fillStyle = sGrad;
-      ctx.beginPath();
-      ctx.moveTo(64, 8);
-      ctx.lineTo(72, 50);
-      ctx.lineTo(60, 50);
-      ctx.closePath();
-      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(64, 8); ctx.lineTo(72, 50); ctx.lineTo(60, 50); ctx.closePath(); ctx.fill();
     });
 
     makeHD('tex_hd_tool_brush', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
       const rGrad = ctx.createLinearGradient(56, 62, 72, 62);
-      rGrad.addColorStop(0, '#78350f');
-      rGrad.addColorStop(0.5, '#b45309');
-      rGrad.addColorStop(1, '#451a03');
+      rGrad.addColorStop(0, '#78350f'); rGrad.addColorStop(0.5, '#b45309'); rGrad.addColorStop(1, '#451a03');
       ctx.fillStyle = rGrad;
-      ctx.beginPath();
-      ctx.roundRect(58, 62, 12, 58, 6);
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(58, 62, 12, 58, 6); ctx.fill();
 
       const fGrad = ctx.createLinearGradient(50, 42, 78, 42);
-      fGrad.addColorStop(0, '#94a3b8');
-      fGrad.addColorStop(0.5, '#f8fafc');
-      fGrad.addColorStop(1, '#475569');
-      ctx.fillStyle = fGrad;
-      ctx.fillRect(52, 42, 24, 20);
+      fGrad.addColorStop(0, '#94a3b8'); fGrad.addColorStop(0.5, '#f8fafc'); fGrad.addColorStop(1, '#475569');
+      ctx.fillStyle = fGrad; ctx.fillRect(52, 42, 24, 20);
 
       const wGrad = ctx.createLinearGradient(64, 10, 64, 42);
-      wGrad.addColorStop(0, '#1c1917');
-      wGrad.addColorStop(0.5, '#92400e');
-      wGrad.addColorStop(0.85, '#d97706');
-      wGrad.addColorStop(1, '#fef08a');
+      wGrad.addColorStop(0, '#1c1917'); wGrad.addColorStop(0.5, '#92400e'); wGrad.addColorStop(0.85, '#d97706'); wGrad.addColorStop(1, '#fef08a');
       ctx.fillStyle = wGrad;
-      ctx.beginPath();
-      ctx.ellipse(64, 26, 18, 20, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.ellipse(64, 26, 18, 20, 0, 0, Math.PI * 2); ctx.fill();
     });
 
     makeHD('tex_hd_tool_solvent', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
       const gGrad = ctx.createLinearGradient(44, 44, 84, 44);
-      gGrad.addColorStop(0, '#064e3b');
-      gGrad.addColorStop(0.5, '#059669');
-      gGrad.addColorStop(1, '#022c22');
+      gGrad.addColorStop(0, '#064e3b'); gGrad.addColorStop(0.5, '#059669'); gGrad.addColorStop(1, '#022c22');
       ctx.fillStyle = gGrad;
-      ctx.beginPath();
-      ctx.roundRect(44, 44, 40, 72, 10);
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(44, 44, 40, 72, 10); ctx.fill();
 
-      ctx.fillStyle = 'rgba(255,255,255,0.42)';
-      ctx.fillRect(48, 48, 6, 62);
-
-      ctx.fillStyle = '#b48a28';
-      ctx.fillRect(56, 26, 16, 18);
-      ctx.fillStyle = '#d97706';
-      ctx.fillRect(50, 18, 28, 9);
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(72, 11, 18, 9);
+      ctx.fillStyle = 'rgba(255,255,255,0.42)'; ctx.fillRect(48, 48, 6, 62);
+      ctx.fillStyle = '#b48a28'; ctx.fillRect(56, 26, 16, 18);
+      ctx.fillStyle = '#d97706'; ctx.fillRect(50, 18, 28, 9);
+      ctx.fillStyle = '#f59e0b'; ctx.fillRect(72, 11, 18, 9);
     });
 
     makeHD('tex_hd_tool_glue', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
       const pGrad = ctx.createLinearGradient(42, 48, 86, 48);
-      pGrad.addColorStop(0, '#0f172a');
-      pGrad.addColorStop(0.5, '#334155');
-      pGrad.addColorStop(1, '#020617');
+      pGrad.addColorStop(0, '#0f172a'); pGrad.addColorStop(0.5, '#334155'); pGrad.addColorStop(1, '#020617');
       ctx.fillStyle = pGrad;
-      ctx.beginPath();
-      ctx.roundRect(42, 48, 44, 68, 10);
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(42, 48, 44, 68, 10); ctx.fill();
 
-      ctx.fillStyle = '#d4af37';
-      ctx.fillRect(50, 68, 28, 28);
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(54, 72, 20, 20);
-
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(54, 32, 20, 16);
-      ctx.fillStyle = '#facc15';
-      ctx.beginPath();
-      ctx.arc(64, 24, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(61, 21, 4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#d4af37'; ctx.fillRect(50, 68, 28, 28);
+      ctx.fillStyle = '#0f172a'; ctx.fillRect(54, 72, 20, 20);
+      ctx.fillStyle = '#0f172a'; ctx.fillRect(54, 32, 20, 16);
+      ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(64, 24, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(61, 21, 4, 0, Math.PI * 2); ctx.fill();
     });
 
     makeHD('tex_hd_tool_polish', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
       const zGrad = ctx.createRadialGradient(64, 64, 8, 64, 64, 44);
-      zGrad.addColorStop(0, '#fde68a');
-      zGrad.addColorStop(0.6, '#d97706');
-      zGrad.addColorStop(1, '#92400e');
+      zGrad.addColorStop(0, '#fde68a'); zGrad.addColorStop(0.6, '#d97706'); zGrad.addColorStop(1, '#92400e');
       ctx.fillStyle = zGrad;
-      ctx.beginPath();
-      ctx.roundRect(38, 38, 52, 52, 14);
-      ctx.fill();
+      ctx.beginPath(); ctx.roundRect(38, 38, 52, 52, 14); ctx.fill();
 
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(62, 60, 14, 0.4, Math.PI * 1.3);
-      ctx.stroke();
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(62, 60, 14, 0.4, Math.PI * 1.3); ctx.stroke();
     });
   }
 
