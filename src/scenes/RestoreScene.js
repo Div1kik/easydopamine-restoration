@@ -22,8 +22,9 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
+    // Передаем reqTemplate третьим аргументом, чтобы не подменялся выбранный артефакт
     if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
-      this.artifactData = ArtifactsModule.generateArtifactOrder(prefRegion);
+      this.artifactData = ArtifactsModule.generateArtifactOrder(prefRegion, history, reqTemplate);
     } else {
       const templates = ArtifactsModule.ARTIFACT_TEMPLATES || [];
       const found = templates.find(t => t.id === reqTemplate) || templates[0];
@@ -138,7 +139,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. КРУПНЫЙ АДЕКВАТНЫЙ РАЗМЕР АРТЕФАКТА (320 x 400)
+    // 4. Крупный размер артефакта (320 x 400)
     this.artW = 320;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -391,6 +392,7 @@ export class RestoreScene extends Phaser.Scene {
     const targetX = this.centerX + 35;
     const targetY = this.centerY - 15;
 
+    // Вырез на месте скола
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
     this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
@@ -398,38 +400,65 @@ export class RestoreScene extends Phaser.Scene {
     this.breakHoleGfx.lineStyle(2, 0x8a7238, 0.7);
     this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
 
-    this.brokenPiece = this.add.image(targetX, targetY, shardTex).setDepth(19);
+    // Осколок: создаем компактный фрагмент с круговой маской 52x52 пикселя
+    const pieceContainer = this.add.container(targetX, targetY).setDepth(19);
+
+    const pieceImg = this.add.image(0, 0, shardTex)
+      .setDisplaySize(this.artW, this.artH);
+    // Сдвиг изображения внутри контейнера, чтобы вырезалась именно область скола
+    pieceImg.setPosition(-(targetX - this.centerX), -(targetY - this.centerY));
+
+    const shardMaskShape = this.make.graphics({ add: false });
+    shardMaskShape.fillStyle(0xffffff);
+    shardMaskShape.fillCircle(0, 0, 26);
+
+    const shardMask = shardMaskShape.createGeometryMask();
+    pieceContainer.setMask(shardMask);
+
+    // Визуальная обводка края скола
+    const pieceBorder = this.add.graphics();
+    pieceBorder.lineStyle(2, 0xc5a059, 0.85);
+    pieceBorder.strokeCircle(0, 0, 26);
+
+    // Интерактивная зона для перетаскивания (ровно размер скола)
+    const hitZone = this.add.circle(0, 0, 32, 0x000000, 0.001)
+      .setInteractive({ draggable: true, useHandCursor: true });
+
+    pieceContainer.add([pieceImg, pieceBorder, hitZone]);
+    this.brokenPiece = pieceContainer;
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
 
+    // Отлет небольшого фрагмента влево
     this.tweens.add({
       targets: this.brokenPiece,
-      x: width * 0.20,
-      y: this.centerY + 85,
-      angle: 35,
+      x: width * 0.22,
+      y: this.centerY + 75,
       duration: 600,
       ease: 'Bounce.easeOut',
       onComplete: () => {
-        this.brokenPiece.setInteractive({ draggable: true });
+        shardMaskShape.setPosition(this.brokenPiece.x, this.brokenPiece.y);
         this.taskNotice.setText('ДЕТАЛЬ ОТЛОМИЛАСЬ! НАНЕСИТЕ КЛЕЙ НА СКОЛ');
         this.selectTool('tool_glue', 'slot_glue', 'mask_glue');
       }
     });
 
-    this.brokenPiece.on('drag', (pointer, dragX, dragY) => {
+    hitZone.on('drag', (pointer, dragX, dragY) => {
       if (!this.glueApplied) {
         this.toolWarning.setText('СНАЧАЛА НАНЕСИТЕ КЛЕЙ НА МЕСТО СКОЛА!');
         return;
       }
-      this.brokenPiece.setPosition(dragX, dragY);
+      this.brokenPiece.x = pointer.x;
+      this.brokenPiece.y = pointer.y;
+      shardMaskShape.setPosition(this.brokenPiece.x, this.brokenPiece.y);
     });
 
-    this.brokenPiece.on('dragend', () => {
+    hitZone.on('dragend', () => {
       const d = Phaser.Math.Distance.Between(this.brokenPiece.x, this.brokenPiece.y, targetX, targetY);
       if (d < 45 && this.glueApplied) {
         this.brokenPiece.setPosition(targetX, targetY);
-        this.brokenPiece.setAngle(0);
-        this.brokenPiece.disableInteractive();
+        shardMaskShape.setPosition(targetX, targetY);
+        hitZone.disableInteractive();
 
         this.breakHoleGfx.clear();
         this.breakHoleGfx.lineStyle(3, 0x22c55e, 1);
@@ -440,6 +469,7 @@ export class RestoreScene extends Phaser.Scene {
         this.time.delayedCall(450, () => {
           this.breakHoleGfx.setVisible(false);
           this.assemblyContainer.setVisible(false);
+          shardMaskShape.destroy();
           this.completeTaskTransition();
         });
       }
