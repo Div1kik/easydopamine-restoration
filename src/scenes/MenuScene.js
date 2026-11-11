@@ -9,51 +9,54 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x090c15).setDepth(0);
+    // Фоновая заливка
+    this.add.rectangle(width / 2, height / 2, width, height, 0x07090e);
 
-    // Студийный лейбл
+    // Студия
     this.add.text(width / 2, height * 0.065, 'EASY DOPAMINE GAMES', {
       fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#e2b35b',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#c5a059',
       fontStyle: 'bold',
-      letterSpacing: 3
-    }).setOrigin(0.5).setAlpha(0.85).setDepth(10);
+      letterSpacing: 2,
+      resolution: dpr
+    }).setOrigin(0.5);
 
-    const divider = this.add.graphics().setDepth(10);
-    divider.lineStyle(1, 0xd4af37, 0.4);
+    const divider = this.add.graphics();
+    divider.lineStyle(1, 0xc5a059, 0.4);
     divider.lineBetween(width / 2 - 50, height * 0.08, width / 2 + 50, height * 0.08);
 
     // Название игры
-    this.add.text(width / 2, height * 0.115, 'АРТЕФАКТЫ ВРЕМЕНИ', {
+    const titleTxt = this.add.text(width / 2, height * 0.115, 'АРТЕФАКТЫ ВРЕМЕНИ', {
       fontSize: '24px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
-      letterSpacing: 2
-    }).setOrigin(0.5).setDepth(10);
+      letterSpacing: 2,
+      resolution: dpr
+    }).setOrigin(0.5);
+    titleTxt.setShadow(0, 2, 'rgba(0,0,0,0.85)', 4);
 
     this.add.text(width / 2, height * 0.15, 'Мастерская реставратора', {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#94a3b8',
-      letterSpacing: 1
-    }).setOrigin(0.5).setDepth(10);
+      letterSpacing: 1,
+      resolution: dpr
+    }).setOrigin(0.5);
 
-    // Виджет ранга
-    this.renderRankWidget(width, height * 0.195);
-
-    // Парящий логотип
+    // Парящий логотип артефакта
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.295, logoKey)
-        .setDisplaySize(76, 76)
-        .setDepth(10);
+      const logo = this.add.image(width / 2, height * 0.265, logoKey)
+        .setDisplaySize(120, 150)
+        .setDepth(5);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.295 - 6,
+        y: height * 0.25,
         duration: 2000,
         yoyo: true,
         repeat: -1,
@@ -61,211 +64,398 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Плашка контракта
-    this.renderContractWidget(width, height * 0.405);
+    // Плашка ранга и уровня (кликабельная для открытия табеля)
+    this.renderRankWidget(width, height * 0.405, dpr);
 
     // Кнопки звука
-    this.createAudioToggles(width);
+    this.createAudioToggles(width, dpr);
 
-    // Кнопки навигации
-    const createBtn = (y, text, colorBg, colorStroke, textColor, callback) => {
-      const btn = this.add.rectangle(
-        width / 2,
-        y,
-        width * 0.82,
-        46,
-        colorBg
-      )
+    // Основные кнопки меню
+    const createMenuBtn = (y, text, colorBg, colorStroke, textColor, onClick) => {
+      const btnW = width * 0.84;
+      const btnH = 50;
+
+      const btn = this.add.container(width / 2, y).setDepth(10);
+
+      const bg = this.add.rectangle(0, 0, btnW, btnH, colorBg, 0.96)
         .setStrokeStyle(1.5, colorStroke, 0.9)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(20);
+        .setInteractive({ useHandCursor: true });
 
-      const label = this.add.text(width / 2, y, text, {
-        fontSize: '14.5px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+      const label = this.add.text(0, 0, text, {
+        fontSize: '15px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: textColor,
-        fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(21);
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+      label.setShadow(0, 1, 'rgba(0,0,0,0.8)', 2);
 
-      btn.on('pointerdown', () => {
+      btn.add([bg, label]);
+
+      bg.on('pointerdown', () => {
         if (AudioManager.playClick) AudioManager.playClick();
         this.tweens.add({
-          targets: [btn, label],
+          targets: btn,
           scale: 0.96,
           duration: 70,
           yoyo: true,
-          onComplete: callback
+          ease: 'Quad.easeInOut',
+          onComplete: () => onClick()
         });
       });
+
+      return btn;
     };
 
     const startY = height * 0.51;
+    const gap = 58;
 
-    createBtn(startY, '▶ ЭКСПЕДИЦИИ', 0x10b981, 0x34d399, '#ffffff', () => {
-      this.scene.start('EraSelectScene');
+    // Кнопка реставрации
+    createMenuBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
+      this.scene.start('RestoreScene');
     });
 
-    createBtn(startY + 56, '🏛️ ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
-      if (AudioManager.playShopBell) AudioManager.playShopBell();
-      this.scene.start('MuseumScene');
+    // Кнопка экспедиций
+    createMenuBtn(startY + gap, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
+      this.openStockExpeditionsModal(width, height, dpr);
     });
 
-    createBtn(startY + 112, '🛠️ ЛАВКА МАСТЕРА', 0x161c24, 0xe2b35b, '#fde047', () => {
+    // Кнопка лавки
+    createMenuBtn(startY + gap * 2, '🛒 ЛАВКА МАСТЕРА', 0x1e1b4b, 0x6366f1, '#ffffff', () => {
       this.scene.start('ShopScene');
     });
 
-    // Кнопка Гачи / Лутбоксов
-    createBtn(startY + 168, '🎁 СУНДУКИ АРХЕОЛОГА', 0x24142a, 0xa855f7, '#e9d5ff', () => {
-      this.showGachaModal(width, height);
+    // Кнопка музея
+    createMenuBtn(startY + gap * 3, '🏛️ ЗАЛ СЛАВЫ (МУЗЕЙ)', 0x14532d, 0x22c55e, '#ffffff', () => {
+      this.scene.start('MuseumScene');
     });
 
-    // Баланс казны и запас золотого лака
-    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    // Инвентарь лака Кинцуги и монеты
     const lacquer = Storage.getKintsugiLacquer ? Storage.getKintsugiLacquer() : 0;
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
 
-    this.add.text(width / 2, height - 32, `Казна: ${coins} 🪙  •  Лак Кинцуги: ${lacquer} 🍯`, {
-      fontSize: '13px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+    const statsCont = this.add.container(width / 2, height * 0.81).setDepth(10);
+
+    const statsBg = this.add.rectangle(0, 0, width * 0.84, 30, 0x0f172a, 0.9)
+      .setStrokeStyle(1, 0x1e293b, 0.7);
+
+    const statsTxt = this.add.text(0, 0, `🪙 ${coins}  |  ✨ Лак Кинцуги: ${lacquer}`, {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(10);
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
 
-    if (!Storage.isMusicMuted()) {
-      AudioManager.playEraMusic('menu');
+    statsCont.add([statsBg, statsTxt]);
+
+    // Фоновая музыка
+    if (AudioManager.playEraMusic) AudioManager.playEraMusic('menu');
+
+    // Оффлайн доход
+    this.checkOfflineEarnings(width, height, dpr);
+
+    // Срочный контракт
+    this.renderContractWidget(width, height * 0.89, dpr);
+  }
+
+  // =========================================================================
+  // ПЛАШКА УРОВНЯ С ПЕРЕХОДОМ В ТАБЕЛЬ РАНГОВ
+  // =========================================================================
+  renderRankWidget(width, y, dpr) {
+    const lvlData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Ученик', progressXP: 0, requiredForNext: 100, progressRatio: 0 };
+    const boxW = width * 0.84;
+    const boxH = 46;
+
+    const rankCont = this.add.container(width / 2, y).setDepth(10);
+
+    const bg = this.add.rectangle(0, 0, boxW, boxH, 0x0f172a, 0.95)
+      .setStrokeStyle(1.5, 0xca8a04, 0.8)
+      .setInteractive({ useHandCursor: true });
+
+    const lvlBadge = this.add.text(-boxW / 2 + 14, -8, `УР. ${lvlData.level}`, {
+      fontSize: '13px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const rankTitle = this.add.text(-boxW / 2 + 75, -8, lvlData.title, {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const tapHint = this.add.text(boxW / 2 - 12, -8, 'Табель ❯', {
+      fontSize: '10.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#38bdf8',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(1, 0.5);
+
+    // Прогресс-бар
+    const barW = boxW - 28;
+    const barH = 7;
+    const barY = 12;
+
+    const barBg = this.add.rectangle(0, barY, barW, barH, 0x1e293b).setOrigin(0.5);
+    const barFillW = barW * Phaser.Math.Clamp(lvlData.progressRatio, 0, 1);
+    const barFill = this.add.rectangle(-barW / 2, barY, barFillW, barH, 0x10b981).setOrigin(0, 0.5);
+
+    rankCont.add([bg, lvlBadge, rankTitle, tapHint, barBg, barFill]);
+
+    bg.on('pointerdown', () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.openLevelProgressModal(width, this.scale.height, dpr);
+    });
+  }
+
+  // =========================================================================
+  // МОДАЛЬНОЕ ОКНО «ТАБЕЛЬ РАНГОВ И НАГРАД (1–50)»
+  // =========================================================================
+  openLevelProgressModal(width, height, dpr) {
+    const curLevel = Storage.getLevelData ? Storage.getLevelData().level : 1;
+
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85)
+      .setDepth(40)
+      .setInteractive();
+
+    const modalCont = this.add.container(width / 2, height / 2).setDepth(41);
+
+    const modalW = width * 0.92;
+    const modalH = height * 0.78;
+
+    const bg = this.add.rectangle(0, 0, modalW, modalH, 0x0b0f17, 0.98)
+      .setStrokeStyle(1.5, 0xd4af37, 0.9);
+
+    const title = this.add.text(0, -modalH / 2 + 24, '🏆 ТАБЕЛЬ РАНГОВ И НАГРАД', {
+      fontSize: '16px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const subtitle = this.add.text(0, -modalH / 2 + 44, `Текущий ранг: Уровень ${curLevel} из 50`, {
+      fontSize: '11.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#94a3b8',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    // Контейнер скролла
+    const listCont = this.add.container(0, 0);
+
+    const maskGfx = this.make.graphics();
+    maskGfx.fillStyle(0xffffff);
+    maskGfx.fillRect(width / 2 - modalW / 2 + 8, height / 2 - modalH / 2 + 62, modalW - 16, modalH - 124);
+    listCont.setMask(new Phaser.Display.Masks.GeometryMask(this, maskGfx));
+
+    const itemH = 50;
+    const startListY = -modalH / 2 + 88;
+
+    const epochUnlocks = {
+      1: '🇪🇬 Древний Египет',
+      3: '🏛️ Античность',
+      6: '⚔️ Средневековье',
+      10: '⛩️ Япония',
+      15: '🦅 Ацтеки',
+      20: '🛡️ Викинги',
+      25: '🎨 Ренессанс'
+    };
+
+    for (let lvl = 1; lvl <= 50; lvl++) {
+      const cfg = Storage.getLevelConfig ? Storage.getLevelConfig(lvl) : { title: `Ранг ${lvl}`, minXP: lvl * 200 };
+      const itemY = startListY + (lvl - 1) * itemH;
+      const isCurrent = (lvl === curLevel);
+      const isPassed = (lvl < curLevel);
+
+      const rowCont = this.add.container(0, itemY);
+
+      const rowBgColor = isCurrent ? 0x1e293b : (isPassed ? 0x0f172a : 0x090d14);
+      const strokeColor = isCurrent ? 0xfacc15 : (isPassed ? 0x10b981 : 0x1e293b);
+
+      const rowBg = this.add.rectangle(0, 0, modalW - 28, itemH - 6, rowBgColor, 0.95)
+        .setStrokeStyle(isCurrent ? 2 : 1, strokeColor, 0.85);
+
+      const numTxt = this.add.text(-modalW / 2 + 24, 0, `${lvl}`, {
+        fontSize: '13px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: isCurrent ? '#facc15' : (isPassed ? '#10b981' : '#64748b'),
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      const titleColor = isCurrent ? '#ffffff' : (isPassed ? '#cbd5e1' : '#64748b');
+      const titleTxt = this.add.text(-modalW / 2 + 44, -7, cfg.title, {
+        fontSize: '11px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: titleColor,
+        fontStyle: isCurrent ? 'bold' : 'normal',
+        resolution: dpr
+      }).setOrigin(0, 0.5);
+
+      // Награда
+      const rewardCoins = lvl * 160 + 100;
+      let rewardStr = `+${rewardCoins} 🪙`;
+      if (lvl % 5 === 0) rewardStr += '  +2 ✨';
+      else if (lvl % 2 === 0) rewardStr += '  +1 ✨';
+
+      const rewardTxt = this.add.text(-modalW / 2 + 44, 9, rewardStr, {
+        fontSize: '10px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#ca8a04',
+        resolution: dpr
+      }).setOrigin(0, 0.5);
+
+      // Статус / Бейдж эпохи
+      if (epochUnlocks[lvl]) {
+        const epochTxt = this.add.text(modalW / 2 - 28, 0, epochUnlocks[lvl], {
+          fontSize: '9.5px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          color: '#38bdf8',
+          fontStyle: 'bold',
+          resolution: dpr
+        }).setOrigin(1, 0.5);
+        rowCont.add(epochTxt);
+      } else if (isPassed) {
+        const checkTxt = this.add.text(modalW / 2 - 28, 0, '✓ Получено', {
+          fontSize: '9.5px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          color: '#10b981',
+          resolution: dpr
+        }).setOrigin(1, 0.5);
+        rowCont.add(checkTxt);
+      } else if (isCurrent) {
+        const curTxt = this.add.text(modalW / 2 - 28, 0, '★ ВЫ ЗДЕСЬ', {
+          fontSize: '9.5px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          color: '#facc15',
+          fontStyle: 'bold',
+          resolution: dpr
+        }).setOrigin(1, 0.5);
+        rowCont.add(curTxt);
+      }
+
+      rowCont.add([rowBg, numTxt, titleTxt, rewardTxt]);
+      listCont.add(rowCont);
     }
 
-    this.checkOfflineEarnings(width, height);
+    // Центрируем скролл на текущем уровне
+    const initialScrollY = Phaser.Math.Clamp(-(curLevel - 3) * itemH, -(50 * itemH - (modalH - 140)), 0);
+    listCont.y = initialScrollY;
+
+    // Свайп-скролл
+    let startY = 0;
+    let isDragging = false;
+    const minScrollY = -(50 * itemH - (modalH - 140));
+
+    overlay.on('pointerdown', (p) => {
+      startY = p.y;
+      isDragging = true;
+    });
+
+    overlay.on('pointermove', (p) => {
+      if (!isDragging) return;
+      const dy = p.y - startY;
+      startY = p.y;
+      listCont.y = Phaser.Math.Clamp(listCont.y + dy, minScrollY, 0);
+    });
+
+    overlay.on('pointerup', () => { isDragging = false; });
+    overlay.on('pointerout', () => { isDragging = false; });
+
+    // Кнопка закрытия
+    const closeBtn = this.add.rectangle(0, modalH / 2 - 28, modalW * 0.7, 36, 0x1e293b)
+      .setStrokeStyle(1.5, 0x475569)
+      .setInteractive({ useHandCursor: true });
+
+    const closeTxt = this.add.text(0, modalH / 2 - 28, 'ЗАКРЫТЬ', {
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#f8fafc',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    closeBtn.on('pointerdown', () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      maskGfx.destroy();
+      modalCont.destroy();
+      overlay.destroy();
+    });
+
+    modalCont.add([bg, title, subtitle, listCont, closeBtn, closeTxt]);
   }
 
-  renderRankWidget(width, y) {
-    const lvlData = Storage.getLevelData();
-    const boxW = width * 0.82;
-
-    this.add.rectangle(width / 2, y, boxW, 36, 0x111622, 0.9)
-      .setStrokeStyle(1, 0x273142, 0.8).setDepth(10);
-
-    this.add.text(width / 2 - boxW / 2 + 14, y, `⭐ Ур. ${lvlData.level} • ${lvlData.title}`, {
-      fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#e2b35b',
-      fontStyle: 'bold'
-    }).setOrigin(0, 0.5).setDepth(11);
-
-    const barW = 80;
-    const barX = width / 2 + boxW / 2 - 14 - barW;
-    this.add.rectangle(barX + barW / 2, y, barW, 6, 0x1e293b).setDepth(11);
-    this.add.rectangle(barX, y, barW * lvlData.progressRatio, 6, 0x38bdf8)
-      .setOrigin(0, 0.5).setDepth(12);
-  }
-
-  formatTimeRemaining(ms) {
-    if (ms <= 0) return '00:00:00';
-    const totalSec = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSec / 3600);
-    const mins = Math.floor((totalSec % 3600) / 60);
-    const secs = totalSec % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  renderContractWidget(width, y) {
-    const contract = Storage.getDailyContract(ARTIFACT_TEMPLATES);
+  // =========================================================================
+  // ВИДЖЕТ СРОЧНОГО КОНТРАКТА
+  // =========================================================================
+  renderContractWidget(width, y, dpr) {
+    const contract = Storage.getDailyContract ? Storage.getDailyContract(ARTIFACT_TEMPLATES) : null;
     if (!contract) return;
 
-    const boxW = width * 0.82;
-    const boxH = 68;
+    const boxW = width * 0.84;
+    const boxH = 54;
 
-    const box = this.add.rectangle(width / 2, y, boxW, boxH, 0x131926, 0.96)
-      .setStrokeStyle(1.5, contract.completed ? 0x334155 : 0xe2b35b, 0.8)
-      .setDepth(12);
+    const contBox = this.add.container(width / 2, y).setDepth(10);
+
+    const bg = this.add.rectangle(0, 0, boxW, boxH, 0x0f172a, 0.95)
+      .setStrokeStyle(1.5, contract.completed ? 0x22c55e : 0xeab308, 0.85);
 
     if (contract.completed) {
-      this.add.text(width / 2 - boxW / 2 + 14, y - 14, '✅ КОНТРАКТ ВЫПОЛНЕН', {
-        fontSize: '11px',
-        fontFamily: 'sans-serif',
-        color: '#22c55e',
-        fontStyle: 'bold'
-      }).setDepth(13);
+      const doneTxt = this.add.text(0, -6, '✓ КОНТРАКТ ВЫПОЛНЕН', {
+        fontSize: '12px',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#10b981',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
 
-      const cdText = this.add.text(width / 2 - boxW / 2 + 14, y + 10, 'Новый заказ через: --:--:--', {
+      const timerTxt = this.add.text(0, 12, 'Новый заказ через: 1 ч 30 мин', {
         fontSize: '11px',
-        fontFamily: 'sans-serif',
-        color: '#94a3b8'
-      }).setDepth(13);
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: '#94a3b8',
+        resolution: dpr
+      }).setOrigin(0.5);
 
-      this.time.addEvent({
-        delay: 1000,
-        loop: true,
-        callback: () => {
-          const rem = contract.nextAvailableAt - Date.now();
-          if (rem <= 0) {
-            this.scene.restart();
-          } else {
-            cdText.setText(`Новый заказ через: ${this.formatTimeRemaining(rem)}`);
-          }
-        }
-      });
+      contBox.add([bg, doneTxt, timerTxt]);
       return;
     }
 
-    box.setInteractive({ useHandCursor: true });
+    bg.setInteractive({ useHandCursor: true });
 
-    this.add.text(width / 2 - boxW / 2 + 12, y - 20, `📜 ЗАКАЗ: ${contract.client.toUpperCase()}`, {
-      fontSize: '10px',
-      fontFamily: 'sans-serif',
-      color: '#e2b35b',
+    const clientTxt = this.add.text(-boxW / 2 + 14, -13, `📜 ЗАКАЗ: ${contract.client}`, {
+      fontSize: '10.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#facc15',
       fontStyle: 'bold',
-      letterSpacing: 1
-    }).setDepth(13);
+      resolution: dpr
+    }).setOrigin(0, 0.5);
 
-    this.add.text(width / 2 - boxW / 2 + 12, y - 2, contract.name, {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
+    const nameTxt = this.add.text(-boxW / 2 + 14, 5, contract.name, {
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold'
-    }).setDepth(13);
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
 
-    this.add.text(width / 2 - boxW / 2 + 12, y + 16, `+${contract.rewardCoins} 🪙  •  +${contract.bonusXP} XP`, {
-      fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#22c55e',
-      fontStyle: 'bold'
-    }).setDepth(13);
+    const rewardTxt = this.add.text(boxW / 2 - 14, 0, `+${contract.rewardCoins} 🪙`, {
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#34d399',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(1, 0.5);
 
-    const timerText = this.add.text(width / 2 + boxW / 2 - 12, y - 20, '00:00:00', {
-      fontSize: '9.5px',
-      fontFamily: 'sans-serif',
-      color: '#94a3b8',
-      fontStyle: 'bold'
-    }).setOrigin(1, 0).setDepth(13);
+    contBox.add([bg, clientTxt, nameTxt, rewardTxt]);
 
-    const updateTimer = () => {
-      const remaining = contract.nextAvailableAt - Date.now();
-      if (remaining <= 0) {
-        this.scene.restart();
-      } else {
-        timerText.setText(`⏱ ${this.formatTimeRemaining(remaining)}`);
-      }
-    };
-    updateTimer();
-
-    this.time.addEvent({
-      delay: 1000,
-      loop: true,
-      callback: updateTimer
-    });
-
-    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 46, y + 8, 76, 30, 0x10b981)
-      .setStrokeStyle(1, 0x34d399, 0.9)
-      .setDepth(13);
-
-    this.add.text(width / 2 + boxW / 2 - 46, y + 8, 'ВЗЯТЬ', {
-      fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(14);
-
-    box.on('pointerdown', () => {
+    bg.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('RestoreScene', {
         regionId: contract.regionId,
@@ -275,351 +465,295 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  // --- МОДАЛЬНОЕ ОКНО ГАЧИ / ЛУТБОКСОВ ---
-  showGachaModal(width, height) {
+  // =========================================================================
+  // МОДАЛЬНОЕ ОКНО ЭКСПЕДИЦИЙ
+  // =========================================================================
+  openStockExpeditionsModal(width, height, dpr) {
     if (AudioManager.playClick) AudioManager.playClick();
 
     const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85)
-      .setInteractive().setDepth(50);
+      .setDepth(40)
+      .setInteractive();
 
-    const modal = this.add.container(width / 2, height / 2).setDepth(51).setScale(0);
+    const modal = this.add.container(width / 2, height / 2).setDepth(41);
+    const modalW = width * 0.88;
+    const modalH = height * 0.62;
 
-    const bg = this.add.rectangle(0, 0, width * 0.88, 380, 0x111624)
-      .setStrokeStyle(2, 0xa855f7, 0.9);
+    const bg = this.add.rectangle(0, 0, modalW, modalH, 0x0f172a, 0.98)
+      .setStrokeStyle(1.5, 0xd4af37, 0.9);
 
-    const title = this.add.text(0, -155, '🎁 ТАЙНЫЕ СУНДУКИ ДРЕВНОСТЕЙ', {
-      fontSize: '14px',
-      fontFamily: 'sans-serif',
-      color: '#e9d5ff',
-      fontStyle: 'bold',
-      letterSpacing: 1
-    }).setOrigin(0.5);
-
-    // Карточка 1: Деревянный ларь
-    const box1Bg = this.add.rectangle(0, -70, width * 0.78, 90, 0x161e30)
-      .setStrokeStyle(1.5, 0x64748b, 0.8);
-
-    const box1Title = this.add.text(-width * 0.39 + 16, -95, '📦 Походный ларь археолога', {
-      fontSize: '12.5px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    });
-
-    const box1Desc = this.add.text(-width * 0.39 + 16, -74, 'Содержит: 100-450 🪙, образцы находок,\nредкий шанс на баночку Золотого лака.', {
-      fontSize: '10px',
-      fontFamily: 'sans-serif',
-      color: '#94a3b8',
-      lineSpacing: 2
-    });
-
-    const open1Btn = this.add.rectangle(width * 0.39 - 48, -70, 78, 32, 0x3b82f6)
-      .setStrokeStyle(1, 0x60a5fa)
-      .setInteractive({ useHandCursor: true });
-
-    const open1Txt = this.add.text(width * 0.39 - 48, -70, '350 🪙', {
-      fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    // Карточка 2: Золотой ларец
-    const box2Bg = this.add.rectangle(0, 45, width * 0.78, 90, 0x1c192d)
-      .setStrokeStyle(1.5, 0xe2b35b, 0.9);
-
-    const box2Title = this.add.text(-width * 0.39 + 16, 20, '✨ Золотой сундук Гильдии', {
-      fontSize: '12.5px',
-      fontFamily: 'sans-serif',
+    const title = this.add.text(0, -modalH / 2 + 28, '🗺️ АРХИВНЫЕ ЭКСПЕДИЦИИ', {
+      fontSize: '16px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
-    });
-
-    const box2Desc = this.add.text(-width * 0.39 + 16, 41, 'Гарантированно: 1-2 лака Кинцуги,\nдо 2 500 🪙 и редкие образцы раскопок.', {
-      fontSize: '10px',
-      fontFamily: 'sans-serif',
-      color: '#cbd5e1',
-      lineSpacing: 2
-    });
-
-    const open2Btn = this.add.rectangle(width * 0.39 - 48, 45, 78, 32, 0xd4af37)
-      .setStrokeStyle(1, 0xfde047)
-      .setInteractive({ useHandCursor: true });
-
-    const open2Txt = this.add.text(width * 0.39 - 48, 45, '1200 🪙', {
-      fontSize: '11px',
-      fontFamily: 'sans-serif',
-      color: '#000000',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
+
+    // Карточка 1: Древний Египет
+    const box1Y = -modalH / 2 + 95;
+    const box1 = this.add.rectangle(0, box1Y, modalW * 0.88, 76, 0x1e293b, 0.9)
+      .setStrokeStyle(1, 0xca8a04, 0.7);
+
+    const b1Title = this.add.text(-modalW * 0.44 + 14, box1Y - 20, '🇪🇬 Раскопки в Гизе (Обычные)', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const b1Desc = this.add.text(-modalW * 0.44 + 14, box1Y + 4, 'Привозит: 100–400 🪙 или сырые артефакты', {
+      fontSize: '10px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#94a3b8',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const btn1 = this.add.rectangle(modalW * 0.44 - 45, box1Y, 70, 32, 0xca8a04)
+      .setInteractive({ useHandCursor: true });
+    const btn1Txt = this.add.text(modalW * 0.44 - 45, box1Y, '150 🪙', {
+      fontSize: '11px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#000000',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    btn1.on('pointerdown', () => {
+      this.handleSendExpedition(150, 'common', overlay, modal, width, height, dpr);
+    });
+
+    // Карточка 2: Царская экспедиция
+    const box2Y = box1Y + 95;
+    const box2 = this.add.rectangle(0, box2Y, modalW * 0.88, 76, 0x1e293b, 0.9)
+      .setStrokeStyle(1, 0x38bdf8, 0.7);
+
+    const b2Title = this.add.text(-modalW * 0.44 + 14, box2Y - 20, '👑 Царский курган (Редкая)', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const b2Desc = this.add.text(-modalW * 0.44 + 14, box2Y + 4, 'Привозит: 600–1800 🪙 + шанс на ЛАК ✨', {
+      fontSize: '10px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#94a3b8',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    const btn2 = this.add.rectangle(modalW * 0.44 - 45, box2Y, 70, 32, 0x0284c7)
+      .setInteractive({ useHandCursor: true });
+    const btn2Txt = this.add.text(modalW * 0.44 - 45, box2Y, '600 🪙', {
+      fontSize: '11px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    btn2.on('pointerdown', () => {
+      this.handleSendExpedition(600, 'rare', overlay, modal, width, height, dpr);
+    });
 
     // Кнопка закрытия
-    const closeBtn = this.add.rectangle(0, 145, width * 0.60, 36, 0x1f2937)
-      .setStrokeStyle(1.5, 0x475569)
+    const closeBtn = this.add.rectangle(0, modalH / 2 - 32, modalW * 0.7, 36, 0x334155)
       .setInteractive({ useHandCursor: true });
-
-    const closeTxt = this.add.text(0, 145, 'ЗАКРЫТЬ', {
-      fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#cbd5e1',
-      fontStyle: 'bold'
+    const closeTxt = this.add.text(0, modalH / 2 - 32, 'ВЕРНУТЬСЯ', {
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    modal.add([bg, title, box1Bg, box1Title, box1Desc, open1Btn, open1Txt, box2Bg, box2Title, box2Desc, open2Btn, open2Txt, closeBtn, closeTxt]);
-
-    this.tweens.add({
-      targets: modal,
-      scale: 1,
-      duration: 300,
-      ease: 'Back.easeOut'
-    });
-
     closeBtn.on('pointerdown', () => {
-      overlay.destroy();
+      if (AudioManager.playClick) AudioManager.playClick();
       modal.destroy();
-      this.scene.restart();
+      overlay.destroy();
     });
 
-    // Обработка открытия ларей
-    open1Btn.on('pointerdown', () => {
-      this.handleOpenChest(350, 'common', overlay, modal, width, height);
-    });
-
-    open2Btn.on('pointerdown', () => {
-      this.handleOpenChest(1200, 'rare', overlay, modal, width, height);
-    });
+    modal.add([bg, title, box1, b1Title, b1Desc, btn1, btn1Txt, box2, b2Title, b2Desc, btn2, btn2Txt, closeBtn, closeTxt]);
   }
 
-  handleOpenChest(cost, type, overlay, modal, width, height) {
-    const coins = Storage.getCoins();
+  handleSendExpedition(cost, type, overlay, modal, width, height, dpr) {
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
     if (coins < cost) {
       if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+      this.cameras.main.shake(120, 0.004);
       return;
     }
 
-    Storage.addCoins(-cost);
     if (AudioManager.playCoin) AudioManager.playCoin();
+    Storage.addCoins(-cost);
 
-    // Генерация награды
     let prizeCoins = 0;
     let prizeLacquer = 0;
-    let prizeStockText = '';
 
     if (type === 'common') {
-      prizeCoins = Phaser.Math.Between(150, 450);
-      prizeLacquer = Math.random() < 0.35 ? 1 : 0;
+      prizeCoins = Phaser.Math.Between(100, 450);
+      if (Math.random() < 0.25) prizeLacquer = 1;
     } else {
-      prizeCoins = Phaser.Math.Between(600, 2200);
-      prizeLacquer = Phaser.Math.Between(1, 2);
+      prizeCoins = Phaser.Math.Between(600, 2000);
+      prizeLacquer = Math.random() < 0.65 ? 1 : 2;
     }
 
     Storage.addCoins(prizeCoins);
     if (prizeLacquer > 0) Storage.addKintsugiLacquer(prizeLacquer);
 
-    // Добавляем 1 случайный образец в Египет или открытую эпоху
-    const randomTemplate = ARTIFACT_TEMPLATES[Math.floor(Math.random() * ARTIFACT_TEMPLATES.length)];
-    Storage.addArtifactStock(randomTemplate.regionId, randomTemplate.id, 1);
-    prizeStockText = `+1 образец: ${randomTemplate.name}`;
+    modal.destroy();
+    overlay.destroy();
 
-    // Анимация получения дропа
-    modal.setVisible(false);
-    this.showLootDropCard(prizeCoins, prizeLacquer, prizeStockText, overlay, modal, width, height);
-  }
+    // Экран результата экспедиции
+    const resOver = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.88).setDepth(45).setInteractive();
+    const resBox = this.add.container(width / 2, height / 2).setDepth(46);
 
-  showLootDropCard(coins, lacquer, stockText, overlay, parentModal, width, height) {
-    if (AudioManager.playShine) AudioManager.playShine();
+    const rBg = this.add.rectangle(0, 0, width * 0.84, 180, 0x0f172a, 0.98)
+      .setStrokeStyle(1.5, 0x10b981, 0.9);
 
-    const card = this.add.container(width / 2, height / 2).setDepth(60).setScale(0);
-
-    const cardBg = this.add.rectangle(0, 0, width * 0.82, 230, 0x171224)
-      .setStrokeStyle(2, 0xfacc15, 0.95);
-
-    const rays = this.add.circle(0, -40, 60, 0xfacc15, 0.15)
-      .setBlendMode(Phaser.BlendModes.ADD);
-
-    this.tweens.add({
-      targets: rays,
-      scale: 1.4,
-      alpha: 0.3,
-      duration: 1200,
-      yoyo: true,
-      repeat: -1
-    });
-
-    const dropTitle = this.add.text(0, -75, '✨ НАГРАДА ИЗ СУНДУКА! ✨', {
+    const rTitle = this.add.text(0, -55, '🎉 ЭКСПЕДИЦИЯ ВЕРНУЛАСЬ!', {
       fontSize: '15px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const prize1 = this.add.text(0, -35, `+${coins} 🪙 казны`, {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
-      color: '#22c55e',
-      fontStyle: 'bold'
+    const rCoins = this.add.text(0, -15, `🪙 Золото: +${prizeCoins}`, {
+      fontSize: '14px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#34d399',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const lacquerStr = lacquer > 0 ? `+${lacquer} 🍯 Золотой лак (Кинцуги)` : 'Пыль веков (пусто)';
-    const prize2 = this.add.text(0, -5, lacquerStr, {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
-      color: lacquer > 0 ? '#facc15' : '#64748b',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
-
-    const prize3 = this.add.text(0, 24, stockText, {
+    const rLac = this.add.text(0, 15, prizeLacquer > 0 ? `✨ Золотой лак Кинцуги: +${prizeLacquer}` : 'Древних флаконов не найдено', {
       fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#38bdf8',
-      fontStyle: 'bold'
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: prizeLacquer > 0 ? '#fde047' : '#94a3b8',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const okBtn = this.add.rectangle(0, 75, width * 0.58, 36, 0x10b981)
-      .setStrokeStyle(1.5, 0x34d399)
-      .setInteractive({ useHandCursor: true });
-
-    const okTxt = this.add.text(0, 75, 'ЗАБРАТЬ', {
+    const okBtn = this.add.rectangle(0, 55, width * 0.5, 34, 0x10b981).setInteractive({ useHandCursor: true });
+    const okTxt = this.add.text(0, 55, 'ЗАБРАТЬ ДОБЫЧУ', {
       fontSize: '12px',
-      fontFamily: 'sans-serif',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
-
-    card.add([cardBg, rays, dropTitle, prize1, prize2, prize3, okBtn, okTxt]);
-
-    this.tweens.add({
-      targets: card,
-      scale: 1,
-      duration: 350,
-      ease: 'Back.easeOut'
-    });
 
     okBtn.on('pointerdown', () => {
-      card.destroy();
-      overlay.destroy();
-      parentModal.destroy();
+      if (AudioManager.playClick) AudioManager.playClick();
+      resBox.destroy();
+      resOver.destroy();
       this.scene.restart();
     });
+
+    resBox.add([rBg, rTitle, rCoins, rLac, okBtn, okTxt]);
   }
 
-  checkOfflineEarnings(width, height) {
-    const offline = Storage.getOfflineEarnings();
-    if (offline && offline.coins > 0) {
-      this.time.delayedCall(400, () => {
-        this.showOfflineModal(width, height, offline);
-      });
-    }
-  }
+  // =========================================================================
+  // ОФФЛАЙН ДОХОД
+  // =========================================================================
+  checkOfflineEarnings(width, height, dpr) {
+    const offline = Storage.getOfflineEarnings ? Storage.getOfflineEarnings() : { coins: 0, minutes: 0 };
+    if (!offline || offline.coins <= 0) return;
 
-  showOfflineModal(width, height, offline) {
-    if (AudioManager.playShopBell) AudioManager.playShopBell();
+    if (AudioManager.playShine) AudioManager.playShine();
 
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.75)
-      .setInteractive().setDepth(50);
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85).setDepth(45).setInteractive();
+    const box = this.add.container(width / 2, height / 2).setDepth(46);
 
-    const card = this.add.container(width / 2, height / 2).setDepth(51).setScale(0);
+    const bg = this.add.rectangle(0, 0, width * 0.84, 180, 0x0f172a, 0.98)
+      .setStrokeStyle(1.5, 0xca8a04, 0.9);
 
-    const cardBg = this.add.rectangle(0, 0, width * 0.84, 200, 0x111622)
-      .setStrokeStyle(2, 0x3b82f6, 0.9);
-
-    const title = this.add.text(0, -60, '🏛️ МУЗЕЙ РАБОТАЛ БЕЗ ВАС!', {
-      fontSize: '14.5px',
-      fontFamily: 'sans-serif',
-      color: '#93c5fd',
-      fontStyle: 'bold'
+    const title = this.add.text(0, -50, '🏛️ ДОХОД МУЗЕЯ ЗА ВРЕМЯ ОТСУТСТВИЯ', {
+      fontSize: '12.5px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const desc = this.add.text(
-      0,
-      -18,
-      `Пока вас не было (${offline.minutes} мин.),\nвитрину осмотрели сотни туристов!\nДоход от билетов: +${offline.coins} 🪙`,
-      {
-        fontSize: '12px',
-        fontFamily: 'sans-serif',
-        color: '#ffffff',
-        align: 'center',
-        lineSpacing: 4
-      }
-    ).setOrigin(0.5);
-
-    const claimBtn = this.add.rectangle(0, 52, width * 0.64, 38, 0x10b981)
-      .setStrokeStyle(1.5, 0x34d399, 0.9)
-      .setInteractive({ useHandCursor: true });
-
-    const claimTxt = this.add.text(0, 52, 'ЗАБРАТЬ В КАЗНУ', {
-      fontSize: '13px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
+    const desc = this.add.text(0, -10, `Пока вас не было (${offline.minutes} мин),\nпосетители оставили в казне музея:`, {
+      fontSize: '11px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#cbd5e1',
+      align: 'center',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    card.add([cardBg, title, desc, claimBtn, claimTxt]);
+    const sumTxt = this.add.text(0, 22, `+${offline.coins} 🪙`, {
+      fontSize: '18px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#34d399',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
 
-    this.tweens.add({
-      targets: card,
-      scale: 1,
-      duration: 300,
-      ease: 'Back.easeOut'
-    });
+    const claimBtn = this.add.rectangle(0, 58, width * 0.55, 34, 0xca8a04).setInteractive({ useHandCursor: true });
+    const claimTxt = this.add.text(0, 58, 'ЗАБРАТЬ В КАЗНУ', {
+      fontSize: '12px',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      color: '#000000',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
 
     claimBtn.on('pointerdown', () => {
       Storage.addCoins(offline.coins);
       if (AudioManager.playCoin) AudioManager.playCoin();
+      box.destroy();
       overlay.destroy();
-      card.destroy();
       this.scene.restart();
     });
+
+    box.add([bg, title, desc, sumTxt, claimBtn, claimTxt]);
   }
 
-  createAudioToggles(width) {
-    const musicBtn = this.add.circle(
-      width - 70,
-      36,
-      17,
-      AudioManager.isMusicOn() ? 0x142033 : 0x221a24
-    )
-      .setStrokeStyle(1.5, AudioManager.isMusicOn() ? 0x38bdf8 : 0xef4444, 0.9)
+  // =========================================================================
+  // ПЕРЕКЛЮЧАТЕЛИ ЗВУКА
+  // =========================================================================
+  createAudioToggles(width, dpr) {
+    const btnSize = 34;
+    const topY = 32;
+
+    const musicBtn = this.add.rectangle(width - 70, topY, btnSize, btnSize, AudioManager.isMusicOn() ? 0x164e63 : 0x1e293b)
+      .setStrokeStyle(1.5, AudioManager.isMusicOn() ? 0x06b6d4 : 0x475569)
       .setInteractive({ useHandCursor: true })
       .setDepth(30);
 
-    const musicIcon = this.add.text(
-      width - 70,
-      36,
-      AudioManager.isMusicOn() ? '🎵' : '🔇',
-      { fontSize: '14px' }
-    ).setOrigin(0.5).setDepth(31);
+    const musicIcon = this.add.text(width - 70, topY, AudioManager.isMusicOn() ? '🎵' : '🔇', {
+      fontSize: '14px',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(31);
 
     musicBtn.on('pointerdown', () => {
       const state = AudioManager.toggleMusic();
-      musicBtn.setFillStyle(state ? 0x142033 : 0x221a24);
-      musicBtn.setStrokeStyle(1.5, state ? 0x38bdf8 : 0xef4444, 0.9);
-      musicIcon.setText(state ? '🎵' : '🔇');
+      musicBtn.setFillStyle(state ? 0x1e293b : 0x164e63);
+      musicBtn.setStrokeStyle(1.5, state ? 0x475569 : 0x06b6d4);
+      musicIcon.setText(state ? '🔇' : '🎵');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    const sfxBtn = this.add.circle(
-      width - 30,
-      36,
-      17,
-      AudioManager.isSfxOn() ? 0x14261d : 0x221a24
-    )
-      .setStrokeStyle(1.5, AudioManager.isSfxOn() ? 0x22c55e : 0xef4444, 0.9)
+    const sfxBtn = this.add.rectangle(width - 28, topY, btnSize, btnSize, AudioManager.isSfxOn() ? 0x14532d : 0x1e293b)
+      .setStrokeStyle(1.5, AudioManager.isSfxOn() ? 0x22c55e : 0x475569)
       .setInteractive({ useHandCursor: true })
       .setDepth(30);
 
-    const sfxIcon = this.add.text(
-      width - 30,
-      36,
-      AudioManager.isSfxOn() ? '🔊' : '🔈',
-      { fontSize: '14px' }
-    ).setOrigin(0.5).setDepth(31);
+    const sfxIcon = this.add.text(width - 28, topY, AudioManager.isSfxOn() ? '🔊' : '🔈', {
+      fontSize: '14px',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(31);
 
     sfxBtn.on('pointerdown', () => {
       const state = AudioManager.toggleSfx();
-      sfxBtn.setFillStyle(state ? 0x14261d : 0x221a24);
-      sfxBtn.setStrokeStyle(1.5, state ? 0x22c55e : 0xef4444, 0.9);
-      sfxIcon.setText(state ? '🔊' : '🔈');
+      sfxBtn.setFillStyle(state ? 0x1e293b : 0x14532d);
+      sfxBtn.setStrokeStyle(1.5, state ? 0x475569 : 0x22c55e);
+      sfxIcon.setText(state ? '🔈' : '🔊');
       if (AudioManager.playClick) AudioManager.playClick();
     });
   }
