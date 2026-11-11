@@ -234,7 +234,6 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        // Скорректированные радиусы захвата ячеек
         const eraserRadius = (this.activeTool === 'tool_scraper') ? 20 :
                              (this.activeTool === 'tool_brush') ? 24 :
                              (this.activeTool === 'tool_solvent') ? 22 : 26;
@@ -266,8 +265,8 @@ export class RestoreScene extends Phaser.Scene {
           }
         }
 
-        // Порог прохождения 84%: когда визуально фигура дотерта, статус-бар уверенно доходит до 100%
-        const targetGoal = Math.max(this.targetValidCells * 0.84, 1);
+        // Порог завершения 92% — синхронное и естественное завершение этапа
+        const targetGoal = Math.max(this.targetValidCells * 0.92, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
 
@@ -401,7 +400,6 @@ export class RestoreScene extends Phaser.Scene {
     const targetX = this.centerX + 35;
     const targetY = this.centerY - 15;
 
-    // Вырез на месте скола
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
     this.breakHoleGfx.fillStyle(0x0a0c10, 0.95);
@@ -409,7 +407,6 @@ export class RestoreScene extends Phaser.Scene {
     this.breakHoleGfx.lineStyle(2, 0x8a7238, 0.7);
     this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
 
-    // Осколок: компактный фрагмент с круговой маской 52x52 пикселя
     const pieceContainer = this.add.container(targetX, targetY).setDepth(19);
 
     const pieceImg = this.add.image(0, 0, shardTex)
