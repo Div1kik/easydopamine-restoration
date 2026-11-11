@@ -47,13 +47,13 @@ export class MenuScene extends Phaser.Scene {
     // Парящий логотип
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.31, logoKey)
-        .setDisplaySize(85, 85)
+      const logo = this.add.image(width / 2, height * 0.305, logoKey)
+        .setDisplaySize(80, 80)
         .setDepth(10);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.31 - 8,
+        y: height * 0.305 - 8,
         duration: 2000,
         yoyo: true,
         repeat: -1,
@@ -61,7 +61,7 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Плашка «Срочный Контракт Гильдии»
+    // Плашка контракта с живым таймером
     this.renderContractWidget(width, height * 0.42);
 
     // Кнопки звука
@@ -114,7 +114,7 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('ShopScene');
     });
 
-    // Казна внизу
+    // Баланс
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.add.text(width / 2, height - 34, `Казна: ${coins} 🪙`, {
       fontSize: '14px',
@@ -123,7 +123,7 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Фоновая музыка
+    // Музыка меню
     if (!Storage.isMusicMuted()) {
       AudioManager.playEraMusic('menu');
     }
@@ -153,45 +153,109 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0, 0.5).setDepth(12);
   }
 
+  formatTimeRemaining(ms) {
+    if (ms <= 0) return '00:00:00';
+    const totalSec = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
   renderContractWidget(width, y) {
     const contract = Storage.getDailyContract(ARTIFACT_TEMPLATES);
-    if (!contract || contract.completed) return;
+    if (!contract) return;
 
     const boxW = width * 0.82;
     const boxH = 68;
 
     const box = this.add.rectangle(width / 2, y, boxW, boxH, 0x131926, 0.96)
-      .setStrokeStyle(1.5, 0xe2b35b, 0.8)
-      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(1.5, contract.completed ? 0x334155 : 0xe2b35b, 0.8)
       .setDepth(12);
 
-    const clientLbl = this.add.text(width / 2 - boxW / 2 + 12, y - 18, `📜 ЗАКАЗ: ${contract.client.toUpperCase()}`, {
-      fontSize: '10.5px',
+    if (contract.completed) {
+      // Состояние выполненного контракта на кулдауне
+      this.add.text(width / 2 - boxW / 2 + 14, y - 14, '✅ КОНТРАКТ ВЫПОЛНЕН', {
+        fontSize: '11px',
+        fontFamily: 'sans-serif',
+        color: '#22c55e',
+        fontStyle: 'bold'
+      }).setDepth(13);
+
+      const cdText = this.add.text(width / 2 - boxW / 2 + 14, y + 10, 'Новый заказ через: --:--:--', {
+        fontSize: '11px',
+        fontFamily: 'sans-serif',
+        color: '#94a3b8'
+      }).setDepth(13);
+
+      this.time.addEvent({
+        delay: 1000,
+        loop: true,
+        callback: () => {
+          const rem = contract.nextAvailableAt - Date.now();
+          if (rem <= 0) {
+            this.scene.restart();
+          } else {
+            cdText.setText(`Новый заказ через: ${this.formatTimeRemaining(rem)}`);
+          }
+        }
+      });
+      return;
+    }
+
+    // Активный доступный контракт
+    box.setInteractive({ useHandCursor: true });
+
+    this.add.text(width / 2 - boxW / 2 + 12, y - 20, `📜 ЗАКАЗ: ${contract.client.toUpperCase()}`, {
+      fontSize: '10px',
       fontFamily: 'sans-serif',
       color: '#e2b35b',
       fontStyle: 'bold',
       letterSpacing: 1
     }).setDepth(13);
 
-    const itemLbl = this.add.text(width / 2 - boxW / 2 + 12, y + 2, contract.name, {
-      fontSize: '13.5px',
+    this.add.text(width / 2 - boxW / 2 + 12, y - 2, contract.name, {
+      fontSize: '13px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setDepth(13);
 
-    const rewardLbl = this.add.text(width / 2 - boxW / 2 + 12, y + 20, `+${contract.rewardCoins} 🪙  •  +${contract.bonusXP} XP`, {
+    this.add.text(width / 2 - boxW / 2 + 12, y + 16, `+${contract.rewardCoins} 🪙  •  +${contract.bonusXP} XP`, {
       fontSize: '11px',
       fontFamily: 'sans-serif',
       color: '#22c55e',
       fontStyle: 'bold'
     }).setDepth(13);
 
-    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 46, y, 76, 32, 0x10b981)
+    const timerText = this.add.text(width / 2 + boxW / 2 - 12, y - 20, '00:00:00', {
+      fontSize: '9.5px',
+      fontFamily: 'sans-serif',
+      color: '#94a3b8',
+      fontStyle: 'bold'
+    }).setOrigin(1, 0).setDepth(13);
+
+    const updateTimer = () => {
+      const remaining = contract.nextAvailableAt - Date.now();
+      if (remaining <= 0) {
+        this.scene.restart();
+      } else {
+        timerText.setText(`⏱ ${this.formatTimeRemaining(remaining)}`);
+      }
+    };
+    updateTimer();
+
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: updateTimer
+    });
+
+    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 46, y + 8, 76, 30, 0x10b981)
       .setStrokeStyle(1, 0x34d399, 0.9)
       .setDepth(13);
 
-    const takeTxt = this.add.text(width / 2 + boxW / 2 - 46, y, 'ВЗЯТЬ', {
+    this.add.text(width / 2 + boxW / 2 - 46, y + 8, 'ВЗЯТЬ', {
       fontSize: '11px',
       fontFamily: 'sans-serif',
       color: '#ffffff',
