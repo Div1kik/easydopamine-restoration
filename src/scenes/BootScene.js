@@ -181,7 +181,7 @@ export class BootScene extends Phaser.Scene {
     });
 
     // =========================================================================
-    // 3. ПОЛНОЦЕННЫЕ КРУПНЫЕ АРТЕФАКТЫ (БЕЗ ВНУТРЕННИХ ТЕНЕЙ НА СТОЛ)
+    // 3. ПОЛНОЦЕННЫЕ КРУПНЫЕ АРТЕФАКТЫ (БЕЗ ПАРАЗИТНЫХ ТЕНЕЙ НА СТОЛ)
     // =========================================================================
     const W = 640;
     const H = 800;
@@ -202,18 +202,13 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Хвост
       ctx.strokeStyle = '#1b202e'; ctx.lineWidth = 24; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(cx, cy + 265, 160, 0.2, Math.PI * 0.95); ctx.stroke();
 
-      // Передние лапы
       ctx.fillStyle = '#161b26';
       ctx.beginPath(); ctx.roundRect(cx - 52, cy + 140, 38, 150, 14); ctx.roundRect(cx + 14, cy + 140, 38, 150, 14); ctx.fill();
-
-      // Голова
       ctx.beginPath(); ctx.ellipse(cx, cy - 160, 95, 105, 0, 0, Math.PI * 2); ctx.fill();
 
-      // Уши
       ctx.fillStyle = '#222938';
       ctx.beginPath(); ctx.moveTo(cx - 80, cy - 200); ctx.lineTo(cx - 75, cy - 310); ctx.lineTo(cx - 20, cy - 240); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.moveTo(cx + 80, cy - 200); ctx.lineTo(cx + 75, cy - 310); ctx.lineTo(cx + 20, cy - 240); ctx.closePath(); ctx.fill();
@@ -222,13 +217,11 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.moveTo(cx - 70, cy - 210); ctx.lineTo(cx - 68, cy - 290); ctx.lineTo(cx - 28, cy - 240); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.moveTo(cx + 70, cy - 210); ctx.lineTo(cx + 68, cy - 290); ctx.lineTo(cx + 28, cy - 240); ctx.closePath(); ctx.fill();
 
-      // Воротник Усех
       const gold = ctx.createLinearGradient(cx - 120, cy, cx + 120, cy);
       gold.addColorStop(0, '#b48a28'); gold.addColorStop(0.5, '#fde047'); gold.addColorStop(1, '#856417');
       ctx.strokeStyle = gold; ctx.lineWidth = 20;
       ctx.beginPath(); ctx.arc(cx, cy - 150, 105, 0.4, Math.PI - 0.4); ctx.stroke();
 
-      // Глаза
       const eye = ctx.createLinearGradient(0, cy - 180, 0, cy - 150);
       eye.addColorStop(0, '#10b981'); eye.addColorStop(1, '#064e3b');
       ctx.fillStyle = eye;
@@ -251,16 +244,13 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Прожилки алебастра
       ctx.strokeStyle = 'rgba(180, 160, 130, 0.35)'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.moveTo(cx - 110, cy + 20); ctx.quadraticCurveTo(cx - 20, cy + 90, cx - 50, cy + 230); ctx.stroke();
 
-      // Иероглифическая плита
       ctx.fillStyle = 'rgba(212, 175, 55, 0.5)';
       ctx.beginPath(); ctx.roundRect(cx - 60, cy + 40, 120, 160, 12); ctx.fill();
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 3; ctx.stroke();
 
-      // Голова сокола
       const hg = ctx.createLinearGradient(cx - 80, cy - 200, cx + 80, cy - 200);
       hg.addColorStop(0, '#c7bc9f'); hg.addColorStop(0.5, '#f5eedb'); hg.addColorStop(1, '#b5a98d');
       ctx.fillStyle = hg;
@@ -322,13 +312,11 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Синие полосы немеса
       ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 18;
       for (let y = cy - 170; y <= cy + 250; y += 36) {
         ctx.beginPath(); ctx.moveTo(cx - 180, y); ctx.lineTo(cx + 180, y); ctx.stroke();
       }
 
-      // Лицо
       const faceGrad = ctx.createRadialGradient(cx, cy - 20, 30, cx, cy - 20, 150);
       faceGrad.addColorStop(0, '#fffbeb'); faceGrad.addColorStop(0.4, '#fde047'); faceGrad.addColorStop(0.85, '#eab308'); faceGrad.addColorStop(1, '#a16207');
       ctx.fillStyle = faceGrad;
@@ -341,11 +329,9 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Бородка
       ctx.fillStyle = '#1e3a8a';
       ctx.beginPath(); ctx.roundRect(cx - 20, cy + 175, 40, 125, 8); ctx.fill();
 
-      // Глаза
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.ellipse(cx - 44, cy - 30, 26, 13, -0.05, 0, Math.PI * 2); ctx.ellipse(cx + 44, cy - 30, 26, 13, 0.05, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#09090b';
@@ -377,11 +363,9 @@ export class BootScene extends Phaser.Scene {
       ctx.lineTo(cx - 65, cy + 310);
       ctx.bezierCurveTo(cx - 185, cy + 200, cx - 200, cy - 60, cx - 65, cy - 240);
       ctx.fill();
-      // Ручки
       ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 26; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.arc(cx - 130, cy - 40, 68, 1.2, 4.8); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx + 130, cy - 40, 68, -1.6, 2.0); ctx.stroke();
-      // Орнамент
       ctx.fillStyle = '#0f172a'; ctx.fillRect(cx - 135, cy + 15, 270, 60);
       ctx.strokeStyle = '#ea580c'; ctx.lineWidth = 6; ctx.strokeRect(cx - 130, cy + 22, 260, 46);
     });
@@ -402,16 +386,13 @@ export class BootScene extends Phaser.Scene {
       }
     });
 
-    // 2.4 МРАМОРНЫЙ БЮСТ (ПОЛНОЦЕННАЯ АНТИЧНАЯ СКУЛЬПТУРА)
     make('art_antique_statue', W, H, (ctx) => {
-      // Пьедестал из резного мрамора
       const pedGrad = ctx.createLinearGradient(cx - 90, 0, cx + 90, 0);
       pedGrad.addColorStop(0, '#94a3b8'); pedGrad.addColorStop(0.5, '#e2e8f0'); pedGrad.addColorStop(1, '#64748b');
       ctx.fillStyle = pedGrad;
       ctx.beginPath(); ctx.roundRect(cx - 95, cy + 240, 190, 65, 8); ctx.fill();
       ctx.beginPath(); ctx.roundRect(cx - 75, cy + 200, 150, 40, 6); ctx.fill();
 
-      // Драпированный торс в римской тоге
       const mg = ctx.createLinearGradient(cx - 150, cy, cx + 150, cy);
       mg.addColorStop(0, '#94a3b8'); mg.addColorStop(0.3, '#f1f5f9'); mg.addColorStop(0.7, '#cbd5e1'); mg.addColorStop(1, '#64748b');
       ctx.fillStyle = mg;
@@ -425,7 +406,6 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Рельефные складки тоги
       ctx.strokeStyle = '#64748b'; ctx.lineWidth = 6; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(cx - 90, cy + 180); ctx.quadraticCurveTo(cx - 20, cy + 60, cx + 70, cy - 60);
@@ -433,22 +413,17 @@ export class BootScene extends Phaser.Scene {
       ctx.moveTo(cx - 130, cy + 160); ctx.quadraticCurveTo(cx - 60, cy + 70, cx - 10, cy + 10);
       ctx.stroke();
 
-      // Шея и голова мыслителя
       ctx.fillStyle = '#e2e8f0';
       ctx.beginPath(); ctx.roundRect(cx - 38, cy - 150, 76, 55, 10); ctx.fill();
       ctx.beginPath(); ctx.ellipse(cx, cy - 190, 85, 105, 0, 0, Math.PI * 2); ctx.fill();
 
-      // Нос и греческий профиль
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath(); ctx.moveTo(cx - 8, cy - 215); ctx.lineTo(cx + 8, cy - 165); ctx.lineTo(cx - 16, cy - 165); ctx.closePath(); ctx.fill();
 
-      // Античная борода и кудри Сократа
       ctx.fillStyle = '#64748b';
-      // Кудри волос
       for (let a = 0; a < Math.PI * 1.2; a += 0.28) {
         ctx.beginPath(); ctx.arc(cx + Math.cos(a + Math.PI * 0.9) * 82, cy - 220 + Math.sin(a + Math.PI * 0.9) * 65, 24, 0, Math.PI * 2); ctx.fill();
       }
-      // Борода
       for (let i = -50; i <= 50; i += 22) {
         ctx.beginPath(); ctx.arc(cx + i, cy - 120 + Math.abs(i) * 0.3, 18, 0, Math.PI * 2); ctx.fill();
       }
@@ -563,23 +538,19 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#451a03';
       ctx.beginPath(); ctx.ellipse(cx - 20, cy + 35, 40, 54, -0.2, 0, Math.PI * 2); ctx.fill();
 
-      // Голова
       ctx.fillStyle = '#fde047';
       ctx.beginPath(); ctx.arc(cx - 65, cy - 165, 60, 0, Math.PI * 2); ctx.fill();
 
-      // Рога
       ctx.strokeStyle = '#78350f'; ctx.lineWidth = 12; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(cx - 70, cy - 210); ctx.quadraticCurveTo(cx - 110, cy - 270, cx - 150, cy - 255);
       ctx.moveTo(cx - 40, cy - 210); ctx.quadraticCurveTo(cx - 50, cy - 280, cx - 70, cy - 295);
       ctx.stroke();
 
-      // Жемчужина
       const pearl = ctx.createRadialGradient(cx + 50, cy + 30, 6, cx + 50, cy + 30, 36);
       pearl.addColorStop(0, '#ffffff'); pearl.addColorStop(0.6, '#38bdf8'); pearl.addColorStop(1, '#0369a1');
       ctx.fillStyle = pearl; ctx.beginPath(); ctx.arc(cx + 50, cy + 30, 34, 0, Math.PI * 2); ctx.fill();
 
-      // Глаз
       ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(cx - 80, cy - 170, 8, 0, Math.PI * 2); ctx.fill();
     });
 
@@ -612,13 +583,11 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Нос
       ctx.fillStyle = '#450a0a';
       ctx.beginPath(); ctx.moveTo(cx - 40, cy - 65); ctx.lineTo(cx, cy - 135); ctx.lineTo(cx + 40, cy - 65); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#0f172a';
       ctx.beginPath(); ctx.arc(cx - 16, cy - 70, 6, 0, Math.PI * 2); ctx.arc(cx + 16, cy - 70, 6, 0, Math.PI * 2); ctx.fill();
 
-      // Пасть
       ctx.fillStyle = '#09090b';
       ctx.beginPath(); ctx.roundRect(cx - 85, cy + 50, 170, 52, 8); ctx.fill();
       ctx.fillStyle = '#f8fafc';
@@ -626,14 +595,12 @@ export class BootScene extends Phaser.Scene {
         ctx.fillRect(x, cy + 54, 16, 20); ctx.fillRect(x, cy + 78, 16, 20);
       }
 
-      // Золотые усы
       ctx.strokeStyle = '#facc15'; ctx.lineWidth = 10; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(cx - 115, cy + 30); ctx.quadraticCurveTo(cx - 30, cy + 20, cx - 15, cy + 50);
       ctx.moveTo(cx + 115, cy + 30); ctx.quadraticCurveTo(cx + 30, cy + 20, cx + 15, cy + 50);
       ctx.stroke();
 
-      // Нодава (горло)
       ctx.fillStyle = '#1c1917';
       ctx.beginPath(); ctx.roundRect(cx - 110, cy + 230, 220, 34, 8); ctx.fill();
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 4; ctx.stroke();
@@ -653,7 +620,6 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Хамон
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(-6, -315);
@@ -662,20 +628,16 @@ export class BootScene extends Phaser.Scene {
       }
       ctx.stroke();
 
-      // Хабаки
       ctx.fillStyle = '#facc15';
       ctx.beginPath(); ctx.roundRect(-15, 60, 30, 26, 4); ctx.fill();
 
-      // Цуба
       ctx.fillStyle = '#1c1917';
       ctx.beginPath(); ctx.ellipse(0, 92, 54, 40, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 4; ctx.stroke();
 
-      // Рукоять
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(-13, 98, 26, 220);
 
-      // Оплетка
       ctx.fillStyle = '#09090b';
       for (let hy = 104; hy <= 300; hy += 22) {
         ctx.beginPath();
@@ -689,13 +651,82 @@ export class BootScene extends Phaser.Scene {
     });
 
     // --- 5. АЦТЕКИ ---
+    // 5.1 СОСУД ЯГУАРА (МАССИВНАЯ КЕРАМИКА С ГОЛОВОЙ И ЛАПАМИ)
     make('art_aztec_vessel', W, H, (ctx) => {
-      const vg = ctx.createRadialGradient(cx - 60, cy, 40, cx, cy, 200);
-      vg.addColorStop(0, '#f97316'); vg.addColorStop(0.6, '#c2410c'); vg.addColorStop(1, '#7c2d12');
-      ctx.fillStyle = vg;
-      ctx.beginPath(); ctx.arc(cx, cy + 30, 165, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#7c2d12'; ctx.beginPath(); ctx.arc(cx, cy - 115, 75, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.arc(cx - 28, cy - 120, 14, 0, Math.PI * 2); ctx.arc(cx + 28, cy - 120, 14, 0, Math.PI * 2); ctx.fill();
+      const clayGrad = ctx.createRadialGradient(cx - 50, cy + 40, 40, cx, cy + 40, 230);
+      clayGrad.addColorStop(0, '#ea580c');
+      clayGrad.addColorStop(0.45, '#c2410c');
+      clayGrad.addColorStop(0.85, '#9a3412');
+      clayGrad.addColorStop(1, '#431407');
+      ctx.fillStyle = clayGrad;
+
+      ctx.beginPath();
+      ctx.moveTo(cx - 100, cy - 70);
+      ctx.bezierCurveTo(cx - 200, cy, cx - 210, cy + 180, cx - 110, cy + 280);
+      ctx.lineTo(cx + 110, cy + 280);
+      ctx.bezierCurveTo(cx + 210, cy + 180, cx + 200, cy, cx + 100, cy - 70);
+      ctx.closePath();
+      ctx.fill();
+
+      // Горловина сосуда
+      ctx.fillStyle = '#7c2d12';
+      ctx.beginPath(); ctx.ellipse(cx, cy - 75, 105, 28, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 4; ctx.stroke();
+
+      // Лапы ягуара
+      ctx.fillStyle = '#9a3412';
+      ctx.beginPath();
+      ctx.roundRect(cx - 145, cy + 220, 65, 45, 12);
+      ctx.roundRect(cx + 80, cy + 220, 65, 45, 12);
+      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(cx - 138 + i * 18, cy + 252, 12, 14);
+        ctx.fillRect(cx + 87 + i * 18, cy + 252, 12, 14);
+      }
+
+      // Голова ягуара
+      const headGrad = ctx.createRadialGradient(cx, cy - 130, 20, cx, cy - 130, 95);
+      headGrad.addColorStop(0, '#ea580c'); headGrad.addColorStop(0.7, '#9a3412'); headGrad.addColorStop(1, '#531705');
+      ctx.fillStyle = headGrad;
+      ctx.beginPath(); ctx.ellipse(cx, cy - 130, 95, 80, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Уши
+      ctx.fillStyle = '#7c2d12';
+      ctx.beginPath(); ctx.arc(cx - 75, cy - 190, 32, 0, Math.PI * 2); ctx.arc(cx + 75, cy - 190, 32, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(cx - 75, cy - 190, 16, 0, Math.PI * 2); ctx.arc(cx + 75, cy - 190, 16, 0, Math.PI * 2); ctx.fill();
+
+      // Пасть с клыками
+      ctx.fillStyle = '#1c1917';
+      ctx.beginPath(); ctx.ellipse(cx, cy - 90, 56, 32, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(cx - 36, cy - 105); ctx.lineTo(cx - 24, cy - 75); ctx.lineTo(cx - 16, cy - 105);
+      ctx.moveTo(cx + 16, cy - 105); ctx.lineTo(cx + 24, cy - 75); ctx.lineTo(cx + 36, cy - 105);
+      ctx.moveTo(cx - 26, cy - 75); ctx.lineTo(cx - 18, cy - 95); ctx.lineTo(cx - 10, cy - 75);
+      ctx.moveTo(cx + 10, cy - 75); ctx.lineTo(cx + 18, cy - 95); ctx.lineTo(cx + 26, cy - 75);
+      ctx.closePath(); ctx.fill();
+
+      // Бирюзовые глаза
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath(); ctx.ellipse(cx - 40, cy - 145, 20, 13, -0.15, 0, Math.PI * 2); ctx.ellipse(cx + 40, cy - 145, 20, 13, 0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(cx - 40, cy - 145, 20, 13, -0.15, 0, Math.PI * 2); ctx.ellipse(cx + 40, cy - 145, 20, 13, 0.15, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#082f49';
+      ctx.beginPath(); ctx.ellipse(cx - 40, cy - 145, 6, 12, 0, 0, Math.PI * 2); ctx.ellipse(cx + 40, cy - 145, 6, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Пятна шкуры
+      ctx.strokeStyle = '#431407'; ctx.lineWidth = 5;
+      const spots = [
+        { x: cx - 110, y: cy + 30 }, { x: cx - 60, y: cy + 120 }, { x: cx - 120, y: cy + 170 },
+        { x: cx + 110, y: cy + 30 }, { x: cx + 60, y: cy + 120 }, { x: cx + 120, y: cy + 170 },
+        { x: cx, y: cy + 70 }, { x: cx, y: cy + 190 }
+      ];
+      spots.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.x, s.y, 16, 0.3, Math.PI * 1.8); ctx.stroke();
+        ctx.fillStyle = '#7c2d12'; ctx.beginPath(); ctx.arc(s.x, s.y, 8, 0, Math.PI * 2); ctx.fill();
+      });
     });
 
     make('art_aztec_dagger', W, H, (ctx) => {
@@ -719,14 +750,9 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = '#f8fafc'; ctx.fillRect(cx - 65, cy + 35, 130, 34);
     });
 
-    // 5.4 БИРЮЗОВАЯ ЛИЧИНА (КРУПНАЯ МОЗАИЧНАЯ РИТУАЛЬНАЯ МАСКА)
     make('art_aztec_mask', W, H, (ctx) => {
-      // Массивный рельефный лик из бирюзовой мозаики
       const mg = ctx.createRadialGradient(cx, cy - 10, 40, cx, cy - 10, 200);
-      mg.addColorStop(0, '#67e8f9');
-      mg.addColorStop(0.35, '#06b6d4');
-      mg.addColorStop(0.75, '#0891b2');
-      mg.addColorStop(1, '#155e75');
+      mg.addColorStop(0, '#67e8f9'); mg.addColorStop(0.35, '#06b6d4'); mg.addColorStop(0.75, '#0891b2'); mg.addColorStop(1, '#155e75');
       ctx.fillStyle = mg;
 
       ctx.beginPath();
@@ -738,7 +764,6 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Текстура мозаичных бирюзовых плиток
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)'; ctx.lineWidth = 2.5;
       for (let y = cy - 180; y <= cy + 230; y += 32) {
         ctx.beginPath(); ctx.moveTo(cx - 140, y); ctx.lineTo(cx + 140, y); ctx.stroke();
@@ -747,7 +772,6 @@ export class BootScene extends Phaser.Scene {
         ctx.beginPath(); ctx.moveTo(x, cy - 200); ctx.lineTo(x, cy + 240); ctx.stroke();
       }
 
-      // Золотые височные диски
       ctx.fillStyle = '#facc15';
       ctx.beginPath(); ctx.arc(cx - 155, cy + 20, 32, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx + 155, cy + 20, 32, 0, Math.PI * 2); ctx.fill();
@@ -755,13 +779,11 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(cx - 155, cy + 20, 32, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.arc(cx + 155, cy + 20, 32, 0, Math.PI * 2); ctx.stroke();
 
-      // Перламутровые миндалевидные глаза с обсидианом
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.ellipse(cx - 55, cy - 35, 34, 18, 0, 0, Math.PI * 2); ctx.ellipse(cx + 55, cy - 35, 34, 18, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0f172a';
       ctx.beginPath(); ctx.arc(cx - 55, cy - 35, 12, 0, Math.PI * 2); ctx.arc(cx + 55, cy - 35, 12, 0, Math.PI * 2); ctx.fill();
 
-      // Разинутый ритуальный рот с зубами из раковин
       ctx.fillStyle = '#881337';
       ctx.beginPath(); ctx.roundRect(cx - 65, cy + 110, 130, 42, 10); ctx.fill();
       ctx.fillStyle = '#f8fafc';
@@ -801,50 +823,38 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.moveTo(cx - 180, cy + 100); ctx.lineTo(cx + 170, cy - 110); ctx.stroke();
     });
 
-    // 6.3 БОРОДАТЫЙ ТОПОР (МАССИВНОЕ БОЕВОЕ ОРУЖИЕ НОРМАННОВ)
     make('art_viking_axe', W, H, (ctx) => {
-      // Мощное топорище из ясеня
       const wood = ctx.createLinearGradient(cx - 20, 0, cx + 20, 0);
       wood.addColorStop(0, '#451a03'); wood.addColorStop(0.5, '#78350f'); wood.addColorStop(1, '#290f02');
       ctx.fillStyle = wood;
       ctx.beginPath(); ctx.roundRect(cx - 18, cy - 250, 36, 530, 8); ctx.fill();
 
-      // Кожаная обмотка хвата
       ctx.fillStyle = '#1c1917';
       for (let y = cy + 120; y <= cy + 250; y += 22) {
         ctx.fillRect(cx - 20, y, 40, 14);
       }
 
-      // Массивное кованое лезвие (Скеггокс / Бородатый топор)
       const steel = ctx.createLinearGradient(cx, cy - 200, cx + 190, cy - 70);
-      steel.addColorStop(0, '#1e293b');
-      steel.addColorStop(0.4, '#475569');
-      steel.addColorStop(0.8, '#94a3b8');
-      steel.addColorStop(1, '#f1f5f9');
+      steel.addColorStop(0, '#1e293b'); steel.addColorStop(0.4, '#475569'); steel.addColorStop(0.8, '#94a3b8'); steel.addColorStop(1, '#f1f5f9');
       ctx.fillStyle = steel;
 
       ctx.beginPath();
-      ctx.moveTo(cx - 25, cy - 200); // Обух сверху
-      ctx.lineTo(cx + 35, cy - 200);
-      ctx.quadraticCurveTo(cx + 150, cy - 230, cx + 195, cy - 70); // Острие верхнего рога
-      // Длинное висящее лезвие ("борода")
+      ctx.moveTo(cx - 25, cy - 200); ctx.lineTo(cx + 35, cy - 200);
+      ctx.quadraticCurveTo(cx + 150, cy - 230, cx + 195, cy - 70);
       ctx.bezierCurveTo(cx + 160, cy + 50, cx + 50, cy - 30, cx + 18, cy - 65);
-      ctx.lineTo(cx - 25, cy - 65); // Обух снизу
+      ctx.lineTo(cx - 25, cy - 65);
       ctx.closePath();
       ctx.fill();
 
-      // Обушная проушина
       ctx.fillStyle = '#0f172a';
       ctx.beginPath(); ctx.roundRect(cx - 28, cy - 206, 56, 148, 6); ctx.fill();
 
-      // Закаленная сияющая кромка лезвия
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(cx + 195, cy - 70);
       ctx.bezierCurveTo(cx + 160, cy + 50, cx + 50, cy - 30, cx + 18, cy - 65);
       ctx.stroke();
 
-      // Руническая гравировка Одина
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 3.5;
       ctx.beginPath();
       ctx.moveTo(cx + 60, cy - 150); ctx.lineTo(cx + 120, cy - 130); ctx.lineTo(cx + 90, cy - 90);
@@ -879,18 +889,15 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Зубы
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
       ctx.moveTo(cx + 65, cy - 195); ctx.lineTo(cx + 85, cy - 190); ctx.lineTo(cx + 75, cy - 175);
       ctx.moveTo(cx + 80, cy - 120); ctx.lineTo(cx + 100, cy - 115); ctx.lineTo(cx + 85, cy - 100);
       ctx.fill();
 
-      // Глаз
       ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(cx, cy - 195, 14, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(cx, cy - 195, 6, 0, Math.PI * 2); ctx.fill();
 
-      // Руническая вязь
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.moveTo(cx - 70, cy + 250); ctx.bezierCurveTo(cx - 120, cy + 90, cx - 100, cy - 30, cx - 15, cy - 110);
@@ -932,7 +939,7 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(cx, cy - 210, 45, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = '#451a03'; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(cx, cy, 135, 0, Math.PI * 2); ctx.arc(cx, cy, 75, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx - 155, cy); ctx.lineTo(cx + 155, cy); ctx.moveTo(cx, cy - 155); ctx.lineTo(cx, cy + 155); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - 155, cy); ctx.lineTo(cx + 155, cy); ctx.moveTo(cx, cy - 155); ctx.lineTo(cx + 155); ctx.stroke();
     });
 
     make('art_renaissance_clock', W, H, (ctx) => {
