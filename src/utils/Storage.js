@@ -14,13 +14,14 @@ export const Storage = {
     EXPEDITION_STOCKS: 'art_expedition_stocks'
   },
 
-  // --- ДЕНЬГИ ---
+  // --- ДЕНЬГИ (БЕЗ ОГРАНИЧЕНИЙ НА ВЕРХНИЙ ПРЕДЕЛ) ---
   getCoins() {
     return parseInt(localStorage.getItem(this.KEYS.COINS) || '0', 10);
   },
 
   setCoins(val) {
-    localStorage.setItem(this.KEYS.COINS, Math.max(0, val).toString());
+    // Только защита от отрицательного значения, верхнего потолка нет
+    localStorage.setItem(this.KEYS.COINS, Math.max(0, Math.floor(val)).toString());
   },
 
   addCoins(amount) {
@@ -98,7 +99,7 @@ export const Storage = {
 
   getMaxMuseumCapacity() {
     const lvl = this.getLevelData().level;
-    return Math.min(3 + Math.floor((lvl - 1) / 2), 16);
+    return Math.min(3 + Math.floor((lvl - 1) / 2), 24);
   },
 
   // --- ЭКСПЕДИЦИИ И ЗАПАСЫ НАХОДОК ---
@@ -113,11 +114,10 @@ export const Storage = {
   getRegionStock(regionId, templates = []) {
     const all = this.getAllStocks();
     if (!all[regionId]) {
-      // Инициализируем стартовый запас
       const regionTemplates = templates.filter(t => t.regionId === regionId);
       const initialStock = {};
       regionTemplates.forEach(t => {
-        initialStock[t.id] = regionId === 'egypt' ? 2 : 0;
+        initialStock[t.id] = regionId === 'egypt' ? 3 : 0;
       });
       all[regionId] = initialStock;
       localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
@@ -144,7 +144,6 @@ export const Storage = {
     if (!all[regionId]) all[regionId] = {};
 
     regionTemplates.forEach(t => {
-      // Экспедиция привозит от 1 до 3 новых находок
       const added = Math.floor(Math.random() * 3) + 1;
       all[regionId][t.id] = (all[regionId][t.id] || 0) + added;
     });
@@ -246,8 +245,6 @@ export const Storage = {
 
     const cappedMinutes = Math.min(diffMinutes, 480);
     const inventory = this.getInventory();
-    
-    // В расчёт билетов идут только качественные экспонаты (>= 2 звезд)
     const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
     const count = validExhibits.length;
 
@@ -298,7 +295,7 @@ export const Storage = {
   addHistoryEntry(entry) {
     const list = this.getRecentHistory();
     list.unshift(entry);
-    if (list.length > 25) list.pop();
+    if (list.length > 30) list.pop();
     localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(list));
   },
 
