@@ -88,7 +88,7 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    // Кнопка Эффектов (SFX)
+    // Кнопка SFX
     const sfxBtn = this.add.rectangle(width - 168, 34, 32, 32, 0x161e2c)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
@@ -146,7 +146,6 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Тень под крупным предметом
     this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.45).setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_tut_mask';
@@ -154,7 +153,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.breakHoleGfx = this.add.graphics().setDepth(7).setVisible(false);
 
-    // Слой грязи строго совпадает по размерам с артефактом
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0).setDepth(8);
 
@@ -187,7 +185,6 @@ export class RestoreScene extends Phaser.Scene {
     this.createToolTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
-    // Сетка анализа (32 x 40): ячейка равна ровно 10x10 пикселей
     this.gridCols = 32;
     this.gridRows = 40;
     this.totalCells = this.gridCols * this.gridRows;
@@ -213,7 +210,7 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool !== currentTask.requiredTool) {
-        this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент!');
+        this.toolWarning.setText(currentTask.hint || currentTask.name || 'Выберите требуемый инструмент!');
         return;
       }
 
@@ -499,7 +496,7 @@ export class RestoreScene extends Phaser.Scene {
   selectTool(toolId, iconKey, maskKey) {
     const currentTask = this.artifactData.tasks[this.currentTaskIndex];
     if (currentTask && toolId !== currentTask.requiredTool) {
-      this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент!');
+      this.toolWarning.setText(currentTask.hint || currentTask.name || 'Выберите требуемый инструмент!');
       if (AudioManager.playClick) AudioManager.playClick();
       return;
     }
@@ -525,7 +522,8 @@ export class RestoreScene extends Phaser.Scene {
     this.toolWarning.setText('');
 
     const task = this.artifactData.tasks[taskIdx];
-    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.hint}`);
+    const taskTitle = task.hint || task.name || 'Очистите артефакт';
+    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${taskTitle}`);
 
     const toolIcons = {
       tool_scraper: 'slot_scraper',
