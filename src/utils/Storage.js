@@ -11,16 +11,16 @@ export const Storage = {
     LAST_OFFLINE_TIME: 'art_last_offline_time',
     CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards',
     ACTIVE_CONTRACT: 'art_active_contract',
-    EXPEDITION_STOCKS: 'art_expedition_stocks'
+    EXPEDITION_STOCKS: 'art_expedition_stocks',
+    KINTSUGI_LACQUER: 'art_kintsugi_lacquer'
   },
 
-  // --- ДЕНЬГИ (БЕЗ ОГРАНИЧЕНИЙ НА ВЕРХНИЙ ПРЕДЕЛ) ---
+  // --- ДЕНЬГИ (БЕЗ ОГРАНИЧЕНИЙ) ---
   getCoins() {
     return parseInt(localStorage.getItem(this.KEYS.COINS) || '0', 10);
   },
 
   setCoins(val) {
-    // Только защита от отрицательного значения, верхнего потолка нет
     localStorage.setItem(this.KEYS.COINS, Math.max(0, Math.floor(val)).toString());
   },
 
@@ -30,7 +30,28 @@ export const Storage = {
     return this.getCoins();
   },
 
-  // --- СИСТЕМА УРОВНЕЙ И РАНГОВ ---
+  // --- ЗОЛОТОЙ ЛАК (КИНЦУГИ) ---
+  getKintsugiLacquer() {
+    return parseInt(localStorage.getItem(this.KEYS.KINTSUGI_LACQUER) || '2', 10);
+  },
+
+  addKintsugiLacquer(count) {
+    const cur = this.getKintsugiLacquer();
+    const updated = Math.max(0, cur + count);
+    localStorage.setItem(this.KEYS.KINTSUGI_LACQUER, updated.toString());
+    return updated;
+  },
+
+  useKintsugiLacquer() {
+    const cur = this.getKintsugiLacquer();
+    if (cur > 0) {
+      this.addKintsugiLacquer(-1);
+      return true;
+    }
+    return false;
+  },
+
+  // --- РАНГИ И УРОВНИ ---
   RANKS: [
     { level: 1, title: 'Ученик реставратора', minXP: 0 },
     { level: 2, title: 'Подмастерье древностей', minXP: 100 },
@@ -102,7 +123,7 @@ export const Storage = {
     return Math.min(3 + Math.floor((lvl - 1) / 2), 24);
   },
 
-  // --- ЭКСПЕДИЦИИ И ЗАПАСЫ НАХОДОК ---
+  // --- ЭКСПЕДИЦИИ И НАХОДКИ ---
   getAllStocks() {
     try {
       return JSON.parse(localStorage.getItem(this.KEYS.EXPEDITION_STOCKS) || '{}');
@@ -123,6 +144,13 @@ export const Storage = {
       localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
     }
     return all[regionId];
+  },
+
+  addArtifactStock(regionId, templateId, count = 1) {
+    const all = this.getAllStocks();
+    if (!all[regionId]) all[regionId] = {};
+    all[regionId][templateId] = (all[regionId][templateId] || 0) + count;
+    localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
   },
 
   decrementArtifactStock(regionId, templateId) {
@@ -228,7 +256,7 @@ export const Storage = {
     }
   },
 
-  // --- ОФФЛАЙН-ДОХОД МУЗЕЯ ---
+  // --- ОФФЛАЙН-ДОХОД ---
   updateOfflineTimestamp() {
     localStorage.setItem(this.KEYS.LAST_OFFLINE_TIME, Date.now().toString());
   },
@@ -254,7 +282,7 @@ export const Storage = {
     return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes, exhibitsCount: count };
   },
 
-  // --- ВЕРСТАК И ИНВЕНТАРЬ ---
+  // --- ИНВЕНТАРЬ И СЕССИЯ ---
   getWorkshopTier() {
     return parseInt(localStorage.getItem(this.KEYS.WORKSHOP_TIER) || '1', 10);
   },
@@ -316,7 +344,6 @@ export const Storage = {
     }
   },
 
-  // --- ЗВУК ---
   isMusicMuted() {
     return localStorage.getItem(this.KEYS.MUSIC_MUTED) === 'true';
   },
