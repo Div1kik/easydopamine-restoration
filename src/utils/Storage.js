@@ -15,7 +15,7 @@ export const Storage = {
     KINTSUGI_LACQUER: 'art_kintsugi_lacquer'
   },
 
-  // --- ДЕНЬГИ (БЕЗ ОГРАНИЧЕНИЙ) ---
+  // --- ДЕНЬГИ ---
   getCoins() {
     return parseInt(localStorage.getItem(this.KEYS.COINS) || '0', 10);
   },
@@ -51,71 +51,168 @@ export const Storage = {
     return false;
   },
 
-  // --- РАНГИ И УРОВНИ ---
-  RANKS: [
-    { level: 1, title: 'Ученик реставратора', minXP: 0 },
-    { level: 2, title: 'Подмастерье древностей', minXP: 100 },
-    { level: 3, title: 'Помощник хранителя', minXP: 260 },
-    { level: 4, title: 'Младший реставратор', minXP: 480 },
-    { level: 5, title: 'Музейный эксперт', minXP: 780 },
-    { level: 6, title: 'Мастер реликвий', minXP: 1180 },
-    { level: 7, title: 'Старший архивариус', minXP: 1700 },
-    { level: 8, title: 'Королевский реставратор', minXP: 2360 },
-    { level: 9, title: 'Магистр древностей', minXP: 3200 },
-    { level: 10, title: 'Легендарный реставратор', minXP: 4250 }
-  ],
+  // =========================================================================
+  // 50 УРОВНЕЙ И ПРОГРЕССИЯ
+  // =========================================================================
+  getLevelConfig(level) {
+    const titles = [
+      'Ученик реставратора',      // 1
+      'Подмастерье древностей',    // 2
+      'Помощник хранителя',       // 3
+      'Младший реставратор',      // 4
+      'Музейный эксперт',         // 5
+      'Мастер реликвий',          // 6
+      'Старший архивариус',       // 7
+      'Королевский реставратор',  // 8
+      'Магистр древностей',       // 9
+      'Легендарный реставратор',  // 10
+      'Хранитель эпох I',         // 11
+      'Хранитель эпох II',        // 12
+      'Хранитель эпох III',       // 13
+      'Знаток артефактов',        // 14
+      'Мастер золотого шва',      // 15
+      'Хранитель тайн Востока',   // 16
+      'Смотритель Пантеона',      // 17
+      'Верховный реставратор',    // 18
+      'Архитектор вечности',      // 19
+      'Грандмастер реликвий',     // 20
+      'Лорд-хранитель Лувра',     // 21
+      'Искатель Первозданного',   // 22
+      'Магистр Кинцуги',          // 23
+      'Владыка залов времени',    // 24
+      'Оракул древностей',        // 25
+      'Мастер древней стали',     // 26
+      'Алхимик реставрации',      // 27
+      'Хранитель саги ярлов',     // 28
+      'Патриарх музейного дела',  // 29
+      'Живая легенда музея',      // 30
+      'Титан реставрации I',      // 31
+      'Титан реставрации II',     // 32
+      'Титан реставрации III',    // 33
+      'Мастер бессмертных ваз',   // 34
+      'Хранитель святилищ',       // 35
+      'Имперский антиквар',       // 36
+      'Великий магистр древностей',// 37
+      'Покоритель веков',         // 38
+      'Летописец цивилизаций',    // 39
+      'Владыка бессмертия',       // 40
+      'Демиург времени I',        // 41
+      'Демиург времени II',       // 42
+      'Демиург времени III',      // 43
+      'Верховный демиург',        // 44
+      'Хранитель нитей судьбы',   // 45
+      'Вечный архивариус',        // 46
+      'Повелитель реликвий',      // 47
+      'Абсолютный реставратор',   // 48
+      'Творец вечности',          // 49
+      'Бессмертный Хранитель'     // 50
+    ];
+
+    const idx = Math.max(1, Math.min(level, 50));
+    const title = titles[idx - 1] || `Мастер ранга ${idx}`;
+
+    // Формула опыта: плавный прогрессивный рост от 0 до 50 уровня
+    let minXP = 0;
+    if (idx === 1) minXP = 0;
+    else if (idx === 2) minXP = 100;
+    else if (idx === 3) minXP = 260;
+    else if (idx === 4) minXP = 480;
+    else if (idx === 5) minXP = 780;
+    else if (idx === 6) minXP = 1180;
+    else if (idx === 7) minXP = 1700;
+    else if (idx === 8) minXP = 2360;
+    else if (idx === 9) minXP = 3200;
+    else if (idx === 10) minXP = 4250;
+    else {
+      // Для уровней 11-50: квадратичный шаг с шагом ~1200..2500 XP
+      minXP = 4250 + Math.round((idx - 10) * 1250 + Math.pow(idx - 10, 1.45) * 180);
+    }
+
+    return { level: idx, title, minXP };
+  },
 
   getXP() {
     return parseInt(localStorage.getItem(this.KEYS.XP) || '0', 10);
   },
 
   setXP(val) {
-    localStorage.setItem(this.KEYS.XP, Math.max(0, val).toString());
+    localStorage.setItem(this.KEYS.XP, Math.max(0, Math.floor(val)).toString());
   },
 
   getLevelData() {
     const currentXP = this.getXP();
-    let currentRankIndex = 0;
+    let currentLevel = 1;
 
-    for (let i = 0; i < this.RANKS.length; i++) {
-      if (currentXP >= this.RANKS[i].minXP) {
-        currentRankIndex = i;
+    for (let lvl = 1; lvl <= 50; lvl++) {
+      const cfg = this.getLevelConfig(lvl);
+      if (currentXP >= cfg.minXP) {
+        currentLevel = lvl;
       } else {
         break;
       }
     }
 
-    const currentRank = this.RANKS[currentRankIndex];
-    const nextRank = this.RANKS[currentRankIndex + 1] || null;
+    const currentCfg = this.getLevelConfig(currentLevel);
+    const isMaxLevel = (currentLevel >= 50);
+    const nextCfg = isMaxLevel ? null : this.getLevelConfig(currentLevel + 1);
 
-    const baseXP = currentRank.minXP;
-    const requiredForNext = nextRank ? nextRank.minXP - baseXP : 1000;
-    const progressXP = nextRank ? Math.min(currentXP - baseXP, requiredForNext) : requiredForNext;
-    const progressRatio = nextRank ? progressXP / requiredForNext : 1.0;
+    const baseXP = currentCfg.minXP;
+    const requiredForNext = nextCfg ? (nextCfg.minXP - baseXP) : 1000;
+    const progressXP = isMaxLevel ? requiredForNext : Math.min(currentXP - baseXP, requiredForNext);
+    const progressRatio = isMaxLevel ? 1.0 : Math.min(progressXP / requiredForNext, 1.0);
 
     return {
-      level: currentRank.level,
-      title: currentRank.title,
+      level: currentLevel,
+      title: currentCfg.title,
       currentXP,
       progressXP,
       requiredForNext,
       progressRatio,
-      isMaxLevel: !nextRank
+      isMaxLevel
     };
   },
 
   addXP(amount) {
-    const prevLevel = this.getLevelData().level;
+    const prevData = this.getLevelData();
+    const prevLevel = prevData.level;
+
     const newTotal = this.getXP() + amount;
     this.setXP(newTotal);
+
     const newLevelData = this.getLevelData();
+    const newLevel = newLevelData.level;
+    const leveledUp = newLevel > prevLevel;
+
+    // Автоматическая выдача наград при повышении уровня
+    if (leveledUp) {
+      for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
+        this.grantLevelReward(lvl);
+      }
+    }
 
     return {
-      leveledUp: newLevelData.level > prevLevel,
-      oldLevel: prevLevel,
-      newLevel: newLevelData.level,
+      leveledUp,
+      prevLevel,
+      newLevel,
       newTitle: newLevelData.title
     };
+  },
+
+  grantLevelReward(level) {
+    // Базовая награда: 100 монет * уровень
+    const bonusCoins = level * 120;
+    this.addCoins(bonusCoins);
+
+    // Каждые 3 уровня даем 1 Золотой лак Кинцуги, а на круглых (5, 10, 15...) — 2 шт.
+    let lacquerBonus = 0;
+    if (level % 5 === 0) {
+      lacquerBonus = 2;
+    } else if (level % 3 === 0) {
+      lacquerBonus = 1;
+    }
+    if (lacquerBonus > 0) {
+      this.addKintsugiLacquer(lacquerBonus);
+    }
   },
 
   getMaxMuseumCapacity() {
@@ -123,10 +220,10 @@ export const Storage = {
     return Math.min(3 + Math.floor((lvl - 1) / 2), 24);
   },
 
-  // --- ЭКСПЕДИЦИИ И НАХОДКИ ---
+  // --- ЭКСПЕДИЦИИ И СКЛАДЫ ---
   getAllStocks() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.EXPEDITION_STOCKS) || '{}');
+      return JSON.parse(localStorage.getItem(this.KEYS.EXPEDITION_STOCKS)) || {};
     } catch {
       return {};
     }
@@ -134,15 +231,16 @@ export const Storage = {
 
   getRegionStock(regionId, templates = []) {
     const all = this.getAllStocks();
-    if (!all[regionId]) {
-      const regionTemplates = templates.filter(t => t.regionId === regionId);
-      const initialStock = {};
-      regionTemplates.forEach(t => {
-        initialStock[t.id] = regionId === 'egypt' ? 3 : 0;
-      });
-      all[regionId] = initialStock;
-      localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
-    }
+    if (all[regionId]) return all[regionId];
+
+    const regionTemplates = templates.filter(t => t.regionId === regionId);
+    const initialStock = {};
+    regionTemplates.forEach(t => {
+      initialStock[t.id] = regionId === 'egypt' ? 3 : 0;
+    });
+
+    all[regionId] = initialStock;
+    localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
     return all[regionId];
   },
 
@@ -180,7 +278,7 @@ export const Storage = {
     return true;
   },
 
-  // --- СРОЧНЫЕ КОНТРАКТЫ ---
+  // --- КОНТРАКТЫ ---
   getDailyContract(templates) {
     const now = Date.now();
     try {
@@ -191,20 +289,18 @@ export const Storage = {
           return contract;
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     if (!templates || templates.length === 0) return null;
 
-    const level = this.getLevelData().level;
+    const currentLvl = this.getLevelData().level;
     const allowedRegions = ['egypt'];
-    if (level >= 2) allowedRegions.push('antique');
-    if (level >= 4) allowedRegions.push('europe');
-    if (level >= 6) allowedRegions.push('japan');
-    if (level >= 8) allowedRegions.push('aztec');
-    if (level >= 10) allowedRegions.push('vikings');
-    if (level >= 12) allowedRegions.push('renaissance');
+    if (currentLvl >= 2) allowedRegions.push('antique');
+    if (currentLvl >= 4) allowedRegions.push('europe');
+    if (currentLvl >= 6) allowedRegions.push('japan');
+    if (currentLvl >= 8) allowedRegions.push('aztec');
+    if (currentLvl >= 10) allowedRegions.push('vikings');
+    if (currentLvl >= 12) allowedRegions.push('renaissance');
 
     const pool = templates.filter(t => allowedRegions.includes(t.regionId));
     const target = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : templates[0];
@@ -221,17 +317,15 @@ export const Storage = {
     const basePrice = target.marketValue || 100;
     const bonusReward = 90;
     const contractPrice = basePrice + bonusReward;
-
     const cooldownDuration = 2 * 60 * 60 * 1000;
 
     const newContract = {
-      id: `ctr_${now}`,
+      id: 'ctr_' + now,
       templateId: target.id,
       regionId: target.regionId,
       name: target.name,
       client,
       rewardCoins: contractPrice,
-      bonusCoins: bonusReward,
       bonusXP: 80,
       completed: false,
       createdAt: now,
@@ -251,12 +345,10 @@ export const Storage = {
         contract.nextAvailableAt = Date.now() + 2 * 60 * 60 * 1000;
         localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
       }
-    } catch {
-      // no-op
-    }
+    } catch {}
   },
 
-  // --- ОФФЛАЙН-ДОХОД ---
+  // --- ОФФЛАЙН ДОХОД ---
   updateOfflineTimestamp() {
     localStorage.setItem(this.KEYS.LAST_OFFLINE_TIME, Date.now().toString());
   },
@@ -276,7 +368,7 @@ export const Storage = {
     const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
     const count = validExhibits.length;
 
-    if (count === 0) return { coins: 0, minutes: cappedMinutes };
+    if (count === 0) return { coins: 0, minutes: cappedMinutes, exhibitsCount: 0 };
 
     const earnedCoins = Math.floor((cappedMinutes / 10) * count * 2);
     return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes, exhibitsCount: count };
@@ -293,7 +385,7 @@ export const Storage = {
 
   getInventory() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.INVENTORY) || '[]');
+      return JSON.parse(localStorage.getItem(this.KEYS.INVENTORY)) || [];
     } catch {
       return [];
     }
@@ -314,7 +406,7 @@ export const Storage = {
 
   getRecentHistory() {
     try {
-      return JSON.parse(localStorage.getItem(this.KEYS.HISTORY) || '[]');
+      return JSON.parse(localStorage.getItem(this.KEYS.HISTORY)) || [];
     } catch {
       return [];
     }
