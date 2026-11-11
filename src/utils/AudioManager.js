@@ -7,16 +7,13 @@ class AudioManagerClass {
     this.masterGain = null;
     this.musicGain = null;
     this.sfxGain = null;
-    this.currentTrack = null;
-    this.pendingTrack = 'menu';
-    this.activeNodes = [];
-    this.musicStepTimer = null;
+    this.pendingTrack = null;
     this.isMusicPlaying = false;
     this.wasPlayingBeforeHide = false;
 
     const unlock = () => {
       this.unlockAudio();
-      if (!this.isMusicDisabled() && !this.isMusicPlaying && this.pendingTrack) {
+      if (this.pendingTrack && !this.isMusicPlaying && !this.isMusicMuted()) {
         this.playEraMusic(this.pendingTrack);
       }
     };
@@ -24,7 +21,6 @@ class AudioManagerClass {
     window.addEventListener('pointerdown', unlock, { once: true });
     window.addEventListener('touchstart', unlock, { once: true });
 
-    // Глушение музыки при сворачивании браузера или переключении вкладки
     const handleVisibility = () => {
       if (document.hidden) {
         if (this.isMusicPlaying) {
@@ -38,7 +34,7 @@ class AudioManagerClass {
         if (this.ctx && this.ctx.state === 'suspended') {
           this.ctx.resume().catch(() => {});
         }
-        if (this.wasPlayingBeforeHide && !this.isMusicDisabled()) {
+        if (this.wasPlayingBeforeHide && !this.isMusicMuted()) {
           this.wasPlayingBeforeHide = false;
           this.playEraMusic(this.currentTrack || this.pendingTrack || 'menu');
         }
@@ -47,16 +43,6 @@ class AudioManagerClass {
 
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('pagehide', handleVisibility);
-    window.addEventListener('blur', () => {
-      if (this.ctx && this.ctx.state === 'running') {
-        this.ctx.suspend().catch(() => {});
-      }
-    });
-    window.addEventListener('focus', () => {
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
-    });
   }
 
   init() {
@@ -65,17 +51,18 @@ class AudioManagerClass {
     if (!AudioContextClass) return;
 
     this.ctx = new AudioContextClass();
-
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
     this.masterGain.connect(this.ctx.destination);
 
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.setValueAtTime(this.isMusicDisabled() ? 0.0 : 0.28, this.ctx.currentTime);
+    const isM = this.isMusicMuted();
+    this.musicGain.gain.setValueAtTime(isM ? 0.0 : 0.28, this.ctx.currentTime);
     this.musicGain.connect(this.masterGain);
 
     this.sfxGain = this.ctx.createGain();
-    this.sfxGain.gain.setValueAtTime(this.isSfxDisabled() ? 0.0 : 0.35, this.ctx.currentTime);
+    const isS = this.isSfxDisabled();
+    this.sfxGain.gain.setValueAtTime(isS ? 0.0 : 0.85, this.ctx.currentTime);
     this.sfxGain.connect(this.masterGain);
   }
 
@@ -86,34 +73,28 @@ class AudioManagerClass {
     }
   }
 
-  isSfxEnabled() {
-    return Storage.isSfxMuted ? !Storage.isSfxMuted() : true;
-  }
-
-  isMusicDisabled() {
-    return Storage.isMusicMuted ? Storage.isMusicMuted() : false;
-  }
-
   isSfxDisabled() {
     return Storage.isSfxMuted ? Storage.isSfxMuted() : false;
   }
 
+  isMusicMuted() {
+    return Storage.isMusicMuted ? Storage.isMusicMuted() : false;
+  }
+
   toggleMusic() {
     this.unlockAudio();
-    const willBeMuted = !this.isMusicDisabled();
+    const willBeMuted = !this.isMusicMuted();
     if (Storage.setMusicMuted) Storage.setMusicMuted(willBeMuted);
 
     if (this.musicGain && this.ctx) {
-      this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
       this.musicGain.gain.setValueAtTime(willBeMuted ? 0.0 : 0.28, this.ctx.currentTime);
     }
-
-    if (willBeMuted) {
-      this.stopMusic();
-    } else {
+    if (!willBeMuted && !this.isMusicPlaying && this.pendingTrack) {
       this.playEraMusic(this.pendingTrack);
+    } else if (willBeMuted && this.isMusicPlaying) {
+      this.stopMusic();
     }
-    return willBeMuted;
+    return !willBeMuted;
   }
 
   toggleSfx() {
@@ -122,21 +103,20 @@ class AudioManagerClass {
     if (Storage.setSfxMuted) Storage.setSfxMuted(willBeMuted);
 
     if (this.sfxGain && this.ctx) {
-      this.sfxGain.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.sfxGain.gain.setValueAtTime(willBeMuted ? 0.0 : 0.35, this.ctx.currentTime);
+      this.sfxGain.gain.setValueAtTime(willBeMuted ? 0.0 : 0.85, this.ctx.currentTime);
     }
-    return willBeMuted;
+    return !willBeMuted;
   }
 
   isMusicOn() {
-    return !this.isMusicDisabled();
+    return !this.isMusicMuted();
   }
 
   isSfxOn() {
     return !this.isSfxDisabled();
   }
 
-  throttle(key, minIntervalMs) {
+  throttle(key, minIntervalMs = 80) {
     const now = performance.now();
     if (this.lastSoundTime[key] && now - this.lastSoundTime[key] < minIntervalMs) {
       return false;
@@ -145,7 +125,7 @@ class AudioManagerClass {
     return true;
   }
 
-  createNoiseBuffer(durationSec = 0.2) {
+  createNoiseBuffer(durationSec = 0.3) {
     if (!this.ctx) return null;
     const bufferSize = Math.floor(this.ctx.sampleRate * durationSec);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -156,23 +136,232 @@ class AudioManagerClass {
     return buffer;
   }
 
-  playSnapRoll() {
+  // =========================================================================
+  // ЗВУКИ ИНСТРУМЕНТОВ С ПОДДЕРЖКОЙ РАНГОВ (TIER 1..4)
+  // =========================================================================
+
+  // 1. СКРЕБОК / СКАЛЬПЕЛЬ / ЛАЗЕР
+  playScrub(tier = 1) {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx || !this.throttle('scraper', 85)) return;
+
+    const t = this.ctx.currentTime;
+
+    if (tier >= 4) {
+      // ТИР IV: Лазерный микро-скальпель (высокочастотный плазменный импульс)
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, t);
+      osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
+
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(t);
+      osc.stop(t + 0.08);
+      return;
+    }
+
+    if (tier === 3) {
+      // ТИР III: Закалённый скальпель (тонкий срез стали по камню)
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(750, t);
+      osc.frequency.exponentialRampToValueAtTime(520, t + 0.06);
+
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+      osc.start(t);
+      osc.stop(t + 0.06);
+      return;
+    }
+
+    // ТИР I-II: Классический сухой скрежет
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(tier === 2 ? 480 : 420, t);
+    osc.frequency.exponentialRampToValueAtTime(tier === 2 ? 260 : 200, t + 0.07);
+
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.07);
+  }
+
+  // 2. КИСТЬ / ВЕЕР / ИОНИЗАТОР
+  playBrush(tier = 1) {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx || !this.throttle('brush', 90)) return;
+
+    const t = this.ctx.currentTime;
+    const dur = tier >= 4 ? 0.08 : (tier === 3 ? 0.18 : 0.14);
+    const noiseBuffer = this.createNoiseBuffer(dur);
+    if (!noiseBuffer) return;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+
+    if (tier >= 4) {
+      // ТИР IV: Ионизатор (свистящий поток чистого воздуха)
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(3200, t);
+      filter.frequency.exponentialRampToValueAtTime(4500, t + dur);
+    } else if (tier === 3) {
+      // ТИР III: Веерная кисть (широкий шелест)
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2200, t);
+      filter.frequency.exponentialRampToValueAtTime(1400, t + dur);
+    } else {
+      // ТИР I-II: Мягкое смахивание
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1600, t);
+      filter.frequency.exponentialRampToValueAtTime(2800, t + dur);
+    }
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(tier >= 4 ? 0.12 : 0.18, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(t);
+    noise.stop(t + dur);
+  }
+
+  // 3. РЕАКТИВ / ЭССЕНЦИЯ / УЛЬТРАЗВУК
+  playSpray(tier = 1) {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx || !this.throttle('spray', 100)) return;
+
+    const t = this.ctx.currentTime;
+
+    if (tier >= 4) {
+      // ТИР IV: Ультразвуковой распылитель (тонкий свист мембраны + пар)
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(2400, t);
+      osc.frequency.exponentialRampToValueAtTime(1800, t + 0.12);
+
+      oscGain.gain.setValueAtTime(0.14, t);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.sfxGain);
+      osc.start(t);
+      osc.stop(t + 0.12);
+    }
+
+    const dur = 0.18;
+    const noiseBuffer = this.createNoiseBuffer(dur);
+    if (!noiseBuffer) return;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const bpf = this.ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.setValueAtTime(tier === 3 ? 1800 : 3000, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.16, t + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    noise.connect(bpf);
+    bpf.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(t);
+    noise.stop(t + dur);
+  }
+
+  // 4. ЗАМША / ГОИ / АЛМАЗНАЯ ЭМУЛЬСИЯ
+  playCloth(tier = 1) {
+    if (this.isSfxDisabled()) return;
+    this.unlockAudio();
+    if (!this.ctx || !this.throttle('cloth', 90)) return;
+
+    const t = this.ctx.currentTime;
+
+    if (tier >= 4) {
+      // ТИР IV: Алмазная эмульсия (хрустальный призвук зеркального блеска)
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1950, t);
+      osc.frequency.exponentialRampToValueAtTime(2600, t + 0.07);
+
+      oscGain.gain.setValueAtTime(0.12, t);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+      osc.connect(oscGain);
+      oscGain.connect(this.sfxGain);
+      osc.start(t);
+      osc.stop(t + 0.07);
+    }
+
+    const dur = 0.16;
+    const noiseBuffer = this.createNoiseBuffer(dur);
+    if (!noiseBuffer) return;
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const lpf = this.ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.setValueAtTime(tier === 3 ? 1200 : 900, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.20, t + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    noise.connect(lpf);
+    lpf.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(t);
+    noise.stop(t + dur);
+  }
+
+  // =========================================================================
+  // ОСТАЛЬНЫЕ ИГРОВЫЕ SFX (БЕЗ ИЗМЕНЕНИЙ)
+  // =========================================================================
+
+  playShopBell() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
-    const times = [0, 0.03, 0.06];
+    const times = [0.00, 0.08, 0.16];
     const freqs = [784.0, 880.0, 1046.5];
     freqs.forEach((freq, i) => {
-      const osc = this.ctx.createOscillator();
       const t = this.ctx.currentTime + times[i];
+      const osc = this.ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
 
       const g = this.ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.18, t + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      g.gain.linearRampToValueAtTime(0.18, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
 
       const f = this.ctx.createBiquadFilter();
       f.type = 'lowpass';
@@ -180,137 +369,31 @@ class AudioManagerClass {
 
       osc.connect(f);
       f.connect(g);
-      g.connect(this.sfxGain || this.ctx.destination);
+      g.connect(this.sfxGain);
       osc.start(t);
-      osc.stop(t + 0.09);
+      osc.stop(t + 0.46);
     });
   }
 
-  playBrush() {
+  playRub() {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
-    if (!this.ctx || !this.throttle('brush', 130)) return;
-
-    const t = this.ctx.currentTime;
-    const noiseBuffer = this.createNoiseBuffer(0.14);
-    if (!noiseBuffer) return;
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = noiseBuffer;
-
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1400, t);
-    filter.frequency.exponentialRampToValueAtTime(2800, t + 0.09);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(0.18, t + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
-    noise.start(t);
-    noise.stop(t + 0.14);
-  }
-
-  playScrub() {
-    if (this.isSfxDisabled()) return;
-    this.unlockAudio();
-    if (!this.ctx || !this.throttle('scraper', 100)) return;
-
-    const t = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(450, t);
-    osc.frequency.exponentialRampToValueAtTime(200, t + 0.07);
-
-    const oscGain = this.ctx.createGain();
-    oscGain.gain.setValueAtTime(0.2, t);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-
-    osc.connect(oscGain);
-    oscGain.connect(this.sfxGain || this.ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.08);
-  }
-
-  playSpray() {
-    if (this.isSfxDisabled()) return;
-    this.unlockAudio();
-    if (!this.ctx || !this.throttle('spray', 190)) return;
-
-    const t = this.ctx.currentTime;
-    const nBuf = this.createNoiseBuffer(0.2);
-    if (!nBuf) return;
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = nBuf;
-
-    const bpf = this.ctx.createBiquadFilter();
-    bpf.type = 'bandpass';
-    bpf.frequency.setValueAtTime(3000, t);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.2, t + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
-
-    noise.connect(bpf);
-    bpf.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
-    noise.start(t);
-    noise.stop(t + 0.2);
-  }
-
-  playCloth() {
-    if (this.isSfxDisabled()) return;
-    this.unlockAudio();
-    if (!this.ctx || !this.throttle('cloth', 130)) return;
-
-    const t = this.ctx.currentTime;
-    const nBuf = this.createNoiseBuffer(0.15);
-    if (!nBuf) return;
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = nBuf;
-
-    const lpf = this.ctx.createBiquadFilter();
-    lpf.type = 'lowpass';
-    lpf.frequency.setValueAtTime(900, t);
-
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.22, t + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-
-    noise.connect(lpf);
-    lpf.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
-    noise.start(t);
-    noise.stop(t + 0.15);
-  }
-
-  playWash() {
-    if (this.isSfxDisabled()) return;
-    this.unlockAudio();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.throttle('rub', 70)) return;
 
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(320, t);
-    osc.frequency.exponentialRampToValueAtTime(800, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(180, t + 0.12);
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
 
     osc.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
+    gain.connect(this.sfxGain);
     osc.start(t);
-    osc.stop(t + 0.13);
+    osc.stop(t + 0.12);
   }
 
   playCoin() {
@@ -320,7 +403,7 @@ class AudioManagerClass {
 
     const freqs = [987.77, 1318.51];
     freqs.forEach((freq, i) => {
-      const t = this.ctx.currentTime + i * 0.08;
+      const t = this.ctx.currentTime + i * 0.06;
       const osc = this.ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
@@ -330,13 +413,13 @@ class AudioManagerClass {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
 
       osc.connect(gain);
-      gain.connect(this.sfxGain || this.ctx.destination);
+      gain.connect(this.sfxGain);
       osc.start(t);
       osc.stop(t + 0.26);
     });
   }
 
-  playStarChime(step = 0) {
+  playTaskChime(step = 0) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
@@ -351,12 +434,12 @@ class AudioManagerClass {
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.18, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
 
     osc.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
+    gain.connect(this.sfxGain);
     osc.start(t);
-    osc.stop(t + 0.61);
+    osc.stop(t + 0.41);
   }
 
   playShine() {
@@ -364,22 +447,23 @@ class AudioManagerClass {
     this.unlockAudio();
     if (!this.ctx) return;
 
-    const freqs = [523.25, 659.25, 783.99, 1046.50];
+    const freqs = [1046.50, 659.25, 783.99, 1046.50];
     freqs.forEach((freq, idx) => {
-      const delay = idx * 0.07;
+      const delay = idx * 0.08;
       const t = this.ctx.currentTime + delay;
+
       const osc = this.ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, t);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.13, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
 
       osc.connect(gain);
-      gain.connect(this.sfxGain || this.ctx.destination);
+      gain.connect(this.sfxGain);
       osc.start(t);
-      osc.stop(t + 0.46);
+      osc.stop(t + 0.40);
     });
   }
 
@@ -395,11 +479,11 @@ class AudioManagerClass {
     osc.frequency.exponentialRampToValueAtTime(400, t + 0.04);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.setValueAtTime(0.12, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
 
     osc.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
+    gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 0.05);
   }
@@ -412,24 +496,24 @@ class AudioManagerClass {
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.setValueAtTime(240, t);
     osc.frequency.exponentialRampToValueAtTime(60, t + 0.05);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.setValueAtTime(0.24, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
 
     osc.connect(gain);
-    gain.connect(this.sfxGain || this.ctx.destination);
+    gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 0.06);
   }
 
   playEraMusic(era = 'menu') {
-    this.pendingTrack = era;
-    if (this.isMusicDisabled()) return;
     this.unlockAudio();
     if (!this.ctx) return;
+    this.pendingTrack = era;
+    if (this.isMusicMuted()) return;
 
     if (this.currentTrack === era && this.isMusicPlaying) return;
 
@@ -439,12 +523,11 @@ class AudioManagerClass {
     const palettes = {
       menu: [220.00, 329.63, 440.00, 523.25],
       egypt: [293.66, 311.13, 369.99, 440.00],
-      antique: [293.66, 329.63, 369.99, 440.00],
-      europe: [220.00, 261.63, 329.63, 392.00],
+      antique: [220.00, 246.94, 329.63, 392.00],
       japan: [220.00, 233.08, 293.66, 349.23],
-      aztec: [196.00, 220.00, 261.63, 293.66],
-      vikings: [220.00, 261.63, 329.63, 392.00],
-      renaissance: [329.63, 392.00, 440.00, 523.25]
+      aztec: [196.00, 220.00, 261.63, 311.13],
+      vikings: [220.00, 247.42, 329.63, 440.00],
+      renaissance: [220.00, 261.63, 329.63, 523.25]
     };
 
     const notes = palettes[era] || palettes.menu;
@@ -452,7 +535,7 @@ class AudioManagerClass {
     this.isMusicPlaying = true;
 
     const playNextNote = () => {
-      if (!this.isMusicPlaying || this.isMusicDisabled() || !this.ctx) return;
+      if (!this.isMusicPlaying || this.isMusicMuted()) return;
 
       const t = this.ctx.currentTime;
       const freq = notes[step % notes.length];
@@ -464,22 +547,22 @@ class AudioManagerClass {
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.linearRampToValueAtTime(0.045, t + 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+      gain.gain.linearRampToValueAtTime(0.08, t + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 3.4);
 
       const f = this.ctx.createBiquadFilter();
       f.type = 'lowpass';
-      f.frequency.setValueAtTime(1400, t);
+      f.frequency.setValueAtTime(1000, t);
 
       osc.connect(f);
       f.connect(gain);
-      gain.connect(this.musicGain || this.ctx.destination);
+      gain.connect(this.musicGain);
 
       osc.start(t);
-      osc.stop(t + 2.5);
+      osc.stop(t + 3.5);
 
-      const nextDelay = 1600 + Math.random() * 600;
-      this.musicStepTimer = setTimeout(playNextNote, nextDelay);
+      const delay = 1600 + Math.random() * 800;
+      this.musicStepTimer = setTimeout(playNextNote, delay);
     };
 
     playNextNote();
@@ -487,7 +570,6 @@ class AudioManagerClass {
 
   stopMusic() {
     this.isMusicPlaying = false;
-    this.currentTrack = null;
     if (this.musicStepTimer) {
       clearTimeout(this.musicStepTimer);
       this.musicStepTimer = null;
