@@ -10,7 +10,8 @@ export const Storage = {
     SFX_MUTED: 'art_sfx_muted',
     LAST_OFFLINE_TIME: 'art_last_offline_time',
     CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards',
-    ACTIVE_CONTRACT: 'art_active_contract'
+    ACTIVE_CONTRACT: 'art_active_contract',
+    EXPEDITION_STOCKS: 'art_expedition_stocks'
   },
 
   // --- ДЕНЬГИ ---
@@ -97,31 +98,82 @@ export const Storage = {
 
   getMaxMuseumCapacity() {
     const lvl = this.getLevelData().level;
-    return Math.min(3 + Math.floor((lvl - 1) / 2), 12);
+    return Math.min(3 + Math.floor((lvl - 1) / 2), 16);
   },
 
-  // --- СРОЧНЫЕ КОНТРАКТЫ (КУЛДАУН 2 ЧАСА С ЖИВЫМ ТАЙМЕРОМ) ---
+  // --- ЭКСПЕДИЦИИ И ЗАПАСЫ НАХОДОК ---
+  getAllStocks() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEYS.EXPEDITION_STOCKS) || '{}');
+    } catch {
+      return {};
+    }
+  },
+
+  getRegionStock(regionId, templates = []) {
+    const all = this.getAllStocks();
+    if (!all[regionId]) {
+      // Инициализируем стартовый запас
+      const regionTemplates = templates.filter(t => t.regionId === regionId);
+      const initialStock = {};
+      regionTemplates.forEach(t => {
+        initialStock[t.id] = regionId === 'egypt' ? 2 : 0;
+      });
+      all[regionId] = initialStock;
+      localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
+    }
+    return all[regionId];
+  },
+
+  decrementArtifactStock(regionId, templateId) {
+    const all = this.getAllStocks();
+    if (all[regionId] && all[regionId][templateId] > 0) {
+      all[regionId][templateId]--;
+      localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
+    }
+  },
+
+  fundExpedition(regionId, cost, templates = []) {
+    const coins = this.getCoins();
+    if (coins < cost) return false;
+
+    this.addCoins(-cost);
+    const all = this.getAllStocks();
+    const regionTemplates = templates.filter(t => t.regionId === regionId);
+
+    if (!all[regionId]) all[regionId] = {};
+
+    regionTemplates.forEach(t => {
+      // Экспедиция привозит от 1 до 3 новых находок
+      const added = Math.floor(Math.random() * 3) + 1;
+      all[regionId][t.id] = (all[regionId][t.id] || 0) + added;
+    });
+
+    localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
+    return true;
+  },
+
+  // --- СРОЧНЫЕ КОНТРАКТЫ ---
   getDailyContract(templates) {
     const now = Date.now();
     try {
       const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
       if (raw) {
         const contract = JSON.parse(raw);
-        // Если срок контракта или кулдауна еще не истек — возвращаем текущее состояние
         if (contract && contract.nextAvailableAt > now) {
           return contract;
         }
       }
     } catch {
-      // Игнорируем ошибку чтения
+      // ignore
     }
 
     if (!templates || templates.length === 0) return null;
 
     const level = this.getLevelData().level;
     const allowedRegions = ['egypt'];
-    if (level >= 2) allowedRegions.push('greece');
-    if (level >= 4) allowedRegions.push('rome', 'europe');
+    if (level >= 2) allowedRegions.push('antique');
+    if (level >= 4) allowedRegions.push('europe');
     if (level >= 6) allowedRegions.push('japan');
     if (level >= 8) allowedRegions.push('aztec');
     if (level >= 10) allowedRegions.push('vikings');
@@ -139,12 +191,11 @@ export const Storage = {
     ];
     const client = clients[Math.floor(Math.random() * clients.length)];
 
-    // Сбалансированная надбавка: базовая цена + фиксированная премия гильдии 80-120 монет
-    const basePrice = target.marketValue || 200;
+    const basePrice = target.marketValue || 100;
     const bonusReward = 90;
     const contractPrice = basePrice + bonusReward;
 
-    const cooldownDuration = 2 * 60 * 60 * 1000; // 2 часа
+    const cooldownDuration = 2 * 60 * 60 * 1000;
 
     const newContract = {
       id: `ctr_${now}`,
@@ -170,7 +221,6 @@ export const Storage = {
       if (raw) {
         const contract = JSON.parse(raw);
         contract.completed = true;
-        // Кулдаун 2 часа от момента завершения контракта
         contract.nextAvailableAt = Date.now() + 2 * 60 * 60 * 1000;
         localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
       }
@@ -196,7 +246,10 @@ export const Storage = {
 
     const cappedMinutes = Math.min(diffMinutes, 480);
     const inventory = this.getInventory();
-    const count = inventory.length;
+    
+    // В расчёт билетов идут только качественные экспонаты (>= 2 звезд)
+    const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
+    const count = validExhibits.length;
 
     if (count === 0) return { coins: 0, minutes: cappedMinutes };
 
@@ -245,7 +298,7 @@ export const Storage = {
   addHistoryEntry(entry) {
     const list = this.getRecentHistory();
     list.unshift(entry);
-    if (list.length > 20) list.pop();
+    if (list.length > 25) list.pop();
     localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(list));
   },
 
@@ -266,7 +319,7 @@ export const Storage = {
     }
   },
 
-  // --- ЗВУК И МУЗЫКА ---
+  // --- ЗВУК ---
   isMusicMuted() {
     return localStorage.getItem(this.KEYS.MUSIC_MUTED) === 'true';
   },
