@@ -103,12 +103,12 @@ export class MenuScene extends Phaser.Scene {
 
     const startY = height * 0.51;
 
-    // 1. «НА ВЕРСТАК» — сразу в работу
+    // 1. «НА ВЕРСТАК» — честный рандом строго из имеющихся в наличии артефактов
     createBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
       this.startQuickRestore();
     });
 
-    // 2. «ЭКСПЕДИЦИИ» — наш привычный экран выбора эпох
+    // 2. «ЭКСПЕДИЦИИ» — привычный выбор эпох
     createBtn(startY + 56, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
       this.scene.start('EraSelectScene');
     });
@@ -143,22 +143,38 @@ export class MenuScene extends Phaser.Scene {
     this.renderContractWidget(width, height * 0.89, dpr);
   }
 
-  // Быстрый запуск реставрации
+  // =========================================================================
+  // БЫСТРЫЙ ВХОД НА ВЕРСТАК: СТРОГО ИЗ НАЛИЧИЯ НА СКЛАДЕ
+  // =========================================================================
   startQuickRestore() {
+    // 1. Проверяем незавершённую сессию (только если она реально существует и валидна)
     const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
-    if (saved && saved.templateId && saved.regionId) {
+    if (saved && saved.templateId && saved.regionId && !saved.completed) {
       this.scene.start('RestoreScene', { regionId: saved.regionId, templateId: saved.templateId });
       return;
     }
 
-    if (ARTIFACT_TEMPLATES && ARTIFACT_TEMPLATES.length > 0) {
-      const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
-      const available = ARTIFACT_TEMPLATES.filter(a => unlocked.includes(a.regionId));
-      const pool = available.length > 0 ? available : ARTIFACT_TEMPLATES;
-      const target = pool[Math.floor(Math.random() * pool.length)];
+    // 2. Сканируем все открытые регионы и собираем только те артефакты, которые РЕАЛЬНО ЕСТЬ В НАЛИЧИИ (> 0)
+    const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
+    const allStocks = Storage.getAllStocks ? Storage.getAllStocks() : {};
+    const availablePool = [];
 
-      this.scene.start('RestoreScene', { regionId: target.regionId, templateId: target.id });
+    unlocked.forEach(regId => {
+      const regStock = allStocks[regId] || {};
+      Object.entries(regStock).forEach(([templateId, count]) => {
+        if (count > 0) {
+          availablePool.push({ regionId: regId, templateId });
+        }
+      });
+    });
+
+    // 3. Если артефакты есть в наличии — выбираем абсолютно случайный
+    if (availablePool.length > 0) {
+      const chosen = availablePool[Math.floor(Math.random() * availablePool.length)];
+      Storage.decrementArtifactStock(chosen.regionId, chosen.templateId);
+      this.scene.start('RestoreScene', { regionId: chosen.regionId, templateId: chosen.templateId });
     } else {
+      // 4. Если на складе 0 артефактов — переходим в выбор эпох
       this.scene.start('EraSelectScene');
     }
   }
