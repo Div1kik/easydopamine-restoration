@@ -43,7 +43,7 @@ export const Storage = {
     return updated;
   },
 
-  buyKintsugiLacquer(count = 1, pricePerOne = 750) {
+  buyKintsugiLacquer(count = 1, pricePerOne = 650) {
     const totalCost = count * pricePerOne;
     if (this.getCoins() < totalCost) return false;
     this.addCoins(-totalCost);
@@ -61,16 +61,16 @@ export const Storage = {
   },
 
   // =========================================================================
-  // БАЛАНС ЭПОХ И ПОРОГ ВХОЖДЕНИЯ (50 УРОВНЕЙ)
+  // МАРКЕТИНГОВЫЙ БАЛАНС ЭПОХ (РЕНЕССАНС НА 25 УРОВНЕ)
   // =========================================================================
   REGION_UNLOCK_REQS: {
     egypt: { minLevel: 1, cost: 0, name: 'Древний Египет' },
-    antique: { minLevel: 4, cost: 450, name: 'Античность' },
-    europe: { minLevel: 9, cost: 1400, name: 'Средневековье' },
-    japan: { minLevel: 16, cost: 3800, name: 'Япония' },
-    aztec: { minLevel: 24, cost: 8500, name: 'Ацтеки' },
-    vikings: { minLevel: 34, cost: 18000, name: 'Викинги' },
-    renaissance: { minLevel: 44, cost: 38000, name: 'Ренессанс' }
+    antique: { minLevel: 3, cost: 250, name: 'Античность' },
+    europe: { minLevel: 6, cost: 800, name: 'Средневековье' },
+    japan: { minLevel: 10, cost: 2200, name: 'Япония' },
+    aztec: { minLevel: 15, cost: 5500, name: 'Ацтеки' },
+    vikings: { minLevel: 20, cost: 12000, name: 'Викинги' },
+    renaissance: { minLevel: 25, cost: 25000, name: 'Ренессанс' }
   },
 
   getUnlockedRegions() {
@@ -108,7 +108,7 @@ export const Storage = {
   },
 
   // =========================================================================
-  // 50 УРОВНЕЙ И ПРОГРЕССИЯ
+  // ДИНАМИЧЕСКАЯ ШКАЛА ОПЫТА (50 УРОВНЕЙ)
   // =========================================================================
   getLevelConfig(level) {
     const titles = [
@@ -127,19 +127,19 @@ export const Storage = {
     const idx = Math.max(1, Math.min(level, 50));
     const title = titles[idx - 1] || `Мастер ранга ${idx}`;
 
+    // Быстрый, приятный набор опыта до 25 уровня, затем эндгейм-плато
     let minXP = 0;
     if (idx === 1) minXP = 0;
-    else if (idx === 2) minXP = 100;
-    else if (idx === 3) minXP = 260;
-    else if (idx === 4) minXP = 480;
-    else if (idx === 5) minXP = 780;
-    else if (idx === 6) minXP = 1180;
-    else if (idx === 7) minXP = 1700;
-    else if (idx === 8) minXP = 2360;
-    else if (idx === 9) minXP = 3200;
-    else if (idx === 10) minXP = 4250;
-    else {
-      minXP = 4250 + Math.round((idx - 10) * 1250 + Math.pow(idx - 10, 1.45) * 180);
+    else if (idx <= 10) {
+      // 1-10: шаги по 70..180 XP (быстрый старт)
+      const baseSteps = [0, 60, 140, 240, 360, 510, 700, 930, 1200, 1520];
+      minXP = baseSteps[idx - 1];
+    } else if (idx <= 25) {
+      // 11-25: шаги по 350..550 XP (ощутимый, но частый прогресс)
+      minXP = 1520 + Math.round((idx - 10) * 420 + Math.pow(idx - 10, 1.25) * 50);
+    } else {
+      // 26-50: элитные престиж-уровни для хардкорщиков
+      minXP = 11800 + Math.round((idx - 25) * 1100 + Math.pow(idx - 25, 1.4) * 120);
     }
 
     return { level: idx, title, minXP };
@@ -212,14 +212,15 @@ export const Storage = {
   },
 
   grantLevelReward(level) {
-    const bonusCoins = level * 150;
+    // Сочные награды за ап уровня для дофаминового подкрепления
+    const bonusCoins = level * 160 + 100;
     this.addCoins(bonusCoins);
 
     let lacquerBonus = 0;
     if (level % 5 === 0) {
-      lacquerBonus = 2;
-    } else if (level % 3 === 0) {
-      lacquerBonus = 1;
+      lacquerBonus = 2; // Каждые 5 уровней — щедрый пак лака
+    } else if (level % 2 === 0) {
+      lacquerBonus = 1; // Каждый четный уровень — 1 флакон лака
     }
     if (lacquerBonus > 0) {
       this.addKintsugiLacquer(lacquerBonus);
@@ -304,7 +305,6 @@ export const Storage = {
 
     if (!templates || templates.length === 0) return null;
 
-    // Контракты выпадают только по открытым игроком эпохам
     const unlocked = this.getUnlockedRegions();
     const pool = templates.filter(t => unlocked.includes(t.regionId));
     const target = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : templates[0];
@@ -315,9 +315,9 @@ export const Storage = {
     const client = clients[Math.floor(Math.random() * clients.length)];
 
     const basePrice = target.marketValue || 100;
-    const bonusReward = Math.round(basePrice * 0.4) + 60;
+    const bonusReward = Math.round(basePrice * 0.45) + 80;
     const contractPrice = basePrice + bonusReward;
-    const cooldownDuration = 2 * 60 * 60 * 1000;
+    const cooldownDuration = 90 * 60 * 1000; // 1.5 часа вместо 2х
 
     const newContract = {
       id: 'ctr_' + now,
@@ -326,7 +326,7 @@ export const Storage = {
       name: target.name,
       client,
       rewardCoins: contractPrice,
-      bonusXP: 90,
+      bonusXP: 100,
       completed: false,
       createdAt: now,
       nextAvailableAt: now + cooldownDuration
@@ -342,7 +342,7 @@ export const Storage = {
       if (raw) {
         const contract = JSON.parse(raw);
         contract.completed = true;
-        contract.nextAvailableAt = Date.now() + 2 * 60 * 60 * 1000;
+        contract.nextAvailableAt = Date.now() + 90 * 60 * 1000;
         localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
       }
     } catch {}
