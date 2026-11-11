@@ -39,6 +39,7 @@ class AudioManagerClass {
   isMusicDisabled() {
     return Storage.isMusicMuted ? Storage.isMusicMuted() : false;
   }
+
   toggleMusic() {
     const nextMuted = !this.isMusicDisabled();
     if (Storage.setMusicMuted) Storage.setMusicMuted(nextMuted);
@@ -66,7 +67,9 @@ class AudioManagerClass {
 
   throttle(key, minIntervalMs) {
     const now = performance.now();
-    if (this.lastSoundTime[key] && now - this.lastSoundTime[key] < minIntervalMs) return false;
+    if (this.lastSoundTime[key] && now - this.lastSoundTime[key] < minIntervalMs) {
+      return false;
+    }
     this.lastSoundTime[key] = now;
     return true;
   }
@@ -358,7 +361,7 @@ class AudioManagerClass {
     // Палитры нот под каждую эпоху (мягкие чистые синусоиды)
     const palettes = {
       menu: [261.63, 329.63, 392.00, 523.25], // C - E - G - C (Уют и покой)
-      egypt: [220.00, 246.94, 261.63, 329.63, 349.23], // Восточный ночной Нил
+      egypt: [220.00, 246.94, 261.63, 329.63, 349.23], // Восточный ночной песок
       antique: [293.66, 329.63, 369.99, 440.00], // Солнечная лира
       europe: [261.63, 293.66, 329.63, 392.00], // Лютня замка
       japan: [220.00, 233.08, 293.66, 329.63], // Сакура (Ивато)
@@ -386,7 +389,7 @@ class AudioManagerClass {
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.0001, t);
       gain.gain.linearRampToValueAtTime(0.045, t + 0.3); // Мягкая атака
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.4); // Долгий благородный хвост
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.4); // Долгий благородный спад
 
       const f = this.ctx.createBiquadFilter();
       f.type = 'lowpass';
