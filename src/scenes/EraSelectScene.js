@@ -14,21 +14,31 @@ export class EraSelectScene extends Phaser.Scene {
     const levelData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Ученик' };
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
 
-    // Требуемый уровень мастера для каждой эпохи (7 эпох)
+    // Стоимость снаряжения экспедиции по эпохам
+    const expeditionCosts = {
+      egypt: 120,
+      antique: 280,
+      europe: 600,
+      japan: 1200,
+      aztec: 2200,
+      vikings: 4000,
+      renaissance: 7500
+    };
+
     const requiredLevels = [1, 2, 4, 6, 8, 10, 12];
     this.eras = REGIONS.map((region, idx) => {
       const needLvl = requiredLevels[idx] !== undefined ? requiredLevels[idx] : (idx * 2 + 1);
       return {
         ...region,
         unlocked: levelData.level >= needLvl,
-        requiredLevel: needLvl
+        requiredLevel: needLvl,
+        cost: expeditionCosts[region.id] || 500
       };
     });
 
     this.selectedEraIndex = 0;
     this.scrollX = 0;
 
-    // Фоновая музыка первой доступной эпохи
     if (this.eras[0] && AudioManager.playEraMusic) {
       AudioManager.playEraMusic(this.eras[0].id);
     }
@@ -54,7 +64,7 @@ export class EraSelectScene extends Phaser.Scene {
       }
     ).setOrigin(0.5).setDepth(20);
 
-    // Кнопка сброса прогресса (для тестов)
+    // Кнопка сброса (для тестов)
     const resetBtn = this.add.rectangle(width - 36, 36, 32, 32, 0x1f1424)
       .setStrokeStyle(1.5, 0xef4444, 0.8)
       .setInteractive({ useHandCursor: true })
@@ -81,7 +91,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.setupVerticalScroll();
     this.renderArtifactsList();
 
-    // Нижняя плашка с кнопкой возврата
+    // Нижняя плашка
     this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e).setDepth(30);
 
     const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 44, 0x141a24)
@@ -100,6 +110,12 @@ export class EraSelectScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
+  }
+
+  updateHeader() {
+    const levelData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Ученик' };
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    this.subInfoText.setText(`Ур. ${levelData.level} • ${levelData.title}  |  Казна: ${coins} 🪙`);
   }
 
   createScrollableTabs(width, y) {
@@ -218,6 +234,7 @@ export class EraSelectScene extends Phaser.Scene {
 
     const { width } = this.scale;
     const currentEra = this.eras[this.selectedEraIndex];
+    this.updateHeader();
 
     if (!currentEra.unlocked) {
       this.minListY = this.listTopY;
@@ -253,56 +270,108 @@ export class EraSelectScene extends Phaser.Scene {
       return;
     }
 
+    // 1. Плашка снаряжения экспедиции
+    const expeditionBox = this.add.container(width / 2, 36);
+    const expBg = this.add.rectangle(0, 0, width * 0.90, 60, 0x141b2a)
+      .setStrokeStyle(1.5, 0x3b82f6, 0.8);
+
+    const expTitle = this.add.text(-width * 0.45 + 14, -14, `СНАРЯДИТЬ ЭКСПЕДИЦИЮ В ${currentEra.name.toUpperCase()}`, {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#93c5fd',
+      fontStyle: 'bold'
+    });
+
+    const expDesc = this.add.text(-width * 0.45 + 14, 6, `Доставка 1-3 случайных находок каждого типа`, {
+      fontSize: '10px',
+      fontFamily: 'sans-serif',
+      color: '#94a3b8'
+    });
+
+    const fundBtn = this.add.rectangle(width * 0.45 - 54, 0, 92, 34, 0x1d4ed8)
+      .setStrokeStyle(1, 0x60a5fa)
+      .setInteractive({ useHandCursor: true });
+
+    const fundTxt = this.add.text(width * 0.45 - 54, 0, `${currentEra.cost} 🪙`, {
+      fontSize: '11.5px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    fundBtn.on('pointerdown', () => {
+      const success = Storage.fundExpedition(currentEra.id, currentEra.cost, ARTIFACT_TEMPLATES);
+      if (success) {
+        if (AudioManager.playCoin) AudioManager.playCoin();
+        this.renderArtifactsList();
+      } else {
+        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+      }
+    });
+
+    expeditionBox.add([expBg, expTitle, expDesc, fundBtn, fundTxt]);
+    this.listContainer.add(expeditionBox);
+
+    // 2. Список артефактов с учётом запасов
     const eraArtifacts = ARTIFACT_TEMPLATES.filter(a => a.regionId === currentEra.id);
+    const stocks = Storage.getRegionStock(currentEra.id, ARTIFACT_TEMPLATES);
+
     const cardH = 110;
     const spacing = 12;
     const cardW = width * 0.90;
+    const listOffsetY = 80;
 
     let touchDownTime = 0;
     let touchDownY = 0;
 
     eraArtifacts.forEach((art, index) => {
-      const cardY = index * (cardH + spacing) + cardH / 2 + 8;
+      const cardY = listOffsetY + index * (cardH + spacing) + cardH / 2;
+      const countLeft = stocks[art.id] !== undefined ? stocks[art.id] : 0;
+      const hasStock = countLeft > 0;
 
       const bg = this.add.rectangle(width / 2, cardY, cardW, cardH, 0x111622, 0.96)
-        .setStrokeStyle(1.5, 0x233145, 0.8)
-        .setInteractive({ useHandCursor: true });
+        .setStrokeStyle(1.5, hasStock ? 0x233145 : 0x221a24, 0.8)
+        .setInteractive({ useHandCursor: hasStock });
 
       const texKey = this.textures.exists(art.textureKey) ? art.textureKey : 'art_egypt_scarab';
       const icon = this.add.image(width / 2 - cardW / 2 + 40, cardY, texKey)
-        .setDisplaySize(68, 68);
+        .setDisplaySize(68, 68)
+        .setAlpha(hasStock ? 1 : 0.45);
 
       const title = this.add.text(width / 2 - cardW / 2 + 82, cardY - 30, art.name, {
         fontSize: '15px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#ffffff',
+        color: hasStock ? '#ffffff' : '#64748b',
         fontStyle: 'bold'
       });
 
-      const fullDesc = art.description || 'Древняя историческая ценность, требующая бережной очистки.';
-      const desc = this.add.text(width / 2 - cardW / 2 + 82, cardY - 8, fullDesc, {
+      // Отображение доступного количества
+      const stockBadgeColor = hasStock ? '#38bdf8' : '#ef4444';
+      const stockBadgeText = hasStock ? `В наличии: ${countLeft} шт.` : `Запасы иссякли (нужна экспедиция)`;
+
+      const stockLbl = this.add.text(width / 2 - cardW / 2 + 82, cardY - 8, stockBadgeText, {
         fontSize: '11px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#94a3b8',
-        lineSpacing: 2,
-        wordWrap: { width: cardW - 104 }
+        color: stockBadgeColor,
+        fontStyle: 'bold'
       });
 
-      const takeBtn = this.add.text(width / 2 - cardW / 2 + 82, cardY + 28, '▶ ВЗЯТЬ НА ВЕРСТАК', {
+      const takeBtnText = hasStock ? '▶ ВЗЯТЬ НА ВЕРСТАК' : 'ОБРАЗЦЫ ЗАКОНЧИЛИСЬ';
+      const takeBtn = this.add.text(width / 2 - cardW / 2 + 82, cardY + 28, takeBtnText, {
         fontSize: '11.5px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#10b981',
+        color: hasStock ? '#10b981' : '#475569',
         fontStyle: 'bold'
       });
 
       const valueBadge = this.add.text(
         width / 2 + cardW / 2 - 16,
         cardY + 28,
-        `${art.marketValue || 200} 🪙`,
+        `${art.marketValue || 100} 🪙`,
         {
           fontSize: '11.5px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          color: '#facc15',
+          color: hasStock ? '#facc15' : '#475569',
           fontStyle: 'bold'
         }
       ).setOrigin(1, 0);
@@ -316,7 +385,10 @@ export class EraSelectScene extends Phaser.Scene {
         const moveDist = Math.abs(p.y - touchDownY);
         const elapsed = this.time.now - touchDownTime;
 
-        if (!this.isDraggingList && moveDist < 10 && elapsed < 400) {
+        if (!this.isDraggingList && moveDist < 10 && elapsed < 400 && hasStock) {
+          // Списываем 1 штуку из запасов
+          Storage.decrementArtifactStock(currentEra.id, art.id);
+
           if (AudioManager.playClick) AudioManager.playClick();
           this.scene.start('RestoreScene', {
             regionId: currentEra.id,
@@ -325,10 +397,10 @@ export class EraSelectScene extends Phaser.Scene {
         }
       });
 
-      this.listContainer.add([bg, icon, title, desc, takeBtn, valueBadge]);
+      this.listContainer.add([bg, icon, title, stockLbl, takeBtn, valueBadge]);
     });
 
-    const totalContentHeight = eraArtifacts.length * (cardH + spacing) + 24;
+    const totalContentHeight = listOffsetY + eraArtifacts.length * (cardH + spacing) + 24;
     this.minListY = Math.min(this.listTopY, this.listBottomY - totalContentHeight);
   }
 
