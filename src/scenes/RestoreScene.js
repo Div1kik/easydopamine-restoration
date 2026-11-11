@@ -10,6 +10,8 @@ export class RestoreScene extends Phaser.Scene {
   create(data) {
     const { width, height } = this.scale;
 
+    this.activeContract = (data && data.contract) ? data.contract : null;
+
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
     let prefRegion = (data && data.regionId) ? data.regionId : 'egypt';
     let reqTemplate = (data && data.templateId) ? data.templateId : null;
@@ -30,6 +32,16 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
     }
 
+    // Проверка на дубликат в истории реставраций
+    const isDuplicate = history.some(item => (item.templateId || item.id) === this.artifactData.id);
+    this.isDuplicate = !this.activeContract && isDuplicate;
+
+    if (this.activeContract) {
+      this.artifactData.marketValue = this.activeContract.rewardCoins;
+    } else if (this.isDuplicate) {
+      this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.45);
+    }
+
     if (Storage.setActiveSession) {
       Storage.setActiveSession({ regionId: this.artifactData.regionId, templateId: this.artifactData.id });
     }
@@ -41,6 +53,7 @@ export class RestoreScene extends Phaser.Scene {
     this.lastCleanPos = null;
     this.glueApplied = false;
     this.isTaskTransition = false;
+    this.mistakesCount = 0;
 
     // 1. Фон верстака
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
@@ -106,10 +119,17 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     // 3. Шапка задачи
-    this.add.text(width / 2, 54, (this.artifactData.regionName || 'ДРЕВНИЙ ЕГИПЕТ').toUpperCase(), {
-      fontSize: '11px',
+    let headerTitle = (this.artifactData.regionName || 'ДРЕВНИЙ ЕГИПЕТ').toUpperCase();
+    if (this.activeContract) {
+      headerTitle = `📜 КОНТРАКТ: ${this.activeContract.client.toUpperCase()}`;
+    } else if (this.isDuplicate) {
+      headerTitle += ' • ПОВТОРНЫЙ ОБРАЗЕЦ (-55%)';
+    }
+
+    this.add.text(width / 2, 54, headerTitle, {
+      fontSize: '10.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#c5a059',
+      color: this.activeContract ? '#facc15' : (this.isDuplicate ? '#94a3b8' : '#c5a059'),
       fontStyle: 'bold',
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(30);
@@ -139,7 +159,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. Крупный размер артефакта (320 x 400)
+    // 4. Габариты артефакта
     this.artW = 320;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -149,7 +169,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.45).setDepth(6);
 
-    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_tut_mask';
+    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDisplaySize(this.artW, this.artH).setDepth(7);
 
     this.breakHoleGfx = this.add.graphics().setDepth(7).setVisible(false);
@@ -195,7 +215,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Очистка строго по контуру артефакта с плавным расчетом шкалы
+    // 5. Очистка по контуру с плотностью (требует 2 проходов)
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -210,14 +230,20 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
       this.toolSprite.setAlpha(1);
 
+      // Проверка на ошибку инструмента со штрафом к звёздам
       if (this.activeTool !== currentTask.requiredTool) {
-        this.toolWarning.setText(currentTask.hint || currentTask.name || 'Выберите требуемый инструмент!');
+        this.toolWarning.setText(currentTask.hint || 'Неверный инструмент! Артефакт царапается');
+        if (!this.lastMistakeTime || this.time.now - this.lastMistakeTime > 800) {
+          this.lastMistakeTime = this.time.now;
+          this.mistakesCount++;
+          if (AudioManager.playScrub) AudioManager.playScrub();
+        }
         return;
       }
 
       if (this.lastCleanPos) {
         const moveDist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
-        if (moveDist < 3) return;
+        if (moveDist < 4) return;
       }
       this.lastCleanPos = { x: pointer.x, y: pointer.y };
 
@@ -225,6 +251,7 @@ export class RestoreScene extends Phaser.Scene {
       const localY = pointer.y - this.topLeftY;
 
       if (localX >= 0 && localX <= this.artW && localY >= 0 && localY <= this.artH) {
+        // Стираем текстуру с прозрачностью для плавности
         this.dirtLayer.erase(this.activeMaskKey, localX, localY);
 
         if (this.activeTool === 'tool_scraper' && AudioManager.playScrub) AudioManager.playScrub();
@@ -256,16 +283,20 @@ export class RestoreScene extends Phaser.Scene {
 
               if (dist <= eraserRadius) {
                 const idx = gy * this.gridCols + gx;
-                if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] === 0) {
-                  this.cleanedGrid[idx] = 1;
-                  this.cleanedCount++;
+                if (this.validCellsMask[idx] === 1) {
+                  // Плотность: нужно провести 2 раза (hitsRequired = 2)
+                  if (this.cleanedGrid[idx] < 2) {
+                    this.cleanedGrid[idx]++;
+                    if (this.cleanedGrid[idx] === 2) {
+                      this.cleanedCount++;
+                    }
+                  }
                 }
               }
             }
           }
         }
 
-        // Порог завершения 92% — синхронное и естественное завершение этапа
         const targetGoal = Math.max(this.targetValidCells * 0.92, 1);
         const ratio = Math.min(this.cleanedCount / targetGoal, 1);
         this.progressBarFill.width = (this.scale.width * 0.65) * ratio;
@@ -528,7 +559,7 @@ export class RestoreScene extends Phaser.Scene {
   selectTool(toolId, iconKey, maskKey) {
     const currentTask = this.artifactData.tasks[this.currentTaskIndex];
     if (currentTask && toolId !== currentTask.requiredTool) {
-      this.toolWarning.setText(currentTask.hint || currentTask.name || 'Выберите требуемый инструмент!');
+      this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент!');
       if (AudioManager.playClick) AudioManager.playClick();
       return;
     }
@@ -648,6 +679,21 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playShine) AudioManager.playShine();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
 
+      // Оценка звезд по аккуратности
+      let earnedStars = 3;
+      let qualityMultiplier = 1.0;
+
+      if (this.mistakesCount >= 3) {
+        earnedStars = 1;
+        qualityMultiplier = 0.6;
+      } else if (this.mistakesCount >= 1) {
+        earnedStars = 2;
+        qualityMultiplier = 0.8;
+      }
+
+      const finalPrice = Math.max(10, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier));
+      this.artifactData.marketValue = finalPrice;
+
       try {
         Storage.addArtifactToInventory({
           instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
@@ -656,9 +702,19 @@ export class RestoreScene extends Phaser.Scene {
           name: this.artifactData.name,
           museumDesc: this.artifactData.description || '',
           textureKey: this.artifactData.textureKey,
-          marketValue: this.artifactData.marketValue || 200
+          marketValue: finalPrice
         });
-        Storage.addXP(100);
+
+        // Запись в историю для отслеживания повторных образцов (дубликатов)
+        Storage.addHistoryEntry({
+          templateId: this.artifactData.id,
+          name: this.artifactData.name,
+          date: Date.now()
+        });
+
+        if (this.activeContract) {
+          Storage.completeDailyContract();
+        }
       } catch (e) {
         console.warn('Inventory save error:', e);
       }
@@ -666,7 +722,10 @@ export class RestoreScene extends Phaser.Scene {
       this.time.delayedCall(300, () => {
         this.scene.start('VictoryScene', {
           artifact: this.artifactData,
-          stars: 3
+          stars: earnedStars,
+          isDuplicate: this.isDuplicate,
+          isContract: !!this.activeContract,
+          contractBonusXP: this.activeContract ? this.activeContract.bonusXP : 0
         });
       });
     }
