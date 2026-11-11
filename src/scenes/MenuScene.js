@@ -28,7 +28,7 @@ export class MenuScene extends Phaser.Scene {
     divider.lineStyle(1, 0xc5a059, 0.4);
     divider.lineBetween(width / 2 - 50, height * 0.08, width / 2 + 50, height * 0.08);
 
-    // Название игры
+    // Заголовок игры
     this.add.text(width / 2, height * 0.115, 'АРТЕФАКТЫ ВРЕМЕНИ', {
       fontSize: '24px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -69,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     // Кнопки переключения звука
     this.createAudioToggles(width);
 
-    // Создание кнопок с тактильным эффектом нажатия
+    // Функция отрисовки кнопок меню
     const createBtn = (y, text, colorBg, colorStroke, textColor, onClick) => {
       const btnW = width * 0.82;
       const btnH = 48;
@@ -103,22 +103,22 @@ export class MenuScene extends Phaser.Scene {
 
     const startY = height * 0.51;
 
-    // 1. «НА ВЕРСТАК» — сразу в реставрацию имеющегося артефакта
+    // Кнопка 1: НА ВЕРСТАК (сразу за работу)
     createBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
-      this.handleQuickWorkbenchStart();
+      this.scene.start('RestoreScene');
     });
 
-    // 2. «ЭКСПЕДИЦИИ» — открывает окно экспедиций и запасов
-    createBtn(startY + 56, '🗺️ АРХИВНЫЕ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
+    // Кнопка 2: ЭКСПЕДИЦИИ (архивные экспедиции и раскопки)
+    createBtn(startY + 56, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
       this.openStockExpeditionsModal(width, height, dpr);
     });
 
-    // 3. Лавка
+    // Кнопка 3: ЛАВКА МАСТЕРА
     createBtn(startY + 112, '🛒 ЛАВКА МАСТЕРА', 0x1e1b4b, 0x6366f1, '#ffffff', () => {
       this.scene.start('ShopScene');
     });
 
-    // 4. Музей
+    // Кнопка 4: ЗАЛ СЛАВЫ (МУЗЕЙ / ВЫСТАВКА)
     createBtn(startY + 168, '🏛️ ЗАЛ СЛАВЫ (МУЗЕЙ)', 0x14532d, 0x22c55e, '#ffffff', () => {
       this.scene.start('MuseumScene');
     });
@@ -133,52 +133,14 @@ export class MenuScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5);
 
-    // Фоновая музыка
+    // Фоновая музыка меню
     if (AudioManager.playEraMusic) AudioManager.playEraMusic('menu');
 
     // Оффлайн доход
     this.checkOfflineEarnings(width, height, dpr);
 
-    // Срочный контракт
+    // Срочные контракты
     this.renderContractWidget(width, height * 0.89, dpr);
-  }
-
-  // Быстрый запуск реставрации из имеющихся запасов
-  handleQuickWorkbenchStart() {
-    const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
-    if (saved && saved.templateId) {
-      this.scene.start('RestoreScene', { regionId: saved.regionId, templateId: saved.templateId });
-      return;
-    }
-
-    // Ищем доступный предмет на складе
-    const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
-    const stocks = Storage.getAllStocks ? Storage.getAllStocks() : {};
-
-    let targetRegion = 'egypt';
-    let targetTemplate = null;
-
-    for (const reg of unlocked) {
-      const regStocks = stocks[reg];
-      if (regStocks) {
-        for (const [tid, count] of Object.entries(regStocks)) {
-          if (count > 0) {
-            targetRegion = reg;
-            targetTemplate = tid;
-            break;
-          }
-        }
-      }
-      if (targetTemplate) break;
-    }
-
-    if (targetTemplate) {
-      Storage.decrementArtifactStock(targetRegion, targetTemplate);
-      this.scene.start('RestoreScene', { regionId: targetRegion, templateId: targetTemplate });
-    } else {
-      // Если на складе пусто — открываем экспедиции
-      this.openStockExpeditionsModal(this.scale.width, this.scale.height, Math.min(window.devicePixelRatio || 1, 2));
-    }
   }
 
   // =========================================================================
@@ -402,7 +364,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ОРИГИНАЛЬНОЕ МОДАЛЬНОЕ ОКНО ЭКСПЕДИЦИЙ И СКЛАДОВ
+  // МОДАЛЬНОЕ ОКНО ЭКСПЕДИЦИЙ
   // =========================================================================
   openStockExpeditionsModal(width, height, dpr) {
     if (AudioManager.playClick) AudioManager.playClick();
@@ -494,7 +456,7 @@ export class MenuScene extends Phaser.Scene {
       this.handleSendExpedition(600, 'rare', overlay, modal, width, height, dpr);
     });
 
-    // Кнопка закрытия
+    // Кнопка возврата
     const closeBtn = this.add.rectangle(0, modalH / 2 - 32, modalW * 0.7, 36, 0x334155)
       .setInteractive({ useHandCursor: true });
     const closeTxt = this.add.text(0, modalH / 2 - 32, 'ВЕРНУТЬСЯ', {
@@ -539,7 +501,6 @@ export class MenuScene extends Phaser.Scene {
     Storage.addCoins(prizeCoins);
     if (prizeLacquer > 0) Storage.addKintsugiLacquer(prizeLacquer);
 
-    // Добавляем случайный сырой артефакт на склад
     if (ARTIFACT_TEMPLATES && ARTIFACT_TEMPLATES.length > 0) {
       const randomTemplate = ARTIFACT_TEMPLATES[Math.floor(Math.random() * ARTIFACT_TEMPLATES.length)];
       Storage.addArtifactStock(randomTemplate.regionId, randomTemplate.id, 1);
@@ -548,7 +509,6 @@ export class MenuScene extends Phaser.Scene {
     modal.destroy();
     overlay.destroy();
 
-    // Экран результата экспедиции
     const resOver = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.88).setDepth(45).setInteractive();
     const resBox = this.add.container(width / 2, height / 2).setDepth(46);
 
@@ -579,7 +539,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const okBtn = this.add.rectangle(0, 55, width * 0.5, 34, 0x10b981).setInteractive({ useHandCursor: true });
-    const okTxt = this.add.text(0, 55, 'ЗАБРАТЬ ДОБЫЧУ', {
+    const okTxt = this.add.text(0, 55, 'ЗАБРАТЬ В КАЗНУ', {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#ffffff',
@@ -622,7 +582,7 @@ export class MenuScene extends Phaser.Scene {
     if (contract.completed) {
       this.add.text(width / 2, y - 10, '✓ КОНТРАКТ ВЫПОЛНЕН', {
         fontSize: '12px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#10b981',
         fontStyle: 'bold',
         resolution: dpr
@@ -630,7 +590,7 @@ export class MenuScene extends Phaser.Scene {
 
       const timerTxt = this.add.text(width / 2, y + 10, 'Новый через: 00:00:00', {
         fontSize: '11px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         color: '#94a3b8',
         resolution: dpr
       }).setOrigin(0.5);
