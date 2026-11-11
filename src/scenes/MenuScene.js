@@ -103,12 +103,12 @@ export class MenuScene extends Phaser.Scene {
 
     const startY = height * 0.51;
 
-    // 1. «НА ВЕРСТАК» — честный рандом строго из имеющихся в наличии артефактов
+    // 1. «НА ВЕРСТАК» — честный рандом строго из наличия на складе (> 0)
     createBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
       this.startQuickRestore();
     });
 
-    // 2. «ЭКСПЕДИЦИИ» — привычный выбор эпох
+    // 2. «ЭКСПЕДИЦИИ» — выбор эпох и артефактов
     createBtn(startY + 56, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
       this.scene.start('EraSelectScene');
     });
@@ -139,44 +139,54 @@ export class MenuScene extends Phaser.Scene {
     // Оффлайн доход
     this.checkOfflineEarnings(width, height, dpr);
 
-    // Срочный заказ
+    // Срочный контракт
     this.renderContractWidget(width, height * 0.89, dpr);
   }
 
   // =========================================================================
-  // БЫСТРЫЙ ВХОД НА ВЕРСТАК: СТРОГО ИЗ НАЛИЧИЯ НА СКЛАДЕ
+  // БЫСТРЫЙ ВХОД НА ВЕРСТАК: РАНДОМ СТРОГО ИЗ НАЛИЧИЯ (> 0)
   // =========================================================================
   startQuickRestore() {
-    // 1. Проверяем незавершённую сессию (только если она реально существует и валидна)
-    const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
-    if (saved && saved.templateId && saved.regionId && !saved.completed) {
-      this.scene.start('RestoreScene', { regionId: saved.regionId, templateId: saved.templateId });
+    // 1. Сбрасываем старую зависшую сессию
+    if (Storage.setActiveSession) {
+      Storage.setActiveSession(null);
+    }
+
+    // 2. Получаем открытые эпохи и актуальный склад
+    const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
+    const availablePool = [];
+
+    // 3. Собираем артефакты: строго с количеством > 0
+    unlocked.forEach(regId => {
+      const stock = Storage.getRegionStock(regId, ARTIFACT_TEMPLATES);
+      if (stock) {
+        Object.entries(stock).forEach(([templateId, count]) => {
+          if (count > 0) {
+            const tmpl = ARTIFACT_TEMPLATES.find(t => t.id === templateId && t.regionId === regId);
+            if (tmpl) {
+              availablePool.push({ regionId: regId, templateId });
+            }
+          }
+        });
+      }
+    });
+
+    // 4. Если на складе вообще пусто — сразу уходим в меню эпох
+    if (availablePool.length === 0) {
+      this.scene.start('EraSelectScene');
       return;
     }
 
-    // 2. Сканируем все открытые регионы и собираем только те артефакты, которые РЕАЛЬНО ЕСТЬ В НАЛИЧИИ (> 0)
-    const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
-    const allStocks = Storage.getAllStocks ? Storage.getAllStocks() : {};
-    const availablePool = [];
+    // 5. Честный рандом строго по имеющимся в наличии
+    const randomIndex = Math.floor(Math.random() * availablePool.length);
+    const chosen = availablePool[randomIndex];
 
-    unlocked.forEach(regId => {
-      const regStock = allStocks[regId] || {};
-      Object.entries(regStock).forEach(([templateId, count]) => {
-        if (count > 0) {
-          availablePool.push({ regionId: regId, templateId });
-        }
-      });
+    // 6. Списываем 1 шт. и открываем верстак
+    Storage.decrementArtifactStock(chosen.regionId, chosen.templateId);
+    this.scene.start('RestoreScene', {
+      regionId: chosen.regionId,
+      templateId: chosen.templateId
     });
-
-    // 3. Если артефакты есть в наличии — выбираем абсолютно случайный
-    if (availablePool.length > 0) {
-      const chosen = availablePool[Math.floor(Math.random() * availablePool.length)];
-      Storage.decrementArtifactStock(chosen.regionId, chosen.templateId);
-      this.scene.start('RestoreScene', { regionId: chosen.regionId, templateId: chosen.templateId });
-    } else {
-      // 4. Если на складе 0 артефактов — переходим в выбор эпох
-      this.scene.start('EraSelectScene');
-    }
   }
 
   // =========================================================================
@@ -400,7 +410,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СРОЧНЫЙ КОНТРАКТ И ОФФЛАЙН ДОХОД
+  // СРОЧНЫЙ КОНТРАКТ И ТАЙМЕРЫ
   // =========================================================================
   formatTimeRemaining(ms) {
     if (ms <= 0) return '00:00:00';
@@ -531,6 +541,9 @@ export class MenuScene extends Phaser.Scene {
     takeBtn.on('pointerdown', startContract);
   }
 
+  // =========================================================================
+  // ОФФЛАЙН ДОХОД
+  // =========================================================================
   checkOfflineEarnings(width, height, dpr) {
     const offline = Storage.getOfflineEarnings ? Storage.getOfflineEarnings() : { coins: 0, minutes: 0 };
     if (!offline || offline.coins <= 0) return;
