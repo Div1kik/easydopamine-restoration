@@ -13,7 +13,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(width / 2, height / 2, width, height, 0x090c15).setDepth(0);
 
     // Студийный лейбл
-    this.add.text(width / 2, height * 0.07, 'EASY DOPAMINE GAMES', {
+    this.add.text(width / 2, height * 0.065, 'EASY DOPAMINE GAMES', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
@@ -23,10 +23,10 @@ export class MenuScene extends Phaser.Scene {
 
     const divider = this.add.graphics().setDepth(10);
     divider.lineStyle(1, 0xd4af37, 0.4);
-    divider.lineBetween(width / 2 - 50, height * 0.085, width / 2 + 50, height * 0.085);
+    divider.lineBetween(width / 2 - 50, height * 0.08, width / 2 + 50, height * 0.08);
 
     // Название игры
-    this.add.text(width / 2, height * 0.12, 'АРТЕФАКТЫ ВРЕМЕНИ', {
+    this.add.text(width / 2, height * 0.115, 'АРТЕФАКТЫ ВРЕМЕНИ', {
       fontSize: '24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
@@ -34,26 +34,26 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(width / 2, height * 0.155, 'Мастерская реставратора', {
-      fontSize: '12.5px',
+    this.add.text(width / 2, height * 0.15, 'Мастерская реставратора', {
+      fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#94a3b8',
       letterSpacing: 1
     }).setOrigin(0.5).setDepth(10);
 
     // Виджет ранга
-    this.renderRankWidget(width, height * 0.20);
+    this.renderRankWidget(width, height * 0.195);
 
     // Парящий логотип
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.305, logoKey)
-        .setDisplaySize(80, 80)
+      const logo = this.add.image(width / 2, height * 0.295, logoKey)
+        .setDisplaySize(76, 76)
         .setDepth(10);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.305 - 8,
+        y: height * 0.295 - 6,
         duration: 2000,
         yoyo: true,
         repeat: -1,
@@ -61,8 +61,8 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Плашка контракта с живым таймером
-    this.renderContractWidget(width, height * 0.42);
+    // Плашка контракта
+    this.renderContractWidget(width, height * 0.405);
 
     // Кнопки звука
     this.createAudioToggles(width);
@@ -73,7 +73,7 @@ export class MenuScene extends Phaser.Scene {
         width / 2,
         y,
         width * 0.82,
-        48,
+        46,
         colorBg
       )
         .setStrokeStyle(1.5, colorStroke, 0.9)
@@ -81,7 +81,7 @@ export class MenuScene extends Phaser.Scene {
         .setDepth(20);
 
       const label = this.add.text(width / 2, y, text, {
-        fontSize: '15px',
+        fontSize: '14.5px',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         color: textColor,
         fontStyle: 'bold'
@@ -99,36 +99,41 @@ export class MenuScene extends Phaser.Scene {
       });
     };
 
-    const startY = height * 0.54;
+    const startY = height * 0.51;
 
     createBtn(startY, '▶ ЭКСПЕДИЦИИ', 0x10b981, 0x34d399, '#ffffff', () => {
       this.scene.start('EraSelectScene');
     });
 
-    createBtn(startY + 60, '🏛️ ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
+    createBtn(startY + 56, '🏛️ ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
       if (AudioManager.playShopBell) AudioManager.playShopBell();
       this.scene.start('MuseumScene');
     });
 
-    createBtn(startY + 120, '🛠️ ЛАВКА МАСТЕРА', 0x161c24, 0xe2b35b, '#fde047', () => {
+    createBtn(startY + 112, '🛠️ ЛАВКА МАСТЕРА', 0x161c24, 0xe2b35b, '#fde047', () => {
       this.scene.start('ShopScene');
     });
 
-    // Баланс
+    // Кнопка Гачи / Лутбоксов
+    createBtn(startY + 168, '🎁 СУНДУКИ АРХЕОЛОГА', 0x24142a, 0xa855f7, '#e9d5ff', () => {
+      this.showGachaModal(width, height);
+    });
+
+    // Баланс казны и запас золотого лака
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.add.text(width / 2, height - 34, `Казна: ${coins} 🪙`, {
-      fontSize: '14px',
+    const lacquer = Storage.getKintsugiLacquer ? Storage.getKintsugiLacquer() : 0;
+
+    this.add.text(width / 2, height - 32, `Казна: ${coins} 🪙  •  Лак Кинцуги: ${lacquer} 🍯`, {
+      fontSize: '13px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Музыка меню
     if (!Storage.isMusicMuted()) {
       AudioManager.playEraMusic('menu');
     }
 
-    // Оффлайн-доход
     this.checkOfflineEarnings(width, height);
   }
 
@@ -174,7 +179,6 @@ export class MenuScene extends Phaser.Scene {
       .setDepth(12);
 
     if (contract.completed) {
-      // Состояние выполненного контракта на кулдауне
       this.add.text(width / 2 - boxW / 2 + 14, y - 14, '✅ КОНТРАКТ ВЫПОЛНЕН', {
         fontSize: '11px',
         fontFamily: 'sans-serif',
@@ -203,7 +207,6 @@ export class MenuScene extends Phaser.Scene {
       return;
     }
 
-    // Активный доступный контракт
     box.setInteractive({ useHandCursor: true });
 
     this.add.text(width / 2 - boxW / 2 + 12, y - 20, `📜 ЗАКАЗ: ${contract.client.toUpperCase()}`, {
@@ -269,6 +272,234 @@ export class MenuScene extends Phaser.Scene {
         templateId: contract.templateId,
         contract
       });
+    });
+  }
+
+  // --- МОДАЛЬНОЕ ОКНО ГАЧИ / ЛУТБОКСОВ ---
+  showGachaModal(width, height) {
+    if (AudioManager.playClick) AudioManager.playClick();
+
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85)
+      .setInteractive().setDepth(50);
+
+    const modal = this.add.container(width / 2, height / 2).setDepth(51).setScale(0);
+
+    const bg = this.add.rectangle(0, 0, width * 0.88, 380, 0x111624)
+      .setStrokeStyle(2, 0xa855f7, 0.9);
+
+    const title = this.add.text(0, -155, '🎁 ТАЙНЫЕ СУНДУКИ ДРЕВНОСТЕЙ', {
+      fontSize: '14px',
+      fontFamily: 'sans-serif',
+      color: '#e9d5ff',
+      fontStyle: 'bold',
+      letterSpacing: 1
+    }).setOrigin(0.5);
+
+    // Карточка 1: Деревянный ларь
+    const box1Bg = this.add.rectangle(0, -70, width * 0.78, 90, 0x161e30)
+      .setStrokeStyle(1.5, 0x64748b, 0.8);
+
+    const box1Title = this.add.text(-width * 0.39 + 16, -95, '📦 Походный ларь археолога', {
+      fontSize: '12.5px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    });
+
+    const box1Desc = this.add.text(-width * 0.39 + 16, -74, 'Содержит: 100-450 🪙, образцы находок,\nредкий шанс на баночку Золотого лака.', {
+      fontSize: '10px',
+      fontFamily: 'sans-serif',
+      color: '#94a3b8',
+      lineSpacing: 2
+    });
+
+    const open1Btn = this.add.rectangle(width * 0.39 - 48, -70, 78, 32, 0x3b82f6)
+      .setStrokeStyle(1, 0x60a5fa)
+      .setInteractive({ useHandCursor: true });
+
+    const open1Txt = this.add.text(width * 0.39 - 48, -70, '350 🪙', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // Карточка 2: Золотой ларец
+    const box2Bg = this.add.rectangle(0, 45, width * 0.78, 90, 0x1c192d)
+      .setStrokeStyle(1.5, 0xe2b35b, 0.9);
+
+    const box2Title = this.add.text(-width * 0.39 + 16, 20, '✨ Золотой сундук Гильдии', {
+      fontSize: '12.5px',
+      fontFamily: 'sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold'
+    });
+
+    const box2Desc = this.add.text(-width * 0.39 + 16, 41, 'Гарантированно: 1-2 лака Кинцуги,\nдо 2 500 🪙 и редкие образцы раскопок.', {
+      fontSize: '10px',
+      fontFamily: 'sans-serif',
+      color: '#cbd5e1',
+      lineSpacing: 2
+    });
+
+    const open2Btn = this.add.rectangle(width * 0.39 - 48, 45, 78, 32, 0xd4af37)
+      .setStrokeStyle(1, 0xfde047)
+      .setInteractive({ useHandCursor: true });
+
+    const open2Txt = this.add.text(width * 0.39 - 48, 45, '1200 🪙', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#000000',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    // Кнопка закрытия
+    const closeBtn = this.add.rectangle(0, 145, width * 0.60, 36, 0x1f2937)
+      .setStrokeStyle(1.5, 0x475569)
+      .setInteractive({ useHandCursor: true });
+
+    const closeTxt = this.add.text(0, 145, 'ЗАКРЫТЬ', {
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      color: '#cbd5e1',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    modal.add([bg, title, box1Bg, box1Title, box1Desc, open1Btn, open1Txt, box2Bg, box2Title, box2Desc, open2Btn, open2Txt, closeBtn, closeTxt]);
+
+    this.tweens.add({
+      targets: modal,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut'
+    });
+
+    closeBtn.on('pointerdown', () => {
+      overlay.destroy();
+      modal.destroy();
+      this.scene.restart();
+    });
+
+    // Обработка открытия ларей
+    open1Btn.on('pointerdown', () => {
+      this.handleOpenChest(350, 'common', overlay, modal, width, height);
+    });
+
+    open2Btn.on('pointerdown', () => {
+      this.handleOpenChest(1200, 'rare', overlay, modal, width, height);
+    });
+  }
+
+  handleOpenChest(cost, type, overlay, modal, width, height) {
+    const coins = Storage.getCoins();
+    if (coins < cost) {
+      if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+      return;
+    }
+
+    Storage.addCoins(-cost);
+    if (AudioManager.playCoin) AudioManager.playCoin();
+
+    // Генерация награды
+    let prizeCoins = 0;
+    let prizeLacquer = 0;
+    let prizeStockText = '';
+
+    if (type === 'common') {
+      prizeCoins = Phaser.Math.Between(150, 450);
+      prizeLacquer = Math.random() < 0.35 ? 1 : 0;
+    } else {
+      prizeCoins = Phaser.Math.Between(600, 2200);
+      prizeLacquer = Phaser.Math.Between(1, 2);
+    }
+
+    Storage.addCoins(prizeCoins);
+    if (prizeLacquer > 0) Storage.addKintsugiLacquer(prizeLacquer);
+
+    // Добавляем 1 случайный образец в Египет или открытую эпоху
+    const randomTemplate = ARTIFACT_TEMPLATES[Math.floor(Math.random() * ARTIFACT_TEMPLATES.length)];
+    Storage.addArtifactStock(randomTemplate.regionId, randomTemplate.id, 1);
+    prizeStockText = `+1 образец: ${randomTemplate.name}`;
+
+    // Анимация получения дропа
+    modal.setVisible(false);
+    this.showLootDropCard(prizeCoins, prizeLacquer, prizeStockText, overlay, modal, width, height);
+  }
+
+  showLootDropCard(coins, lacquer, stockText, overlay, parentModal, width, height) {
+    if (AudioManager.playShine) AudioManager.playShine();
+
+    const card = this.add.container(width / 2, height / 2).setDepth(60).setScale(0);
+
+    const cardBg = this.add.rectangle(0, 0, width * 0.82, 230, 0x171224)
+      .setStrokeStyle(2, 0xfacc15, 0.95);
+
+    const rays = this.add.circle(0, -40, 60, 0xfacc15, 0.15)
+      .setBlendMode(Phaser.BlendModes.ADD);
+
+    this.tweens.add({
+      targets: rays,
+      scale: 1.4,
+      alpha: 0.3,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1
+    });
+
+    const dropTitle = this.add.text(0, -75, '✨ НАГРАДА ИЗ СУНДУКА! ✨', {
+      fontSize: '15px',
+      fontFamily: 'sans-serif',
+      color: '#facc15',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const prize1 = this.add.text(0, -35, `+${coins} 🪙 казны`, {
+      fontSize: '16px',
+      fontFamily: 'sans-serif',
+      color: '#22c55e',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const lacquerStr = lacquer > 0 ? `+${lacquer} 🍯 Золотой лак (Кинцуги)` : 'Пыль веков (пусто)';
+    const prize2 = this.add.text(0, -5, lacquerStr, {
+      fontSize: '13px',
+      fontFamily: 'sans-serif',
+      color: lacquer > 0 ? '#facc15' : '#64748b',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const prize3 = this.add.text(0, 24, stockText, {
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      color: '#38bdf8',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const okBtn = this.add.rectangle(0, 75, width * 0.58, 36, 0x10b981)
+      .setStrokeStyle(1.5, 0x34d399)
+      .setInteractive({ useHandCursor: true });
+
+    const okTxt = this.add.text(0, 75, 'ЗАБРАТЬ', {
+      fontSize: '12px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    card.add([cardBg, rays, dropTitle, prize1, prize2, prize3, okBtn, okTxt]);
+
+    this.tweens.add({
+      targets: card,
+      scale: 1,
+      duration: 350,
+      ease: 'Back.easeOut'
+    });
+
+    okBtn.on('pointerdown', () => {
+      card.destroy();
+      overlay.destroy();
+      parentModal.destroy();
+      this.scene.restart();
     });
   }
 
