@@ -23,7 +23,7 @@ export class RestoreScene extends Phaser.Scene {
     }
 
     if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
-      this.artifactData = ArtifactsModule.generateArtifactOrder(prefRegion, history.slice(-3), reqTemplate);
+      this.artifactData = ArtifactsModule.generateArtifactOrder(prefRegion);
     } else {
       const templates = ArtifactsModule.ARTIFACT_TEMPLATES || [];
       const found = templates.find(t => t.id === reqTemplate) || templates[0];
@@ -34,7 +34,7 @@ export class RestoreScene extends Phaser.Scene {
       Storage.setActiveSession({ regionId: this.artifactData.regionId, templateId: this.artifactData.id });
     }
 
-    if (AudioManager.playEraMusic) AudioManager.playEraMusic(this.artifactData.regionId);
+    if (AudioManager.playEraMusic) AudioManager.playEraMusic(this.artifactData.regionId || 'menu');
 
     this.currentTaskIndex = 0;
     this.lastTouchPos = null;
@@ -47,7 +47,7 @@ export class RestoreScene extends Phaser.Scene {
 
     // 2. Верхняя навигация
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.coinsText = this.add.text(24, 34, `${coins} 💰`, {
+    this.coinsText = this.add.text(24, 34, `${coins} 🪙`, {
       fontSize: '16px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
@@ -59,7 +59,7 @@ export class RestoreScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(30);
 
-    this.add.text(width - 64, 34, '🏠 В меню', {
+    this.add.text(width - 64, 34, '🗂️ В меню', {
       fontSize: '13px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
@@ -70,6 +70,38 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.stopMusic) AudioManager.stopMusic();
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
+    });
+
+    // Кнопка Музыки
+    const musicBtn = this.add.rectangle(width - 130, 34, 32, 32, 0x161e2c)
+      .setStrokeStyle(1.5, 0x475569, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    const musicIcon = this.add.text(width - 130, 34, AudioManager.isMusicOn() ? '🎵' : '🔇', { fontSize: '15px' })
+      .setOrigin(0.5).setDepth(31);
+
+    musicBtn.on('pointerdown', (pointer, localX, localY, event) => {
+      if (event && event.stopPropagation) event.stopPropagation();
+      const state = AudioManager.toggleMusic();
+      musicIcon.setText(state ? '🎵' : '🔇');
+      if (AudioManager.playClick) AudioManager.playClick();
+    });
+
+    // Кнопка Эффектов (SFX)
+    const sfxBtn = this.add.rectangle(width - 168, 34, 32, 32, 0x161e2c)
+      .setStrokeStyle(1.5, 0x475569, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    const sfxIcon = this.add.text(width - 168, 34, AudioManager.isSfxOn() ? '🔊' : '🔈', { fontSize: '15px' })
+      .setOrigin(0.5).setDepth(31);
+
+    sfxBtn.on('pointerdown', (pointer, localX, localY, event) => {
+      if (event && event.stopPropagation) event.stopPropagation();
+      const state = AudioManager.toggleSfx();
+      sfxIcon.setText(state ? '🔊' : '🔈');
+      if (AudioManager.playClick) AudioManager.playClick();
     });
 
     // 3. Шапка задачи
@@ -88,17 +120,14 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    this.taskNotice = this.add.text(width / 2, 94, '', {
-      fontSize: '11.5px',
+    this.taskNotice = this.add.text(width / 2, 95, '', {
+      fontSize: '13px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#22c55e',
-      fontStyle: 'bold',
-      align: 'center',
-      wordWrap: { width: width * 0.88 }
+      color: '#cbd5e1'
     }).setOrigin(0.5).setDepth(30);
 
     const barWidth = width * 0.65;
-    this.progressBarBg = this.add.rectangle(width / 2, 114, barWidth, 6, 0x0f141d).setDepth(30);
+    this.progressBarBg = this.add.rectangle(width / 2, 114, barWidth, 6, 0x0f172a).setDepth(30);
     this.progressBarFill = this.add.rectangle(width / 2 - barWidth / 2, 114, 0, 6, 0x10b981)
       .setOrigin(0, 0.5).setDepth(31);
 
@@ -118,10 +147,10 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftY = this.centerY - this.artH / 2;
 
     // Тень под крупным предметом
-    this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.75).setDepth(5);
+    this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.45).setDepth(6);
 
-    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
-    this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDepth(6);
+    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_tut_mask';
+    this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDisplaySize(this.artW, this.artH).setDepth(7);
 
     this.breakHoleGfx = this.add.graphics().setDepth(7).setVisible(false);
 
@@ -135,6 +164,7 @@ export class RestoreScene extends Phaser.Scene {
       key: texKey,
       add: false
     });
+    maskImage.setDisplaySize(this.artW, this.artH);
     this.dirtLayer.setMask(maskImage.createBitmapMask());
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
@@ -148,13 +178,13 @@ export class RestoreScene extends Phaser.Scene {
     this.activeTool = firstTask.requiredTool || 'tool_scraper';
     this.activeMaskKey = this.activeTool.replace('tool_', 'mask_');
 
-    const toolTex = (this.activeTool === 'tool_scraper') ? 'slot_scraper' : 'slot_brush_soft';
+    const toolTex = (this.activeTool === 'tool_scraper') ? 'slot_scraper' : 'slot_brush';
     this.toolSprite = this.add.image(this.centerX, this.centerY, toolTex)
       .setOrigin(0.5, 0.95).setScale(0.7).setAlpha(0).setDepth(20);
 
     this.assemblyContainer = this.add.container(0, 0).setDepth(18).setVisible(false);
 
-    this.createToolsTray(height * 0.84);
+    this.createToolTray(height * 0.84);
     this.selectTool(this.activeTool, toolTex, this.activeMaskKey);
 
     // Сетка анализа (32 x 40): ячейка равна ровно 10x10 пикселей
@@ -183,7 +213,7 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setAlpha(1);
 
       if (this.activeTool !== currentTask.requiredTool) {
-        this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент в лотке!');
+        this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент!');
         return;
       }
 
@@ -200,12 +230,12 @@ export class RestoreScene extends Phaser.Scene {
 
         this.particles.emitParticleAt(pointer.x, pointer.y, 2);
 
-        const eraseRadius = (this.activeTool === 'tool_scraper') ? 28 :
-                            (this.activeTool === 'tool_brush') ? 34 :
-                            (this.activeTool === 'tool_solvent') ? 30 : 36;
+        const eraserRadius = (this.activeTool === 'tool_scraper') ? 28 :
+                             (this.activeTool === 'tool_brush') ? 34 :
+                             (this.activeTool === 'tool_solvent') ? 30 : 36;
 
-        const cellRadiusX = Math.ceil((eraseRadius / this.artW) * this.gridCols);
-        const cellRadiusY = Math.ceil((eraseRadius / this.artH) * this.gridRows);
+        const cellRadiusX = Math.ceil(eraserRadius / this.artW * this.gridCols);
+        const cellRadiusY = Math.ceil(eraserRadius / this.artH * this.gridRows);
 
         const centerCellX = Math.floor((localX / this.artW) * this.gridCols);
         const centerCellY = Math.floor((localY / this.artH) * this.gridRows);
@@ -220,7 +250,7 @@ export class RestoreScene extends Phaser.Scene {
               const cellPxY = (gy + 0.5) * (this.artH / this.gridRows);
               const dist = Phaser.Math.Distance.Between(localX, localY, cellPxX, cellPxY);
 
-              if (dist <= eraseRadius) {
+              if (dist <= eraserRadius) {
                 const idx = gy * this.gridCols + gx;
                 if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] === 0) {
                   this.cleanedGrid[idx] = 1;
@@ -248,7 +278,9 @@ export class RestoreScene extends Phaser.Scene {
       this.lastTouchPos = { x: p.x, y: p.y };
       processInteraction(p);
     });
+
     this.input.on('pointermove', processInteraction);
+
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
       this.tweens.add({
@@ -322,9 +354,9 @@ export class RestoreScene extends Phaser.Scene {
     bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
 
     bg.fillStyle(0x18202c, 0.95);
-    bg.fillRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 12);
+    bg.fillRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 16);
     bg.lineStyle(1, 0x334155, 0.5);
-    bg.strokeRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 12);
+    bg.strokeRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 16);
   }
 
   processGlueAction(pointer) {
@@ -358,7 +390,7 @@ export class RestoreScene extends Phaser.Scene {
     this.glueApplied = false;
     this.progressBarFill.width = 0;
 
-    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : 'shard_amphora';
+    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : this.artifactData.textureKey;
     const targetX = this.centerX + 35;
     const targetY = this.centerY - 15;
 
@@ -419,7 +451,7 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer.add([this.brokenPiece]);
   }
 
-  createToolsTray(trayY) {
+  createToolTray(trayY) {
     const { width } = this.scale;
     const tools = [
       { id: 'tool_scraper', icon: 'slot_scraper', mask: 'mask_scraper', label: 'Скребок' },
@@ -442,7 +474,7 @@ export class RestoreScene extends Phaser.Scene {
       const slotX = startX + i * stepX;
       const isSelected = (t.id === this.activeTool);
 
-      const slotBg = this.add.rectangle(slotX, trayY + 8, 48, 54, 0x161e2c, 0.95)
+      const slotBg = this.add.rectangle(slotX, trayY + 8, 48, 54, 0x161e2c)
         .setStrokeStyle(1.5, isSelected ? 0x10b981 : 0x2c3b52, isSelected ? 1 : 0.6)
         .setInteractive({ useHandCursor: true })
         .setDepth(23);
@@ -465,6 +497,13 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   selectTool(toolId, iconKey, maskKey) {
+    const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+    if (currentTask && toolId !== currentTask.requiredTool) {
+      this.toolWarning.setText(currentTask.hint || 'Выберите требуемый инструмент!');
+      if (AudioManager.playClick) AudioManager.playClick();
+      return;
+    }
+
     this.activeTool = toolId;
     this.activeMaskKey = maskKey;
     this.toolSprite.setTexture(iconKey);
@@ -486,7 +525,7 @@ export class RestoreScene extends Phaser.Scene {
     this.toolWarning.setText('');
 
     const task = this.artifactData.tasks[taskIdx];
-    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.name.toUpperCase()}`);
+    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${task.hint}`);
 
     const toolIcons = {
       tool_scraper: 'slot_scraper',
@@ -495,6 +534,7 @@ export class RestoreScene extends Phaser.Scene {
       tool_glue: 'slot_glue',
       tool_polish: 'slot_polish'
     };
+
     this.selectTool(task.requiredTool, toolIcons[task.requiredTool] || 'slot_scraper', task.requiredTool.replace('tool_', 'mask_'));
 
     if (task.type === 'break_and_assemble') {
@@ -514,28 +554,28 @@ export class RestoreScene extends Phaser.Scene {
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x4a2e12, 0.85);
       for (let i = 0; i < 26; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(20, 50));
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(10, 24));
       }
     } else if (task.requiredTool === 'tool_brush') {
       dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x6b634d, 0.7);
       for (let i = 0; i < 26; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(15, 35));
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(8, 20));
       }
     } else if (task.requiredTool === 'tool_solvent') {
       dirtGfx.fillStyle(0x2a593f, 0.92);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x438a63, 0.75);
       for (let i = 0; i < 22; i++) {
-        dirtGfx.fillEllipse(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), 55, 35);
+        dirtGfx.fillEllipse(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), Phaser.Math.Between(15, 30), Phaser.Math.Between(8, 16));
       }
     } else {
       dirtGfx.fillStyle(0x181818, 0.55);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
       dirtGfx.fillStyle(0x333333, 0.40);
       for (let i = 0; i < 18; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), 35);
+        dirtGfx.fillCircle(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), Phaser.Math.Between(12, 28));
       }
     }
 
@@ -567,38 +607,38 @@ export class RestoreScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
       onComplete: () => {
         flash.destroy();
-
-        if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
-          this.time.delayedCall(200, () => {
-            this.startTask(this.currentTaskIndex + 1);
-          });
-        } else {
-          if (AudioManager.playShine) AudioManager.playShine();
-          if (AudioManager.stopMusic) AudioManager.stopMusic();
-
-          try {
-            Storage.addArtifactToInventory({
-              instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
-              templateId: this.artifactData.id,
-              regionName: this.artifactData.regionName || 'Древний Египет',
-              name: this.artifactData.name,
-              museumDesc: this.artifactData.description || '',
-              textureKey: this.artifactData.textureKey,
-              marketValue: this.artifactData.marketValue || 200
-            });
-            Storage.addXP(100);
-          } catch (e) {
-            console.warn('Inventory save error:', e);
-          }
-
-          this.time.delayedCall(300, () => {
-            this.scene.start('VictoryScene', { 
-              artifact: this.artifactData,
-              stars: 3
-            });
-          });
-        }
       }
     });
+
+    if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
+      this.time.delayedCall(200, () => {
+        this.startTask(this.currentTaskIndex + 1);
+      });
+    } else {
+      if (AudioManager.playShine) AudioManager.playShine();
+      if (AudioManager.stopMusic) AudioManager.stopMusic();
+
+      try {
+        Storage.addArtifactToInventory({
+          instanceId: this.artifactData.instanceId || `art_${Date.now()}`,
+          templateId: this.artifactData.id,
+          regionName: this.artifactData.regionName || 'Древний Египет',
+          name: this.artifactData.name,
+          museumDesc: this.artifactData.description || '',
+          textureKey: this.artifactData.textureKey,
+          marketValue: this.artifactData.marketValue || 200
+        });
+        Storage.addXP(100);
+      } catch (e) {
+        console.warn('Inventory save error:', e);
+      }
+
+      this.time.delayedCall(300, () => {
+        this.scene.start('VictoryScene', {
+          artifact: this.artifactData,
+          stars: 3
+        });
+      });
+    }
   }
 }
