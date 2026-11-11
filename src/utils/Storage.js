@@ -1,5 +1,4 @@
 export const Storage = {
-  // Ключи локального хранилища
   KEYS: {
     COINS: 'art_coins',
     XP: 'art_xp',
@@ -59,6 +58,13 @@ export const Storage = {
     const list = this.getInventory();
     list.unshift(artifact);
     localStorage.setItem(this.KEYS.INVENTORY, JSON.stringify(list));
+  },
+
+  removeArtifactFromInventory(instanceId) {
+    const list = this.getInventory();
+    const updated = list.filter(item => item.instanceId !== instanceId);
+    localStorage.setItem(this.KEYS.INVENTORY, JSON.stringify(updated));
+    return updated;
   },
 
   getRecentHistory() {
