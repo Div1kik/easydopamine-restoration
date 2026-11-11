@@ -9,8 +9,9 @@ export class RestoreScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    // --- 1. ДАННЫЕ И СЕССИЯ (НЕПРИКОСНОВЕННЫЙ БАЗИС) ---
+    // --- 1. ДАННЫЕ И СЕССИЯ ---
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRecentHistory ? Storage.getRecentHistory() : [];
@@ -66,7 +67,6 @@ export class RestoreScene extends Phaser.Scene {
     }
     this.isRitualIntro = isFirstTime;
 
-    // Генерация сглаженных High-DPI текстур инструментов
     this.generateAntiAliasedToolTextures();
 
     // =========================================================================
@@ -88,22 +88,22 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    // Сглаженный стол и кожаный мат
     this.renderAtmosphericWorkshop(width, height, headerTotalHeight, trayTopLimit);
 
     // =========================================================================
-    // 3. ВЕРХНИЙ БАР (ТИПОГРАФИКА И СИСТЕМНЫЕ КНОПКИ)
+    // 3. ВЕРХНИЙ БАР (СГЛАЖЕННЫЙ ТЕКСТ HI-DPI)
     // =========================================================================
     const topBarCont = this.add.container(0, 0).setDepth(40);
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     this.coinsText = this.add.text(18, 26, `🪙 ${coins}`, {
       fontSize: '16px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0, 0.5);
-    this.coinsText.setShadow(0, 2, 'rgba(0,0,0,0.85)', 4);
+    this.coinsText.setShadow(0, 2, 'rgba(0,0,0,0.85)', 3);
     topBarCont.add(this.coinsText);
 
     const btnSize = 34;
@@ -115,9 +115,10 @@ export class RestoreScene extends Phaser.Scene {
 
     const menuTxt = this.add.text(width - rightMargin - 46, 26, '📁 Меню', {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#e2e8f0',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
     menuTxt.setShadow(0, 1, 'rgba(0,0,0,0.8)', 2);
 
@@ -131,8 +132,10 @@ export class RestoreScene extends Phaser.Scene {
     const musicBtn = this.add.rectangle(musicBtnX, 26, btnSize, btnSize, 0x131924)
       .setStrokeStyle(1.5, 0x334155, 0.9)
       .setInteractive({ useHandCursor: true });
-    const musicIcon = this.add.text(musicBtnX, 26, AudioManager.isMusicOn() ? '🎵' : '🔇', { fontSize: '14px' })
-      .setOrigin(0.5);
+    const musicIcon = this.add.text(musicBtnX, 26, AudioManager.isMusicOn() ? '🎵' : '🔇', {
+      fontSize: '14px',
+      resolution: dpr
+    }).setOrigin(0.5);
 
     musicBtn.on('pointerdown', (p, lx, ly, ev) => {
       if (ev && ev.stopPropagation) ev.stopPropagation();
@@ -145,8 +148,10 @@ export class RestoreScene extends Phaser.Scene {
     const sfxBtn = this.add.rectangle(sfxBtnX, 26, btnSize, btnSize, 0x131924)
       .setStrokeStyle(1.5, 0x334155, 0.9)
       .setInteractive({ useHandCursor: true });
-    const sfxIcon = this.add.text(sfxBtnX, 26, AudioManager.isSfxOn() ? '🔊' : '🔈', { fontSize: '14px' })
-      .setOrigin(0.5);
+    const sfxIcon = this.add.text(sfxBtnX, 26, AudioManager.isSfxOn() ? '🔊' : '🔈', {
+      fontSize: '14px',
+      resolution: dpr
+    }).setOrigin(0.5);
 
     sfxBtn.on('pointerdown', (p, lx, ly, ev) => {
       if (ev && ev.stopPropagation) ev.stopPropagation();
@@ -158,7 +163,7 @@ export class RestoreScene extends Phaser.Scene {
     topBarCont.add([menuBtn, menuTxt, musicBtn, musicIcon, sfxBtn, sfxIcon]);
 
     // =========================================================================
-    // 4. ИНФОРМАЦИОННАЯ ШАПКА ЗАДАНИЯ
+    // 4. ИНФОРМАЦИОННАЯ ШАПКА ЗАДАНИЯ (ЧЕТКИЙ ВЕКТОРНЫЙ РЕНДЕР)
     // =========================================================================
     const infoCont = this.add.container(0, topBarHeight).setDepth(40);
 
@@ -171,25 +176,28 @@ export class RestoreScene extends Phaser.Scene {
 
     const badgeLbl = this.add.text(width / 2, 8, badgeText, {
       fontSize: '10.5px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: this.activeContract ? '#facc15' : (this.isDuplicate ? '#94a3b8' : '#c5a059'),
       fontStyle: 'bold',
-      letterSpacing: 2
+      letterSpacing: 2,
+      resolution: dpr
     }).setOrigin(0.5);
     badgeLbl.setShadow(0, 1, 'rgba(0,0,0,0.9)', 3);
 
     const artTitle = this.add.text(width / 2, 29, this.artifactData.name, {
       fontSize: '18px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
     artTitle.setShadow(0, 2, 'rgba(0,0,0,0.85)', 4);
 
     this.taskNotice = this.add.text(width / 2, 50, '', {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#cbd5e1'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+      color: '#cbd5e1',
+      resolution: dpr
     }).setOrigin(0.5);
     this.taskNotice.setShadow(0, 1, 'rgba(0,0,0,0.8)', 2);
 
@@ -199,10 +207,11 @@ export class RestoreScene extends Phaser.Scene {
       .setOrigin(0, 0.5);
 
     this.toolWarning = this.add.text(width / 2, 83, '', {
-      fontSize: '10.5px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '11px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#f87171',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
     infoCont.add([badgeLbl, artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
@@ -238,7 +247,6 @@ export class RestoreScene extends Phaser.Scene {
     this.activeTool = firstTask.requiredTool || 'tool_scraper';
     this.activeMaskKey = this.activeTool.replace('tool_', 'mask_');
 
-    // Спрайт активного инструмента под пальцем
     this.toolSprite = this.add.image(this.centerX, this.centerY, `tex_hd_${this.activeTool}`)
       .setOrigin(0.5, 0.88).setScale(0.52).setAlpha(0).setDepth(20);
 
@@ -247,7 +255,7 @@ export class RestoreScene extends Phaser.Scene {
     // =========================================================================
     // 6. ОБЪЁМНЫЙ ЛОТОК ИНСТРУМЕНТОВ
     // =========================================================================
-    this.createToolTray(trayY, width);
+    this.createToolTray(trayY, width, dpr);
     this.selectTool(this.activeTool, `tex_hd_${this.activeTool}`, this.activeMaskKey, true);
 
     this.gridCols = 32;
@@ -264,7 +272,7 @@ export class RestoreScene extends Phaser.Scene {
     }
 
     // =========================================================================
-    // 7. ИНТЕРАКТИВНОЕ СТИРАНИЕ С ЖИВОЙ КИНЕМАТИКОЙ
+    // 7. ИНТЕРАКТИВНОЕ СТИРАНИЕ
     // =========================================================================
     const processInteraction = (pointer) => {
       if (this.isAnimatingMat) {
@@ -284,7 +292,6 @@ export class RestoreScene extends Phaser.Scene {
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
       this.toolSprite.setAlpha(1);
 
-      // Анимация инструмента под пальцем в зависимости от вектора движения
       this.animateToolUnderFinger(pointer);
 
       if (this.activeTool !== currentTask.requiredTool) {
@@ -384,9 +391,6 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // =========================================================================
-  // 8. КИНЕМАТИКА ИНСТРУМЕНТОВ В ДВИЖЕНИИ
-  // =========================================================================
   animateToolUnderFinger(pointer) {
     if (!this.lastTouchPos) {
       this.lastTouchPos = { x: pointer.x, y: pointer.y };
@@ -398,17 +402,14 @@ export class RestoreScene extends Phaser.Scene {
     this.lastTouchPos = { x: pointer.x, y: pointer.y };
 
     if (this.activeTool === 'tool_scraper') {
-      // Скребок: наклон в сторону движения и легкий пружинящий нажим
       const targetAngle = Phaser.Math.Clamp(dx * 1.8, -16, 16);
       this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.35);
       this.toolSprite.scaleY = (Math.abs(dx) > 1 || Math.abs(dy) > 1) ? 0.49 : 0.52;
     } else if (this.activeTool === 'tool_brush') {
-      // Кисть: эластичный изгиб ворса назад от вектора ведения
       const targetAngle = Phaser.Math.Clamp(-dx * 1.4, -20, 20);
       this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.25);
       this.toolSprite.scaleX = (Math.abs(dx) > 2) ? 0.56 : 0.52;
     } else if (this.activeTool === 'tool_solvent') {
-      // Спрей: пульсирующий ход сопла
       const spd = Math.sqrt(dx * dx + dy * dy);
       if (spd > 3) {
         this.toolSprite.angle = (Math.sin(this.time.now * 0.02) * 5);
@@ -418,7 +419,6 @@ export class RestoreScene extends Phaser.Scene {
         this.toolSprite.scaleY = 0.52;
       }
     } else if (this.activeTool === 'tool_polish') {
-      // Замша: круговые полирующие микро-вибрации
       this.toolSprite.angle = Math.sin(this.time.now * 0.035) * 8;
       this.toolSprite.scaleX = 0.52 + Math.cos(this.time.now * 0.035) * 0.04;
       this.toolSprite.scaleY = 0.52 + Math.sin(this.time.now * 0.035) * 0.04;
@@ -429,9 +429,6 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // =========================================================================
-  // 9. СУПЕРСЭМПЛИНГ ТЕКСТУР ИНСТРУМЕНТОВ (HI-DPI 128x128 БЕЗ РЯБИ)
-  // =========================================================================
   generateAntiAliasedToolTextures() {
     const makeHD = (key, drawFn) => {
       if (this.textures.exists(key)) return;
@@ -443,10 +440,8 @@ export class RestoreScene extends Phaser.Scene {
       cvs.refresh();
     };
 
-    // 1. Скребок HD
     makeHD('tex_hd_tool_scraper', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
-      // Рукоять из тёмного дерева
       const hGrad = ctx.createLinearGradient(54, 60, 74, 60);
       hGrad.addColorStop(0, '#2b1810');
       hGrad.addColorStop(0.5, '#5c3319');
@@ -456,7 +451,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.roundRect(56, 60, 16, 60, 6);
       ctx.fill();
 
-      // Латунный больстер
       const bGrad = ctx.createLinearGradient(52, 50, 76, 50);
       bGrad.addColorStop(0, '#b48a28');
       bGrad.addColorStop(0.5, '#fde047');
@@ -464,7 +458,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fillStyle = bGrad;
       ctx.fillRect(53, 50, 22, 10);
 
-      // Стальное гранёное лезвие
       ctx.fillStyle = '#64748b';
       ctx.beginPath();
       ctx.moveTo(64, 8);
@@ -473,7 +466,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Полированный скос лезвия
       const sGrad = ctx.createLinearGradient(36, 8, 92, 50);
       sGrad.addColorStop(0, 'rgba(255,255,255,0.85)');
       sGrad.addColorStop(0.45, 'rgba(241,245,249,0.3)');
@@ -487,10 +479,8 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // 2. Кисть HD
     makeHD('tex_hd_tool_brush', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
-      // Ручка
       const rGrad = ctx.createLinearGradient(56, 62, 72, 62);
       rGrad.addColorStop(0, '#78350f');
       rGrad.addColorStop(0.5, '#b45309');
@@ -500,7 +490,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.roundRect(58, 62, 12, 58, 6);
       ctx.fill();
 
-      // Обойма полированная сталь
       const fGrad = ctx.createLinearGradient(50, 42, 78, 42);
       fGrad.addColorStop(0, '#94a3b8');
       fGrad.addColorStop(0.5, '#f8fafc');
@@ -508,7 +497,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fillStyle = fGrad;
       ctx.fillRect(52, 42, 24, 20);
 
-      // Натуральный мягкий ворс с градиентом
       const wGrad = ctx.createLinearGradient(64, 10, 64, 42);
       wGrad.addColorStop(0, '#1c1917');
       wGrad.addColorStop(0.5, '#92400e');
@@ -520,10 +508,8 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // 3. Спрей HD
     makeHD('tex_hd_tool_solvent', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
-      // Изумрудный стеклянный флакон
       const gGrad = ctx.createLinearGradient(44, 44, 84, 44);
       gGrad.addColorStop(0, '#064e3b');
       gGrad.addColorStop(0.5, '#059669');
@@ -533,11 +519,9 @@ export class RestoreScene extends Phaser.Scene {
       ctx.roundRect(44, 44, 40, 72, 10);
       ctx.fill();
 
-      // Глянец на стекле
       ctx.fillStyle = 'rgba(255,255,255,0.42)';
       ctx.fillRect(48, 48, 6, 62);
 
-      // Горловина и латунный пульверизатор
       ctx.fillStyle = '#b48a28';
       ctx.fillRect(56, 26, 16, 18);
       ctx.fillStyle = '#d97706';
@@ -546,10 +530,8 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fillRect(72, 11, 18, 9);
     });
 
-    // 4. Клей HD
     makeHD('tex_hd_tool_glue', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
-      // Керамический флакон
       const pGrad = ctx.createLinearGradient(42, 48, 86, 48);
       pGrad.addColorStop(0, '#0f172a');
       pGrad.addColorStop(0.5, '#334155');
@@ -559,13 +541,11 @@ export class RestoreScene extends Phaser.Scene {
       ctx.roundRect(42, 48, 44, 68, 10);
       ctx.fill();
 
-      // Золотая гравированная этикетка
       ctx.fillStyle = '#d4af37';
       ctx.fillRect(50, 68, 28, 28);
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(54, 72, 20, 20);
 
-      // Горлышко и капля лака
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(54, 32, 20, 16);
       ctx.fillStyle = '#facc15';
@@ -578,10 +558,8 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // 5. Замша HD
     makeHD('tex_hd_tool_polish', (ctx) => {
       ctx.clearRect(0, 0, 128, 128);
-      // Свёрток замши
       const zGrad = ctx.createRadialGradient(64, 64, 8, 64, 64, 44);
       zGrad.addColorStop(0, '#fde68a');
       zGrad.addColorStop(0.6, '#d97706');
@@ -591,7 +569,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.roundRect(38, 38, 52, 52, 14);
       ctx.fill();
 
-      // Складки мягкой ткани
       ctx.strokeStyle = '#78350f';
       ctx.lineWidth = 4;
       ctx.lineCap = 'round';
@@ -601,9 +578,6 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // =========================================================================
-  // 10. VFX СИСТЕМА ЧАСТИЦ
-  // =========================================================================
   createRestorationVFX() {
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 200, max: 350 },
@@ -633,10 +607,7 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // =========================================================================
-  // 11. ЛОТОК ИНСТРУМЕНТОВ С АНИМАЦИЕЙ ПОДНЯТИЯ
-  // =========================================================================
-  createToolTray(trayY, width) {
+  createToolTray(trayY, width, dpr) {
     const tools = [
       { id: 'tool_scraper', icon: 'tex_hd_tool_scraper', mask: 'mask_scraper', label: 'Скребок' },
       { id: 'tool_brush', icon: 'tex_hd_tool_brush', mask: 'mask_brush', label: 'Кисть' },
@@ -671,9 +642,10 @@ export class RestoreScene extends Phaser.Scene {
 
       const lbl = this.add.text(0, 18, t.label, {
         fontSize: '9.5px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
         color: isSelected ? '#facc15' : '#64748b',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        resolution: dpr
       }).setOrigin(0.5);
 
       slotCont.add([slotWell, slotBg, iconImg, lbl]);
@@ -723,9 +695,6 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // =========================================================================
-  // 12. МАТ ВЕРСТАКА И РАЗВОРАЧИВАНИЕ
-  // =========================================================================
   playMatUnrollSequence() {
     this.isAnimatingMat = true;
 
@@ -940,6 +909,8 @@ export class RestoreScene extends Phaser.Scene {
 
   setupBreakAndAssembleStage(task) {
     const { width } = this.scale;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     this.assemblyContainer.removeAll(true);
     this.assemblyContainer.setVisible(true);
     this.glueApplied = false;
@@ -981,7 +952,7 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
 
-    this.showKintsugiChoiceWidget(width);
+    this.showKintsugiChoiceWidget(width, dpr);
 
     this.tweens.add({
       targets: this.brokenPiece,
@@ -1040,7 +1011,7 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer.add([this.brokenPiece]);
   }
 
-  showKintsugiChoiceWidget(width) {
+  showKintsugiChoiceWidget(width, dpr) {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
     this.kintsugiBanner = this.add.container(width / 2, this.centerY - this.artH * 0.44).setDepth(35);
@@ -1054,16 +1025,18 @@ export class RestoreScene extends Phaser.Scene {
 
     const kintsugiTxt = this.add.text(width * 0.43 - 52, 0, '✨ КИНЦУГИ', {
       fontSize: '10.5px',
-      fontFamily: 'sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#000000',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
     const infoTxt = this.add.text(-width * 0.43 + 12, 0, 'Золотой шов: +60% к цене', {
       fontSize: '11px',
-      fontFamily: 'sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#facc15',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0, 0.5);
 
     kintsugiBtn.on('pointerdown', () => {
