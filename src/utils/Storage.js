@@ -100,18 +100,20 @@ export const Storage = {
     return Math.min(3 + Math.floor((lvl - 1) / 2), 12);
   },
 
-  // --- СРОЧНЫЕ КОНТРАКТЫ (СРОК ДЕЙСТВИЯ 4 ЧАСА) ---
+  // --- СРОЧНЫЕ КОНТРАКТЫ (КУЛДАУН 2 ЧАСА С ЖИВЫМ ТАЙМЕРОМ) ---
   getDailyContract(templates) {
+    const now = Date.now();
     try {
       const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
       if (raw) {
         const contract = JSON.parse(raw);
-        if (contract && contract.expiresAt > Date.now() && !contract.completed) {
+        // Если срок контракта или кулдауна еще не истек — возвращаем текущее состояние
+        if (contract && contract.nextAvailableAt > now) {
           return contract;
         }
       }
     } catch {
-      // Игнорируем сбой парсинга
+      // Игнорируем ошибку чтения
     }
 
     if (!templates || templates.length === 0) return null;
@@ -137,19 +139,25 @@ export const Storage = {
     ];
     const client = clients[Math.floor(Math.random() * clients.length)];
 
+    // Сбалансированная надбавка: базовая цена + фиксированная премия гильдии 80-120 монет
     const basePrice = target.marketValue || 200;
-    const contractPrice = Math.round(basePrice * 1.7);
+    const bonusReward = 90;
+    const contractPrice = basePrice + bonusReward;
+
+    const cooldownDuration = 2 * 60 * 60 * 1000; // 2 часа
 
     const newContract = {
-      id: `ctr_${Date.now()}`,
+      id: `ctr_${now}`,
       templateId: target.id,
       regionId: target.regionId,
       name: target.name,
       client,
       rewardCoins: contractPrice,
-      bonusXP: 150,
+      bonusCoins: bonusReward,
+      bonusXP: 80,
       completed: false,
-      expiresAt: Date.now() + 4 * 60 * 60 * 1000 // 4 часа
+      createdAt: now,
+      nextAvailableAt: now + cooldownDuration
     };
 
     localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(newContract));
@@ -162,6 +170,8 @@ export const Storage = {
       if (raw) {
         const contract = JSON.parse(raw);
         contract.completed = true;
+        // Кулдаун 2 часа от момента завершения контракта
+        contract.nextAvailableAt = Date.now() + 2 * 60 * 60 * 1000;
         localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
       }
     } catch {
