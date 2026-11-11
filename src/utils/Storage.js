@@ -9,7 +9,8 @@ export const Storage = {
     MUSIC_MUTED: 'art_music_muted',
     SFX_MUTED: 'art_sfx_muted',
     LAST_OFFLINE_TIME: 'art_last_offline_time',
-    CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards'
+    CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards',
+    ACTIVE_CONTRACT: 'art_active_contract'
   },
 
   // --- ДЕНЬГИ ---
@@ -94,13 +95,81 @@ export const Storage = {
     };
   },
 
-  // Вместимость музея зависит от уровня (базово 3 + 1 за каждые 2 уровня)
   getMaxMuseumCapacity() {
     const lvl = this.getLevelData().level;
     return Math.min(3 + Math.floor((lvl - 1) / 2), 12);
   },
 
-  // --- ОФФЛАЙН-ДОХОД МУЗЕЯ (ЯНДЕКС ИГРЫ RETENTION) ---
+  // --- СРОЧНЫЕ КОНТРАКТЫ (СРОК ДЕЙСТВИЯ 4 ЧАСА) ---
+  getDailyContract(templates) {
+    try {
+      const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
+      if (raw) {
+        const contract = JSON.parse(raw);
+        if (contract && contract.expiresAt > Date.now() && !contract.completed) {
+          return contract;
+        }
+      }
+    } catch {
+      // Игнорируем сбой парсинга
+    }
+
+    if (!templates || templates.length === 0) return null;
+
+    const level = this.getLevelData().level;
+    const allowedRegions = ['egypt'];
+    if (level >= 2) allowedRegions.push('greece');
+    if (level >= 4) allowedRegions.push('rome', 'europe');
+    if (level >= 6) allowedRegions.push('japan');
+    if (level >= 8) allowedRegions.push('aztec');
+    if (level >= 10) allowedRegions.push('vikings');
+    if (level >= 12) allowedRegions.push('renaissance');
+
+    const pool = templates.filter(t => allowedRegions.includes(t.regionId));
+    const target = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : templates[0];
+
+    const clients = [
+      'Мэр Александрии',
+      'Королевский музей',
+      'Частный коллекционер',
+      'Гильдия архивариусов',
+      'Императорский посол'
+    ];
+    const client = clients[Math.floor(Math.random() * clients.length)];
+
+    const basePrice = target.marketValue || 200;
+    const contractPrice = Math.round(basePrice * 1.7);
+
+    const newContract = {
+      id: `ctr_${Date.now()}`,
+      templateId: target.id,
+      regionId: target.regionId,
+      name: target.name,
+      client,
+      rewardCoins: contractPrice,
+      bonusXP: 150,
+      completed: false,
+      expiresAt: Date.now() + 4 * 60 * 60 * 1000 // 4 часа
+    };
+
+    localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(newContract));
+    return newContract;
+  },
+
+  completeDailyContract() {
+    try {
+      const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
+      if (raw) {
+        const contract = JSON.parse(raw);
+        contract.completed = true;
+        localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
+      }
+    } catch {
+      // no-op
+    }
+  },
+
+  // --- ОФФЛАЙН-ДОХОД МУЗЕЯ ---
   updateOfflineTimestamp() {
     localStorage.setItem(this.KEYS.LAST_OFFLINE_TIME, Date.now().toString());
   },
@@ -113,7 +182,6 @@ export const Storage = {
     if (!lastTime || lastTime > now) return { coins: 0, minutes: 0 };
 
     const diffMinutes = Math.floor((now - lastTime) / (1000 * 60));
-    // Начисление начинается от 5 минут отсутствия, макс. лимит 480 минут (8 часов)
     if (diffMinutes < 5) return { coins: 0, minutes: diffMinutes };
 
     const cappedMinutes = Math.min(diffMinutes, 480);
@@ -122,7 +190,6 @@ export const Storage = {
 
     if (count === 0) return { coins: 0, minutes: cappedMinutes };
 
-    // Базовый доход: 2 монеты за каждые 10 минут за каждый выставленный экспонат
     const earnedCoins = Math.floor((cappedMinutes / 10) * count * 2);
     return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes, exhibitsCount: count };
   },
