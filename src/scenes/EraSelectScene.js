@@ -14,15 +14,15 @@ export class EraSelectScene extends Phaser.Scene {
     const levelData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Ученик' };
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
 
-    // Стоимость снаряжения экспедиции по эпохам
+    // Сниженная стартовая цена для Египта (30 монет)
     const expeditionCosts = {
-      egypt: 120,
-      antique: 280,
-      europe: 600,
-      japan: 1200,
-      aztec: 2200,
-      vikings: 4000,
-      renaissance: 7500
+      egypt: 30,
+      antique: 250,
+      europe: 550,
+      japan: 1100,
+      aztec: 2000,
+      vikings: 3800,
+      renaissance: 7000
     };
 
     const requiredLevels = [1, 2, 4, 6, 8, 10, 12];
@@ -32,7 +32,7 @@ export class EraSelectScene extends Phaser.Scene {
         ...region,
         unlocked: levelData.level >= needLvl,
         requiredLevel: needLvl,
-        cost: expeditionCosts[region.id] || 500
+        cost: expeditionCosts[region.id] || 100
       };
     });
 
@@ -345,7 +345,6 @@ export class EraSelectScene extends Phaser.Scene {
         fontStyle: 'bold'
       });
 
-      // Отображение доступного количества
       const stockBadgeColor = hasStock ? '#38bdf8' : '#ef4444';
       const stockBadgeText = hasStock ? `В наличии: ${countLeft} шт.` : `Запасы иссякли (нужна экспедиция)`;
 
@@ -386,7 +385,6 @@ export class EraSelectScene extends Phaser.Scene {
         const elapsed = this.time.now - touchDownTime;
 
         if (!this.isDraggingList && moveDist < 10 && elapsed < 400 && hasStock) {
-          // Списываем 1 штуку из запасов
           Storage.decrementArtifactStock(currentEra.id, art.id);
 
           if (AudioManager.playClick) AudioManager.playClick();
