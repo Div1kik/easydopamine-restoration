@@ -10,8 +10,10 @@ export class VictoryScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const artifact = (data && data.artifact)
       ? data.artifact
-      : { name: 'Артефакт', marketValue: 200 };
+      : { name: 'Артефакт', marketValue: 100 };
     const starsCount = (data && data.stars) ? data.stars : 3;
+    const isDuplicate = !!(data && data.isDuplicate);
+    const isContract = !!(data && data.isContract);
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x07090e).setDepth(0);
 
@@ -114,23 +116,31 @@ export class VictoryScene extends Phaser.Scene {
       }
     });
 
-    // Название и ценность
-    this.add.text(width / 2, height * 0.55, artifact.name, {
+    // Название
+    this.add.text(width / 2, height * 0.54, artifact.name, {
       fontSize: '20px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(width / 2, height * 0.59, `Музейная оценка: +${artifact.marketValue || 200} 🪙`, {
-      fontSize: '14px',
+    // Музейная оценка с пометкой качества / дубликата
+    let valueDesc = `Музейная оценка: +${artifact.marketValue || 100} 🪙`;
+    if (isContract) {
+      valueDesc += ' (Премия по контракту гильдии)';
+    } else if (isDuplicate) {
+      valueDesc += ' (Повторный дубликат: -55%)';
+    }
+
+    this.add.text(width / 2, height * 0.585, valueDesc, {
+      fontSize: '12.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#22c55e',
+      color: isDuplicate ? '#94a3b8' : '#22c55e',
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
     // Блок Прогресса Опыта и Уровня
-    this.createExperienceBar(width, height);
+    this.createExperienceBar(width, height, isContract);
 
     // Кнопка: В главное меню
     const menuBtn = this.add.rectangle(
@@ -181,20 +191,21 @@ export class VictoryScene extends Phaser.Scene {
     });
   }
 
-  createExperienceBar(width, height) {
+  createExperienceBar(width, height, isContract) {
     const xpBoxY = height * 0.67;
     const barW = width * 0.78;
 
+    const xpAward = isContract ? 180 : 100;
     const initialLvl = Storage.getLevelData();
 
-    const xpLabel = this.add.text(width / 2 - barW / 2, xpBoxY - 14, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
+    this.add.text(width / 2 - barW / 2, xpBoxY - 14, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
       fontSize: '11.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#cbd5e1',
       fontStyle: 'bold'
     }).setDepth(15);
 
-    const xpNum = this.add.text(width / 2 + barW / 2, xpBoxY - 14, `+100 XP`, {
+    this.add.text(width / 2 + barW / 2, xpBoxY - 14, `+${xpAward} XP`, {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#38bdf8',
@@ -206,7 +217,7 @@ export class VictoryScene extends Phaser.Scene {
       .setOrigin(0, 0.5).setDepth(15);
 
     this.time.delayedCall(700, () => {
-      const result = Storage.addXP(100);
+      const result = Storage.addXP(xpAward);
       const updatedLvl = Storage.getLevelData();
 
       this.tweens.add({
