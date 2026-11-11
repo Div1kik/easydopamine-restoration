@@ -59,13 +59,8 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
 
-    // FTUE проверка разворачивания мата
-    const ftueKey = `art_ftue_mat_${this.artifactData.regionId || 'egypt'}`;
-    const isFirstTime = !sessionStorage.getItem(ftueKey);
-    if (isFirstTime) {
-      sessionStorage.setItem(ftueKey, '1');
-    }
-    this.isRitualIntro = isFirstTime;
+    this.isRitualIntro = true;
+
 
     this.generateAntiAliasedToolTextures();
 
