@@ -39,6 +39,30 @@ class AudioManagerClass {
   isMusicDisabled() {
     return Storage.isMusicMuted ? Storage.isMusicMuted() : false;
   }
+  toggleMusic() {
+    const nextMuted = !this.isMusicDisabled();
+    if (Storage.setMusicMuted) Storage.setMusicMuted(nextMuted);
+    if (nextMuted) {
+      this.stopMusic();
+    } else {
+      if (this.pendingTrack) this.playEraMusic(this.pendingTrack);
+    }
+    return !nextMuted;
+  }
+
+  toggleSfx() {
+    const nextMuted = !this.isSfxDisabled();
+    if (Storage.setSfxMuted) Storage.setSfxMuted(nextMuted);
+    return !nextMuted;
+  }
+
+  isMusicOn() {
+    return !this.isMusicDisabled();
+  }
+
+  isSfxOn() {
+    return !this.isSfxDisabled();
+  }
 
   throttle(key, minIntervalMs) {
     const now = performance.now();
