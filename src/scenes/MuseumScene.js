@@ -9,10 +9,13 @@ export class MuseumScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
     const bg = this.add.graphics().setDepth(0);
+
     bg.fillStyle(0x07090e, 1);
     bg.fillRect(0, 0, width, height);
 
-    if (AudioManager.playShopBell) AudioManager.playShopBell();
+    if (AudioManager.playShopBell) {
+      AudioManager.playShopBell();
+    }
 
     // Шапка
     this.add.text(width / 2, 34, 'ВИТРИНА МАГАЗИНА', {
@@ -48,7 +51,13 @@ export class MuseumScene extends Phaser.Scene {
     // Нижняя плашка
     this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e).setDepth(30);
 
-    const backBtn = this.add.rectangle(width / 2, height - 34, width * 0.88, 44, 0x141a24)
+    const backBtn = this.add.rectangle(
+      width / 2,
+      height - 34,
+      width * 0.88,
+      44,
+      0x141a24
+    )
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
@@ -61,9 +70,17 @@ export class MuseumScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(32);
 
     backBtn.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
+      if (AudioManager.playClick) {
+        AudioManager.playClick();
+      }
       this.scene.start('MenuScene');
     });
+  }
+
+  updateHeader() {
+    const inventory = Storage.getInventory ? Storage.getInventory() : [];
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    this.infoText.setText(`Товаров на витрине: ${inventory.length} • Казна: ${coins} 🪙`);
   }
 
   setupScroll() {
@@ -85,8 +102,12 @@ export class MuseumScene extends Phaser.Scene {
         const dy = p.y - startY;
         if (Math.abs(dy) > 6) {
           this.isDragging = true;
-          this.listCont.y = Phaser.Math.Clamp(containerStartY + dy, this.minScrollY, this.listTopY);
         }
+        this.listCont.y = Phaser.Math.Clamp(
+          containerStartY + dy,
+          this.minScrollY || this.listTopY,
+          this.listTopY
+        );
       }
     });
   }
@@ -97,26 +118,42 @@ export class MuseumScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
-    const coins = Storage.getCoins ? Storage.getCoins() : 0;
-
-    this.infoText.setText(`Товаров на витрине: ${inventory.length}  •  Казна: ${coins} 💰`);
+    this.updateHeader();
 
     if (inventory.length === 0) {
       this.minScrollY = this.listTopY;
-      const box = this.add.rectangle(width / 2, height * 0.38 - this.listTopY, width * 0.88, 130, 0x111622)
-        .setStrokeStyle(1.5, 0x334155, 0.7);
-      const t1 = this.add.text(width / 2, height * 0.38 - this.listTopY - 16, 'ВИТРИНА ПОКА ПУСТА', {
-        fontSize: '15px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#64748b',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      const t2 = this.add.text(width / 2, height * 0.38 - this.listTopY + 14, 'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на витрину магазина.', {
-        fontSize: '12px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#475569',
-        align: 'center'
-      }).setOrigin(0.5);
+      const box = this.add.rectangle(
+        width / 2,
+        height * 0.38 - this.listTopY,
+        width * 0.88,
+        130,
+        0x111622
+      ).setStrokeStyle(1.5, 0x334155, 0.7);
+
+      const t1 = this.add.text(
+        width / 2,
+        height * 0.38 - this.listTopY - 16,
+        'ВИТРИНА ПОКА ПУСТА',
+        {
+          fontSize: '15px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          color: '#64748b',
+          fontStyle: 'bold'
+        }
+      ).setOrigin(0.5);
+
+      const t2 = this.add.text(
+        width / 2,
+        height * 0.38 - this.listTopY + 14,
+        'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на витрину магазина.',
+        {
+          fontSize: '12px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          color: '#475569',
+          align: 'center'
+        }
+      ).setOrigin(0.5);
+
       this.listCont.add([box, t1, t2]);
       return;
     }
@@ -132,47 +169,90 @@ export class MuseumScene extends Phaser.Scene {
       const cardBg = this.add.rectangle(0, 0, cardW, cardH, 0x111622, 0.96)
         .setStrokeStyle(1, 0x273142, 0.8);
 
-      const tex = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
+      const tex = this.textures.exists(item.textureKey)
+        ? item.textureKey
+        : 'art_egypt_scarab';
       const icon = this.add.image(-cardW / 2 + 42, 0, tex).setDisplaySize(58, 58);
 
-      const name = this.add.text(-cardW / 2 + 80, -20, item.name || 'Артефакт', {
-        fontSize: '14.5px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      });
-
-      const val = this.add.text(-cardW / 2 + 80, 10, `Ценность: ${item.marketValue || 200} 💰`, {
-        fontSize: '12px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#facc15',
-        fontStyle: 'bold'
-      });
+      const name = this.add.text(
+        -cardW / 2 + 80,
+        -20,
+        item.name || 'Артефакт',
+        {
+          fontSize: '14.5px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold'
+        }
+      );
 
       const sellPrice = item.marketValue || 200;
-      const sellBtnBg = this.add.rectangle(cardW / 2 - 50, 0, 88, 36, 0x16241a)
+
+      const val = this.add.text(
+        -cardW / 2 + 80,
+        10,
+        `Ценность: ${sellPrice} 🪙`,
+        {
+          fontSize: '12px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          color: '#facc15',
+          fontStyle: 'bold'
+        }
+      );
+
+      const sellBtnBg = this.add.rectangle(
+        cardW / 2 - 50,
+        0,
+        80,
+        36,
+        0x16241a
+      )
         .setStrokeStyle(1.5, 0x22c55e, 0.8)
         .setInteractive({ useHandCursor: true });
 
-      const sellBtnTxt = this.add.text(cardW / 2 - 50, 0, `ПРОДАТЬ`, {
-        fontSize: '11px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        color: '#22c55e',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
+      const sellBtnTxt = this.add.text(
+        cardW / 2 - 50,
+        0,
+        'ПРОДАТЬ',
+        {
+          fontSize: '11px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          color: '#22c55e',
+          fontStyle: 'bold'
+        }
+      ).setOrigin(0.5);
+
+      let isSold = false;
 
       sellBtnBg.on('pointerup', () => {
-        if (!this.isDragging) {
+        if (!this.isDragging && !isSold) {
+          isSold = true;
+          sellBtnBg.disableInteractive();
+
+          // 1. Звук монет
           if (AudioManager.playCoin) AudioManager.playCoin();
+
+          // 2. Мгновенное начисление и удаление из Storage
           Storage.addCoins(sellPrice);
           Storage.removeArtifactFromInventory(item.instanceId);
+
+          // 3. Мгновенно обновляем шапку
+          this.updateHeader();
+
+          // 4. Визуальная анимация продажи
+          sellBtnBg.setFillStyle(0x334155, 0.5);
+          sellBtnTxt.setText('ПРОДАНО').setColor('#94a3b8');
 
           this.tweens.add({
             targets: card,
             alpha: 0,
-            scaleX: 0.9,
-            duration: 200,
-            onComplete: () => this.renderExhibitList()
+            scaleX: 0.85,
+            scaleY: 0.85,
+            duration: 180,
+            ease: 'Power2',
+            onComplete: () => {
+              this.renderExhibitList();
+            }
           });
         }
       });
