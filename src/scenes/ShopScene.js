@@ -16,7 +16,10 @@ export class ShopScene extends Phaser.Scene {
     this.returnToRestore = data && data.returnToRestore;
     this.activeTab = 'tools';
 
-    // Заголовок сцены с повышенным разрешением
+    // Генерируем уникальные векторные HD-текстуры для всех 12 инструментов
+    this.generateHDToolTextures();
+
+    // Заголовок
     const title = this.add.text(width / 2, 28, 'ЛАВКА МАСТЕРА', {
       fontSize: '20px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -35,7 +38,7 @@ export class ShopScene extends Phaser.Scene {
     this.coinsText.setResolution(dpr);
     this.updateCoinsDisplay();
 
-    // Переключатели трех вкладок
+    // Переключатели вкладок
     const tabW = (width * 0.90) / 3;
     const tabY = 78;
     const startX = width * 0.05 + tabW / 2;
@@ -91,7 +94,7 @@ export class ShopScene extends Phaser.Scene {
       this.renderContent();
     });
 
-    // Границы области со скроллом (с правильным отступом под шапкой)
+    // Скролл-контейнер
     this.listTopY = 108;
     this.listBottomY = height - 64;
     this.listHeight = this.listBottomY - this.listTopY;
@@ -104,11 +107,10 @@ export class ShopScene extends Phaser.Scene {
     this.itemsContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
 
     this.setupScroll();
-
     this.refreshTabs();
     this.renderContent();
 
-    // Нижняя плашка возврата
+    // Кнопка возврата
     this.add.rectangle(width / 2, height - 32, width, 64, 0x07090e, 0.95).setDepth(30);
 
     const backBtnY = height - 32;
@@ -133,6 +135,162 @@ export class ShopScene extends Phaser.Scene {
       } else {
         this.scene.start('MenuScene');
       }
+    });
+  }
+
+  // Генерация уникальных HD-иконок для всех 12 грейдов
+  generateHDToolTextures() {
+    const s = 96; // Высокое разрешение канваса иконки (96x96 пикселей)
+
+    const drawItem = (key, drawFn) => {
+      if (this.textures.exists(key)) return;
+      const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+      drawFn(gfx, s);
+      gfx.generateTexture(key, s, s);
+      gfx.destroy();
+    };
+
+    // 1. Скребок II: Латунный треугольный скребок
+    drawItem('hd_scraper_2', (g, s) => {
+      g.fillStyle(0x78350f, 1);
+      g.fillRect(s * 0.44, s * 0.45, s * 0.12, s * 0.48); // Ручка
+      g.fillStyle(0xd97706, 1);
+      g.fillTriangle(s * 0.5, s * 0.12, s * 0.18, s * 0.46, s * 0.82, s * 0.46); // Латунное лезвие
+      g.lineStyle(2, 0xfde047, 1);
+      g.strokeTriangle(s * 0.5, s * 0.12, s * 0.18, s * 0.46, s * 0.82, s * 0.46);
+    });
+
+    // 2. Скальпель III: Стальное изогнутое хирургическое лезвие
+    drawItem('hd_scraper_3', (g, s) => {
+      g.fillStyle(0x334155, 1);
+      g.fillRoundedRect(s * 0.42, s * 0.38, s * 0.16, s * 0.55, 4); // Металлическая рифленая ручка
+      g.fillStyle(0xe2e8f0, 1);
+      g.beginPath();
+      g.moveTo(s * 0.5, s * 0.08);
+      g.lineTo(s * 0.72, s * 0.38);
+      g.lineTo(s * 0.5, s * 0.38);
+      g.closePath();
+      g.fillPath(); // Острое хирургическое перо
+      g.lineStyle(2, 0x38bdf8, 0.9);
+      g.strokeLineShape(new Phaser.Geom.Line(s * 0.5, s * 0.08, s * 0.72, s * 0.38));
+    });
+
+    // 3. Лазер IV: Высокотехнологичный эмиттер с неоновым ядром
+    drawItem('hd_scraper_4', (g, s) => {
+      g.fillStyle(0x0f172a, 1);
+      g.fillRoundedRect(s * 0.40, s * 0.30, s * 0.20, s * 0.60, 6);
+      g.lineStyle(2, 0xfacc15, 1);
+      g.strokeRoundedRect(s * 0.40, s * 0.30, s * 0.20, s * 0.60, 6);
+      // Кристалл лазера
+      g.fillStyle(0x38bdf8, 1);
+      g.fillTriangle(s * 0.5, s * 0.06, s * 0.38, s * 0.28, s * 0.62, s * 0.28);
+      // Энергетический луч
+      g.lineStyle(3, 0x06b6d4, 1);
+      g.strokeLineShape(new Phaser.Geom.Line(s * 0.5, s * 0.06, s * 0.5, s * 0.00));
+    });
+
+    // 4. Кисть II: Классическая беличья круглая кисть
+    drawItem('hd_brush_2', (g, s) => {
+      g.fillStyle(0x9a3412, 1);
+      g.fillRect(s * 0.45, s * 0.42, s * 0.10, s * 0.52);
+      g.fillStyle(0x94a3b8, 1);
+      g.fillRect(s * 0.40, s * 0.34, s * 0.20, s * 0.10); // Обойма
+      g.fillStyle(0xd97706, 1);
+      g.fillCircle(s * 0.50, s * 0.22, s * 0.18); // Пышный ворс
+    });
+
+    // 5. Веерная кисть III: Расклешённый веер из тонкого волоса
+    drawItem('hd_brush_3', (g, s) => {
+      g.fillStyle(0x1e293b, 1);
+      g.fillRect(s * 0.46, s * 0.44, s * 0.08, s * 0.50);
+      g.fillStyle(0x38bdf8, 1);
+      g.fillRect(s * 0.42, s * 0.38, s * 0.16, s * 0.08);
+      g.fillStyle(0xf1f5f9, 0.95);
+      g.beginPath();
+      g.moveTo(s * 0.42, s * 0.38);
+      g.lineTo(s * 0.12, s * 0.14);
+      g.lineTo(s * 0.88, s * 0.14);
+      g.lineTo(s * 0.58, s * 0.38);
+      g.closePath();
+      g.fillPath(); // Широкий веер
+    });
+
+    // 6. Ионизатор IV: Сопло антистатического обдува
+    drawItem('hd_brush_4', (g, s) => {
+      g.fillStyle(0x1e293b, 1);
+      g.fillRoundedRect(s * 0.36, s * 0.32, s * 0.28, s * 0.60, 4);
+      g.fillStyle(0xfacc15, 1);
+      g.fillRect(s * 0.44, s * 0.16, s * 0.12, s * 0.18); // Сопло
+      // Ионизирующее кольцо
+      g.lineStyle(3, 0xa855f7, 0.9);
+      g.strokeCircle(s * 0.5, s * 0.12, s * 0.14);
+    });
+
+    // 7. Реактив II: Стеклянная аптекарская склянка
+    drawItem('hd_solvent_2', (g, s) => {
+      g.fillStyle(0x065f46, 1);
+      g.fillRoundedRect(s * 0.32, s * 0.32, s * 0.36, s * 0.56, 8); // Зеленая бутыль
+      g.fillStyle(0xd97706, 1);
+      g.fillRect(s * 0.44, s * 0.18, s * 0.12, s * 0.14); // Пробка
+      g.fillStyle(0x34d399, 0.8);
+      g.fillRect(s * 0.38, s * 0.46, s * 0.24, s * 0.26); // Этикетка
+    });
+
+    // 8. Царская эссенция III: Эрленмейеровская колба с фиолетовым составом
+    drawItem('hd_solvent_3', (g, s) => {
+      g.fillStyle(0x581c87, 0.9);
+      g.beginPath();
+      g.moveTo(s * 0.44, s * 0.20);
+      g.lineTo(s * 0.56, s * 0.20);
+      g.lineTo(s * 0.56, s * 0.38);
+      g.lineTo(s * 0.84, s * 0.82);
+      g.lineTo(s * 0.16, s * 0.82);
+      g.lineTo(s * 0.44, s * 0.38);
+      g.closePath();
+      g.fillPath(); // Колба
+      g.lineStyle(2, 0xc084fc, 1);
+      g.strokePath();
+    });
+
+    // 9. Ультразвук IV: Хромированный сопловой распылитель
+    drawItem('hd_solvent_4', (g, s) => {
+      g.fillStyle(0x475569, 1);
+      g.fillRoundedRect(s * 0.38, s * 0.26, s * 0.24, s * 0.64, 4);
+      g.fillStyle(0x0284c7, 1);
+      g.fillCircle(s * 0.5, s * 0.22, s * 0.16); // Ультразвуковая мембрана
+      g.lineStyle(2, 0x38bdf8, 1);
+      g.strokeCircle(s * 0.5, s * 0.22, s * 0.22);
+    });
+
+    // 10. Замша II: Свёрнутый рулон натуральной кожи
+    drawItem('hd_polish_2', (g, s) => {
+      g.fillStyle(0xd97706, 1);
+      g.fillRoundedRect(s * 0.26, s * 0.36, s * 0.48, s * 0.36, 12);
+      g.lineStyle(3, 0x92400e, 1);
+      g.strokeCircle(s * 0.36, s * 0.54, s * 0.14); // Складка рулона
+    });
+
+    // 11. Паста ГОИ III: Брусок полировального компаунда
+    drawItem('hd_polish_3', (g, s) => {
+      g.fillStyle(0x15803d, 1); // Изумрудный оксид хрома
+      g.fillRect(s * 0.22, s * 0.34, s * 0.56, s * 0.38);
+      g.lineStyle(2, 0x4ade80, 1);
+      g.strokeRect(s * 0.22, s * 0.34, s * 0.56, s * 0.38);
+      // Салфетка из микрофибры
+      g.fillStyle(0x0284c7, 0.85);
+      g.fillTriangle(s * 0.22, s * 0.34, s * 0.50, s * 0.14, s * 0.78, s * 0.34);
+    });
+
+    // 12. Алмазная эмульсия IV: Профессиональный шприц-дозатор с кристаллом
+    drawItem('hd_polish_4', (g, s) => {
+      g.fillStyle(0x0284c7, 1);
+      g.fillRect(s * 0.38, s * 0.28, s * 0.24, s * 0.48); // Корпус шприца
+      g.fillStyle(0xe0f2fe, 1);
+      g.fillRect(s * 0.46, s * 0.12, s * 0.08, s * 0.18); // Тонкая канюля
+      g.fillStyle(0xfacc15, 1);
+      g.fillTriangle(s * 0.5, s * 0.04, s * 0.42, s * 0.12, s * 0.58, s * 0.12); // Алмазный фокус
+      g.lineStyle(2, 0x38bdf8, 1);
+      g.strokeRect(s * 0.38, s * 0.28, s * 0.24, s * 0.48);
     });
   }
 
@@ -197,31 +355,31 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ВКЛАДКА 1: ИНСТРУМЕНТЫ (ЧЕТКИЕ ШРИФТЫ + УНИКАЛЬНЫЕ БЕЙДЖИ ГРЕЙДОВ)
+  // ВКЛАДКА 1: ИНСТРУМЕНТЫ (12 УНИКАЛЬНЫХ HD-ИКОНОК)
   // =========================================================================
   renderToolsUpgrades(width) {
     const dpr = this.dpr;
 
     const tools = [
-      // СКРЕБОК
-      { id: 'scraper_2', tierNum: 'II', tint: 0xcd7f32, name: 'Латунный скребок II', desc: '+20% к радиусу очистки слоя грязи', price: 180, icon: 'slot_scraper' },
-      { id: 'scraper_3', tierNum: 'III', tint: 0x38bdf8, name: 'Закалённый скальпель III', desc: '+40% к радиусу очистки, быстрый срез корки', price: 520, icon: 'slot_scraper' },
-      { id: 'scraper_4', tierNum: 'IV', tint: 0xfacc15, name: 'Лазерный микро-скальпель IV', desc: 'Прецизионное снятие породы в одно касание', price: 1400, icon: 'slot_scraper' },
+      // СКРЕБКИ
+      { id: 'scraper_2', name: 'Латунный скребок II', desc: '+20% к радиусу очистки слоя грязи', price: 180, icon: 'hd_scraper_2' },
+      { id: 'scraper_3', name: 'Закалённый скальпель III', desc: '+40% к радиусу очистки, быстрый срез корки', price: 520, icon: 'hd_scraper_3' },
+      { id: 'scraper_4', name: 'Лазерный микро-скальпель IV', desc: 'Прецизионное снятие породы в одно касание', price: 1400, icon: 'hd_scraper_4' },
 
-      // КИСТЬ
-      { id: 'brush_2', tierNum: 'II', tint: 0xcd7f32, name: 'Беличья кисть II', desc: 'Сметает пыль и песок за меньшее число мазков', price: 220, icon: 'slot_brush' },
-      { id: 'brush_3', tierNum: 'III', tint: 0x38bdf8, name: 'Соболиная веерная кисть III', desc: 'Широкий фронт сметания мелких фракций', price: 600, icon: 'slot_brush' },
-      { id: 'brush_4', tierNum: 'IV', tint: 0xfacc15, name: 'Ионизирующая кисть IV', desc: 'Сдувает частицы пыли за один лёгкий взмах', price: 1650, icon: 'slot_brush' },
+      // КИСТИ
+      { id: 'brush_2', name: 'Беличья кисть II', desc: 'Сметает пыль и песок за меньшее число мазков', price: 220, icon: 'hd_brush_2' },
+      { id: 'brush_3', name: 'Соболиная веерная кисть III', desc: 'Широкий фронт сметания мелких фракций', price: 600, icon: 'hd_brush_3' },
+      { id: 'brush_4', name: 'Ионизирующая кисть IV', desc: 'Сдувает частицы пыли за один лёгкий взмах', price: 1650, icon: 'hd_brush_4' },
 
-      // РЕАКТИВ
-      { id: 'solvent_2', tierNum: 'II', tint: 0xcd7f32, name: 'Концентрированный состав II', desc: 'Быстро растворяет химический налёт и окислы', price: 260, icon: 'slot_solvent' },
-      { id: 'solvent_3', tierNum: 'III', tint: 0x38bdf8, name: 'Царская эссенция III', desc: 'Мгновенное растворение застарелой патины', price: 750, icon: 'slot_solvent' },
-      { id: 'solvent_4', tierNum: 'IV', tint: 0xfacc15, name: 'Ультразвуковой распылитель IV', desc: 'Безупречное удаление налёта без вреда основе', price: 1900, icon: 'slot_solvent' },
+      // РЕАКТИВЫ
+      { id: 'solvent_2', name: 'Концентрированный состав II', desc: 'Быстро растворяет химический налёт и окислы', price: 260, icon: 'hd_solvent_2' },
+      { id: 'solvent_3', name: 'Царская эссенция III', desc: 'Мгновенное растворение застарелой патины', price: 750, icon: 'hd_solvent_3' },
+      { id: 'solvent_4', name: 'Ультразвуковой распылитель IV', desc: 'Безупречное удаление налёта без вреда основе', price: 1900, icon: 'hd_solvent_4' },
 
-      // ПОЛИРОЛЬ
-      { id: 'polish_2', tierNum: 'II', tint: 0xcd7f32, name: 'Шёлковая замша II', desc: 'Финишный глянец и устранение потёртостей', price: 300, icon: 'slot_polish' },
-      { id: 'polish_3', tierNum: 'III', tint: 0x38bdf8, name: 'Паста ГОИ и микрофибра III', desc: '+15% к идеальному блеску экспоната', price: 850, icon: 'slot_polish' },
-      { id: 'polish_4', tierNum: 'IV', tint: 0xfacc15, name: 'Алмазная эмульсия IV', desc: 'Зеркальный блеск высшей музейной пробы', price: 2400, icon: 'slot_polish' }
+      // ПОЛИРОЛИ
+      { id: 'polish_2', name: 'Шёлковая замша II', desc: 'Финишный глянец и устранение потёртостей', price: 300, icon: 'hd_polish_2' },
+      { id: 'polish_3', name: 'Паста ГОИ и микрофибра III', desc: '+15% к идеальному блеску экспоната', price: 850, icon: 'hd_polish_3' },
+      { id: 'polish_4', name: 'Алмазная эмульсия IV', desc: 'Зеркальный блеск высшей музейной пробы', price: 2400, icon: 'hd_polish_4' }
     ];
 
     const cardH = 76;
@@ -236,27 +394,9 @@ export class ShopScene extends Phaser.Scene {
       const cardBg = this.add.rectangle(0, 0, cardW, cardH, 0x111622, 0.96)
         .setStrokeStyle(1.5, isBought ? 0x10b981 : 0x273142, 0.85);
 
-      // Контейнер иконки инструмента с грейдовой подсветкой и бейджем
-      const iconKey = this.textures.exists(t.icon) ? t.icon : 'slot_scraper';
-      const iconCont = this.add.container(-cardW / 2 + 36, 0);
+      // Чёткая HD-иконка
+      const icon = this.add.image(-cardW / 2 + 38, 0, t.icon).setDisplaySize(48, 48);
 
-      const aura = this.add.circle(0, 0, 20, t.tint, 0.15);
-      const icon = this.add.image(0, 0, iconKey).setScale(0.60);
-
-      // Плашка с уровнем инструмента (II, III, IV) поверх иконки
-      const badgeBg = this.add.rectangle(12, 12, 16, 12, 0x090d14, 0.9)
-        .setStrokeStyle(1, t.tint, 0.9);
-      const badgeTxt = this.add.text(12, 12, t.tierNum, {
-        fontSize: '8.5px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      }).setOrigin(0.5);
-      badgeTxt.setResolution(dpr);
-
-      iconCont.add([aura, icon, badgeBg, badgeTxt]);
-
-      // Тексты с принудительным setResolution(dpr)
       const title = this.add.text(-cardW / 2 + 72, -16, t.name, {
         fontSize: '12.5px',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -305,7 +445,7 @@ export class ShopScene extends Phaser.Scene {
         });
       }
 
-      card.add([cardBg, iconCont, title, desc, actionBtn]);
+      card.add([cardBg, icon, title, desc, actionBtn]);
       this.itemsContainer.add(card);
     });
 
