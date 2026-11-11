@@ -14,6 +14,7 @@ export class VictoryScene extends Phaser.Scene {
     const starsCount = (data && data.stars !== undefined) ? data.stars : 3;
     const isDuplicate = !!(data && data.isDuplicate);
     const isContract = !!(data && data.isContract);
+    const isKintsugi = !!(data && data.isKintsugi);
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x07090e).setDepth(0);
 
@@ -97,6 +98,24 @@ export class VictoryScene extends Phaser.Scene {
       .setScale(0)
       .setDepth(10);
 
+    // Свечение Кинцуги
+    if (isKintsugi) {
+      const glow = this.add.ellipse(width / 2, height * 0.38, 220, 260, 0xfacc15, 0.22)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(9);
+
+      this.tweens.add({
+        targets: glow,
+        scaleX: 1.08,
+        scaleY: 1.08,
+        alpha: 0.35,
+        duration: 1400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
+
     this.tweens.add({
       targets: artImg,
       scale: 0.78,
@@ -126,23 +145,25 @@ export class VictoryScene extends Phaser.Scene {
 
     // Оценка и бейдж
     let valueDesc = `Музейная оценка: +${artifact.marketValue || 100} 🪙`;
-    if (isContract) {
-      valueDesc += ' (Премия по контракту гильдии)';
+    if (isKintsugi) {
+      valueDesc += ' (✨ Шедевр Кинцуги: +60%)';
+    } else if (isContract) {
+      valueDesc += ' (Премия гильдии)';
     } else if (isDuplicate) {
-      valueDesc += ' (Повторный дубликат: -55%)';
+      valueDesc += ' (Дубликат: -55%)';
     } else if (starsCount === 1) {
-      valueDesc += ' (Много сколов: -40%)';
+      valueDesc += ' (Сколы: -40%)';
     }
 
     this.add.text(width / 2, height * 0.585, valueDesc, {
       fontSize: '12px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: (starsCount === 1 || isDuplicate) ? '#94a3b8' : '#22c55e',
+      color: isKintsugi ? '#facc15' : ((starsCount === 1 || isDuplicate) ? '#94a3b8' : '#22c55e'),
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(10);
 
-    // Прогресс Опыта со срезкой за ошибки
-    this.createExperienceBar(width, height, isContract, starsCount);
+    // Прогресс Опыта
+    this.createExperienceBar(width, height, isContract, starsCount, isKintsugi);
 
     // Кнопка: В главное меню
     const menuBtn = this.add.rectangle(
@@ -193,16 +214,17 @@ export class VictoryScene extends Phaser.Scene {
     });
   }
 
-  createExperienceBar(width, height, isContract, starsCount) {
+  createExperienceBar(width, height, isContract, starsCount, isKintsugi) {
     const xpBoxY = height * 0.67;
     const barW = width * 0.78;
 
-    // Срезка XP: 3 звезды = 100, 2 звезды = 70, 1 звезда = 40 (бонус контракта +80)
     let baseXp = 100;
     if (starsCount === 2) baseXp = 70;
     else if (starsCount === 1) baseXp = 40;
 
-    const xpAward = isContract ? (baseXp + 80) : baseXp;
+    let xpAward = isContract ? (baseXp + 80) : baseXp;
+    if (isKintsugi) xpAward += 50;
+
     const initialLvl = Storage.getLevelData();
 
     this.add.text(width / 2 - barW / 2, xpBoxY - 14, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
