@@ -32,7 +32,6 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
     }
 
-    // Проверка на повторный образец (дубликат)
     const isDuplicate = history.some(item => (item.templateId || item.id) === this.artifactData.id);
     this.isDuplicate = !this.activeContract && isDuplicate;
 
@@ -58,7 +57,7 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
 
-    // 1. Фон верстака
+    // 1. Атмосферное освещение и фактурный верстак
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     this.createAtmosphericWorkbench(width, height, tier);
 
@@ -89,7 +88,6 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Кнопка Музыки
     const musicBtn = this.add.rectangle(width - 130, 34, 32, 32, 0x161e2c)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
@@ -105,7 +103,6 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    // Кнопка SFX
     const sfxBtn = this.add.rectangle(width - 168, 34, 32, 32, 0x161e2c)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
@@ -162,7 +159,7 @@ export class RestoreScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(30);
 
-    // 4. Габариты артефакта
+    // 4. Позиционирование артефакта и тени
     this.artW = 320;
     this.artH = 400;
     this.centerX = Math.round(width / 2);
@@ -170,7 +167,9 @@ export class RestoreScene extends Phaser.Scene {
     this.topLeftX = this.centerX - this.artW / 2;
     this.topLeftY = this.centerY - this.artH / 2;
 
-    this.add.ellipse(this.centerX, this.centerY + 160, 240, 44, 0x000000, 0.45).setDepth(6);
+    // Двухслойный Ambient Occlusion
+    this.add.ellipse(this.centerX, this.centerY + 164, 260, 48, 0x000000, 0.35).setDepth(6);
+    this.add.ellipse(this.centerX, this.centerY + 160, 190, 32, 0x000000, 0.55).setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey).setDisplaySize(this.artW, this.artH).setDepth(7);
@@ -218,7 +217,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.startTask(0);
 
-    // 5. Очистка по контуру
+    // 5. Очистка
     const processInteraction = (pointer) => {
       if (!pointer.isDown || this.isTaskTransition) return;
       if (pointer.y > height * 0.74) return;
@@ -392,23 +391,72 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
+  // Обновлённый визуальный рендер: тёплый софит и фактура мата
   createAtmosphericWorkbench(width, height, tier) {
     const bg = this.add.graphics().setDepth(0);
-    bg.fillStyle(0x0a0c10, 1);
+
+    // Глубокий затемнённый фон комнаты
+    bg.fillStyle(0x06080d, 1);
     bg.fillRect(0, 0, width, height);
 
     const tableY = height * 0.22;
     const tableH = height - tableY;
 
-    bg.fillStyle(0x131822, 1);
+    // Стол
+    bg.fillStyle(0x0f141f, 1);
     bg.fillRect(0, tableY, width, tableH);
-    bg.lineStyle(2, 0x243042, 1);
+    bg.lineStyle(2, 0x1e2738, 1);
     bg.strokeLineShape(new Phaser.Geom.Line(0, tableY, width, tableY));
 
-    bg.fillStyle(0x18202c, 0.95);
-    bg.fillRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 16);
-    bg.lineStyle(1, 0x334155, 0.5);
-    bg.strokeRoundedRect(width * 0.06, tableY + 10, width * 0.88, height * 0.58, 16);
+    // Рабочий мат реставратора
+    const matX = width * 0.05;
+    const matY = tableY + 12;
+    const matW = width * 0.90;
+    const matH = height * 0.57;
+
+    bg.fillStyle(0x131a26, 0.98);
+    bg.fillRoundedRect(matX, matY, matW, matH, 14);
+
+    // Двойной латунный кант
+    bg.lineStyle(1.5, 0xc5a059, 0.7);
+    bg.strokeRoundedRect(matX, matY, matW, matH, 14);
+    bg.lineStyle(1, 0x334155, 0.4);
+    bg.strokeRoundedRect(matX + 4, matY + 4, matW - 8, matH - 8, 10);
+
+    // Угловые латунные заклёпки
+    const rivetPositions = [
+      { x: matX + 12, y: matY + 12 },
+      { x: matX + matW - 12, y: matY + 12 },
+      { x: matX + 12, y: matY + matH - 12 },
+      { x: matX + matW - 12, y: matY + matH - 12 }
+    ];
+    rivetPositions.forEach(r => {
+      bg.fillStyle(0xd4af37, 0.85);
+      bg.fillCircle(r.x, r.y, 3);
+      bg.lineStyle(1, 0x78562d, 0.9);
+      bg.strokeCircle(r.x, r.y, 3);
+    });
+
+    // Миллиметровая координатная сетка реставратора
+    const gridGfx = this.add.graphics().setDepth(1);
+    gridGfx.lineStyle(1, 0x1e293b, 0.28);
+    const step = 28;
+    for (let x = matX + 16; x < matX + matW - 16; x += step) {
+      gridGfx.lineBetween(x, matY + 14, x, matY + matH - 14);
+    }
+    for (let y = matY + 16; y < matY + matH - 16; y += step) {
+      gridGfx.lineBetween(matX + 14, y, matX + matW - 14, y);
+    }
+
+    // Тёплый софит лампы мастера (Spotlight)
+    const lampLight = this.add.circle(width / 2, height * 0.42, width * 0.46, 0xffeedd, 0.045)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(2);
+
+    // Вторичный ореол
+    this.add.circle(width / 2, height * 0.42, width * 0.28, 0xfacc15, 0.035)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(2);
   }
 
   processGlueAction(pointer) {
@@ -427,7 +475,6 @@ export class RestoreScene extends Phaser.Scene {
     if (d < 50 && !this.glueApplied) {
       this.glueApplied = true;
 
-      // Цвет заливки стыка
       const fillColor = this.isKintsugiMode ? 0xfacc15 : 0xf59e0b;
       this.breakHoleGfx.fillStyle(fillColor, 0.85);
       this.breakHoleGfx.fillCircle(targetX, targetY, 26);
@@ -489,7 +536,6 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
 
-    // Плашка выбора Кинцуги
     this.showKintsugiChoiceWidget(width);
 
     this.tweens.add({
@@ -655,6 +701,7 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
+  // Процедурная генерация фактурной грязи с микрорельефом
   startTask(taskIdx) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
@@ -695,32 +742,52 @@ export class RestoreScene extends Phaser.Scene {
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
 
     if (task.requiredTool === 'tool_scraper') {
-      dirtGfx.fillStyle(0x78562d, 0.98);
+      // Плотная окаменевшая порода с разломами
+      dirtGfx.fillStyle(0x6e4d25, 0.98);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x4a2e12, 0.85);
-      for (let i = 0; i < 26; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(10, 24));
+
+      dirtGfx.fillStyle(0x422a12, 0.92);
+      for (let i = 0; i < 34; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(12, 30));
+      }
+      dirtGfx.fillStyle(0x8a6233, 0.65);
+      for (let i = 0; i < 28; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(6, 16));
       }
     } else if (task.requiredTool === 'tool_brush') {
+      // Мягкий песчаный налет
       dirtGfx.fillStyle(0xa89f81, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x6b634d, 0.7);
+
+      dirtGfx.fillStyle(0x736c56, 0.75);
+      for (let i = 0; i < 32; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(8, 24));
+      }
+      dirtGfx.fillStyle(0xc2ba9d, 0.55);
       for (let i = 0; i < 26; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(8, 20));
+        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(5, 14));
       }
     } else if (task.requiredTool === 'tool_solvent') {
-      dirtGfx.fillStyle(0x2a593f, 0.92);
+      // Изумрудная патина и окислы
+      dirtGfx.fillStyle(0x234d35, 0.94);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x438a63, 0.75);
+
+      dirtGfx.fillStyle(0x367853, 0.80);
+      for (let i = 0; i < 28; i++) {
+        dirtGfx.fillEllipse(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(18, 38), Phaser.Math.Between(10, 22));
+      }
+      dirtGfx.fillStyle(0x133020, 0.70);
       for (let i = 0; i < 22; i++) {
-        dirtGfx.fillEllipse(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), Phaser.Math.Between(15, 30), Phaser.Math.Between(8, 16));
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(8, 18));
       }
     } else {
-      dirtGfx.fillStyle(0x181818, 0.55);
+      // Финишная тусклая плёнка под полировку
+      dirtGfx.fillStyle(0x141414, 0.65);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x333333, 0.40);
-      for (let i = 0; i < 18; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(25, this.artW - 25), Phaser.Math.Between(25, this.artH - 25), Phaser.Math.Between(12, 28));
+
+      dirtGfx.fillStyle(0x282828, 0.50);
+      for (let i = 0; i < 24; i++) {
+        dirtGfx.fillCircle(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(14, 32));
       }
     }
 
@@ -774,7 +841,6 @@ export class RestoreScene extends Phaser.Scene {
         qualityMultiplier = 0.8;
       }
 
-      // Множитель Кинцуги (+60%)
       const kintsugiBonus = this.hasKintsugiMastery ? 1.6 : 1.0;
       const finalPrice = Math.max(10, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
       this.artifactData.marketValue = finalPrice;
