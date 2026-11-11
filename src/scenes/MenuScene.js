@@ -1,5 +1,6 @@
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -12,7 +13,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(width / 2, height / 2, width, height, 0x090c15).setDepth(0);
 
     // Студийный лейбл
-    this.add.text(width / 2, height * 0.08, 'EASY DOPAMINE GAMES', {
+    this.add.text(width / 2, height * 0.07, 'EASY DOPAMINE GAMES', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#e2b35b',
@@ -22,10 +23,10 @@ export class MenuScene extends Phaser.Scene {
 
     const divider = this.add.graphics().setDepth(10);
     divider.lineStyle(1, 0xd4af37, 0.4);
-    divider.lineBetween(width / 2 - 50, height * 0.095, width / 2 + 50, height * 0.095);
+    divider.lineBetween(width / 2 - 50, height * 0.085, width / 2 + 50, height * 0.085);
 
     // Название игры
-    this.add.text(width / 2, height * 0.135, 'АРТЕФАКТЫ ВРЕМЕНИ', {
+    this.add.text(width / 2, height * 0.12, 'АРТЕФАКТЫ ВРЕМЕНИ', {
       fontSize: '24px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#ffffff',
@@ -33,32 +34,35 @@ export class MenuScene extends Phaser.Scene {
       letterSpacing: 2
     }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(width / 2, height * 0.175, 'Мастерская реставратора', {
+    this.add.text(width / 2, height * 0.155, 'Мастерская реставратора', {
       fontSize: '12.5px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#94a3b8',
       letterSpacing: 1
     }).setOrigin(0.5).setDepth(10);
 
-    // Индикатор ранга и уровня игрока
-    this.renderRankWidget(width, height * 0.22);
+    // Виджет ранга
+    this.renderRankWidget(width, height * 0.20);
 
     // Парящий логотип
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.36, logoKey)
-        .setDisplaySize(110, 110)
+      const logo = this.add.image(width / 2, height * 0.31, logoKey)
+        .setDisplaySize(85, 85)
         .setDepth(10);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.36 - 10,
+        y: height * 0.31 - 8,
         duration: 2000,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
       });
     }
+
+    // Плашка «Срочный Контракт Гильдии»
+    this.renderContractWidget(width, height * 0.42);
 
     // Кнопки звука
     this.createAudioToggles(width);
@@ -69,7 +73,7 @@ export class MenuScene extends Phaser.Scene {
         width / 2,
         y,
         width * 0.82,
-        50,
+        48,
         colorBg
       )
         .setStrokeStyle(1.5, colorStroke, 0.9)
@@ -95,24 +99,24 @@ export class MenuScene extends Phaser.Scene {
       });
     };
 
-    const startY = height * 0.52;
+    const startY = height * 0.54;
 
     createBtn(startY, '▶ ЭКСПЕДИЦИИ', 0x10b981, 0x34d399, '#ffffff', () => {
       this.scene.start('EraSelectScene');
     });
 
-    createBtn(startY + 64, '🏛️ ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
+    createBtn(startY + 60, '🏛️ ВИТРИНА МАГАЗИНА', 0x131a29, 0x3b82f6, '#93c5fd', () => {
       if (AudioManager.playShopBell) AudioManager.playShopBell();
       this.scene.start('MuseumScene');
     });
 
-    createBtn(startY + 128, '🛠️ ЛАВКА МАСТЕРА', 0x161c24, 0xe2b35b, '#fde047', () => {
+    createBtn(startY + 120, '🛠️ ЛАВКА МАСТЕРА', 0x161c24, 0xe2b35b, '#fde047', () => {
       this.scene.start('ShopScene');
     });
 
     // Казна внизу
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.add.text(width / 2, height - 36, `Казна: ${coins} 🪙`, {
+    this.add.text(width / 2, height - 34, `Казна: ${coins} 🪙`, {
       fontSize: '14px',
       fontFamily: 'system-ui, -apple-system, sans-serif',
       color: '#facc15',
@@ -124,7 +128,7 @@ export class MenuScene extends Phaser.Scene {
       AudioManager.playEraMusic('menu');
     }
 
-    // Проверка оффлайн-дохода музея от туристов
+    // Оффлайн-доход
     this.checkOfflineEarnings(width, height);
   }
 
@@ -132,7 +136,7 @@ export class MenuScene extends Phaser.Scene {
     const lvlData = Storage.getLevelData();
     const boxW = width * 0.82;
 
-    this.add.rectangle(width / 2, y, boxW, 38, 0x111622, 0.9)
+    this.add.rectangle(width / 2, y, boxW, 36, 0x111622, 0.9)
       .setStrokeStyle(1, 0x273142, 0.8).setDepth(10);
 
     this.add.text(width / 2 - boxW / 2 + 14, y, `⭐ Ур. ${lvlData.level} • ${lvlData.title}`, {
@@ -147,6 +151,61 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(barX + barW / 2, y, barW, 6, 0x1e293b).setDepth(11);
     this.add.rectangle(barX, y, barW * lvlData.progressRatio, 6, 0x38bdf8)
       .setOrigin(0, 0.5).setDepth(12);
+  }
+
+  renderContractWidget(width, y) {
+    const contract = Storage.getDailyContract(ARTIFACT_TEMPLATES);
+    if (!contract || contract.completed) return;
+
+    const boxW = width * 0.82;
+    const boxH = 68;
+
+    const box = this.add.rectangle(width / 2, y, boxW, boxH, 0x131926, 0.96)
+      .setStrokeStyle(1.5, 0xe2b35b, 0.8)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(12);
+
+    const clientLbl = this.add.text(width / 2 - boxW / 2 + 12, y - 18, `📜 ЗАКАЗ: ${contract.client.toUpperCase()}`, {
+      fontSize: '10.5px',
+      fontFamily: 'sans-serif',
+      color: '#e2b35b',
+      fontStyle: 'bold',
+      letterSpacing: 1
+    }).setDepth(13);
+
+    const itemLbl = this.add.text(width / 2 - boxW / 2 + 12, y + 2, contract.name, {
+      fontSize: '13.5px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setDepth(13);
+
+    const rewardLbl = this.add.text(width / 2 - boxW / 2 + 12, y + 20, `+${contract.rewardCoins} 🪙  •  +${contract.bonusXP} XP`, {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#22c55e',
+      fontStyle: 'bold'
+    }).setDepth(13);
+
+    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 46, y, 76, 32, 0x10b981)
+      .setStrokeStyle(1, 0x34d399, 0.9)
+      .setDepth(13);
+
+    const takeTxt = this.add.text(width / 2 + boxW / 2 - 46, y, 'ВЗЯТЬ', {
+      fontSize: '11px',
+      fontFamily: 'sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(14);
+
+    box.on('pointerdown', () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('RestoreScene', {
+        regionId: contract.regionId,
+        templateId: contract.templateId,
+        contract
+      });
+    });
   }
 
   checkOfflineEarnings(width, height) {
@@ -219,7 +278,6 @@ export class MenuScene extends Phaser.Scene {
   }
 
   createAudioToggles(width) {
-    // Музыка
     const musicBtn = this.add.circle(
       width - 70,
       36,
@@ -245,7 +303,6 @@ export class MenuScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    // SFX
     const sfxBtn = this.add.circle(
       width - 30,
       36,
