@@ -34,7 +34,7 @@ Promise.all([
     width: 480,
     height: 800,
     parent: 'game-container',
-    backgroundColor: '#07090e',
+    backgroundColor: '#0d0906',
     // Hi-DPI рендер под реальную плотность экрана мобильных устройств
     resolution: Math.min(window.devicePixelRatio || 1, 2),
     render: {
