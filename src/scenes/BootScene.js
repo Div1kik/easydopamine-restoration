@@ -39,8 +39,6 @@ export class BootScene extends Phaser.Scene {
     this.scene.start('MenuScene');
   }
 
-  createRestorationAssets() {
-
 
   createRestorationAssets() {
     const make = (key, w, h, fn) => {
