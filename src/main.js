@@ -35,20 +35,19 @@ Promise.all([
     height: 800,
     parent: 'game-container',
     backgroundColor: '#0d0906',
-    // Hi-DPI рендер под реальную плотность экрана мобильных устройств
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
     render: {
       antialias: true,
       antialiasGL: true,
       pixelArt: false,
-      roundPixels: false, // Отключаем грубое округление для устранения ступенек и ряби
+      roundPixels: false,
       powerPreference: 'high-performance'
     },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       width: 480,
-      height: 800
+      height: 800,
+      zoom: Math.min(window.devicePixelRatio || 1, 2)
     },
     input: {
       activePointers: 2
