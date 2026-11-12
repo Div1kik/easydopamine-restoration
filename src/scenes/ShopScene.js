@@ -639,4 +639,3 @@ export class ShopScene extends Phaser.Scene {
     const totalH = expansions.length * (cardH + 8) + 20;
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
-}
