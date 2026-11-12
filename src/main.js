@@ -44,7 +44,7 @@ Promise.all([
     },
     scale: {
       mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
       width: 480,
       height: 800,
       zoom: Math.min(window.devicePixelRatio || 1, 2)
