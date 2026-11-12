@@ -1047,12 +1047,13 @@ export class RestoreScene extends Phaser.Scene {
     return chosen;
   }
 
-  setupBreakAndAssembleStage(task) {
+setupBreakAndAssembleStage(task) {
     const { width } = this.scale;
     const dpr = this.dpr;
 
     this.assemblyContainer.removeAll(true);
     this.assemblyContainer.setVisible(true);
+    this.assemblyContainer.setDepth(30);
 
     this.progressBarFill.width = 6;
     this.shardsList = [];
@@ -1079,29 +1080,32 @@ export class RestoreScene extends Phaser.Scene {
     points.forEach((pt, idx) => {
       const targetX = pt.x;
       const targetY = pt.y;
+      const radius = 25;
 
-      this.breakHoleGfx.fillStyle(0x0d0805, 0.92);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 24);
-      this.breakHoleGfx.lineStyle(2, 0xef4444, 0.85);
-      this.breakHoleGfx.strokeCircle(targetX, targetY, 24);
+      // Тёмное гнездо скола на артефакте
+      this.breakHoleGfx.fillStyle(0x0d0805, 0.94);
+      this.breakHoleGfx.fillCircle(targetX, targetY, radius);
+      this.breakHoleGfx.lineStyle(2, 0xef4444, 0.9);
+      this.breakHoleGfx.strokeCircle(targetX, targetY, radius);
 
-      const pieceContainer = this.add.container(0, 0);
+      const pieceContainer = this.add.container(0, 0).setDepth(35);
 
       const pieceImg = this.add.image(this.centerX, this.centerY, texKey)
         .setDisplaySize(this.artW, this.artH);
 
-      const shardMaskShape = this.make.graphics({ x: 0, y: 0, add: false });
+      // Маска рисуется в локальном (0, 0), а её положение сдвигается через setPosition
+      const shardMaskShape = this.make.graphics({ x: targetX, y: targetY, add: false });
       shardMaskShape.fillStyle(0xffffff);
-      shardMaskShape.fillCircle(targetX, targetY, 24);
+      shardMaskShape.fillCircle(0, 0, radius);
 
       const shardMask = shardMaskShape.createGeometryMask();
-      pieceContainer.setMask(shardMask);
+      pieceImg.setMask(shardMask);
 
       const pieceBorder = this.add.graphics();
-      pieceBorder.lineStyle(2, 0xfacc15, 0.9);
-      pieceBorder.strokeCircle(targetX, targetY, 24);
+      pieceBorder.lineStyle(2.5, 0xfacc15, 0.95);
+      pieceBorder.strokeCircle(targetX, targetY, radius);
 
-      const hitZone = this.add.circle(targetX, targetY, 34, 0xffffff, 0)
+      const hitZone = this.add.circle(targetX, targetY, 36, 0xfacc15, 0.06)
         .setInteractive({ draggable: true, useHandCursor: true });
 
       pieceContainer.add([pieceImg, pieceBorder, hitZone]);
@@ -1133,6 +1137,9 @@ export class RestoreScene extends Phaser.Scene {
         y: restOffsetY,
         duration: 380 + idx * 60,
         ease: 'Bounce.easeOut',
+        onUpdate: () => {
+          shardMaskShape.setPosition(targetX + pieceContainer.x, targetY + pieceContainer.y);
+        },
         onComplete: () => {
           shardMaskShape.setPosition(targetX + restOffsetX, targetY + restOffsetY);
           if (idx === 0) {
@@ -1159,21 +1166,22 @@ export class RestoreScene extends Phaser.Scene {
         if (shardObj.placed || !shardObj.glued) return;
 
         const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, 0, 0);
-        if (dist < 38) {
+        if (dist < 40) {
           shardObj.placed = true;
           pieceContainer.x = 0;
           pieceContainer.y = 0;
           shardMaskShape.setPosition(targetX, targetY);
           hitZone.disableInteractive();
+          hitZone.setFillStyle(0xffffff, 0);
           pieceBorder.clear();
 
           if (this.isKintsugiMode) {
             pieceBorder.lineStyle(3, 0xfacc15, 0.95);
-            pieceBorder.strokeCircle(targetX, targetY, 24);
+            pieceBorder.strokeCircle(targetX, targetY, radius);
             if (AudioManager.playShine) AudioManager.playShine();
           } else {
             pieceBorder.lineStyle(1, 0x4ade80, 0.45);
-            pieceBorder.strokeCircle(targetX, targetY, 24);
+            pieceBorder.strokeCircle(targetX, targetY, radius);
             if (AudioManager.playCoin) AudioManager.playCoin();
           }
 
@@ -1183,7 +1191,12 @@ export class RestoreScene extends Phaser.Scene {
           if (allPlaced) {
             if (this.isKintsugiMode) {
               this.hasKintsugiMastery = true;
-              Storage.addKintsugiLacquer(-1);
+              if (Storage.addKintsugiLacquer) {
+                Storage.addKintsugiLacquer(-1);
+              } else {
+                const cur = Math.max(0, parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10) - 1);
+                localStorage.setItem('kintsugi_lacquer', String(cur));
+              }
             }
 
             this.time.delayedCall(400, () => {
@@ -1215,7 +1228,9 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    const lacquer = Storage.getKintsugiLacquer ? Storage.getKintsugiLacquer() : 0;
+    const lacquer = Storage.getKintsugiLacquer
+      ? Storage.getKintsugiLacquer()
+      : parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10);
     if (lacquer > 0) {
       this.showKintsugiBanner(width, dpr);
     }
@@ -1224,7 +1239,7 @@ export class RestoreScene extends Phaser.Scene {
   showKintsugiBanner(width, dpr) {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
-    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(30);
+    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(40);
     const bannerW = width * 0.88;
     const bannerH = 44;
 
@@ -1428,4 +1443,3 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 }
-
