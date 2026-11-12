@@ -14,11 +14,11 @@ export class ShopScene extends Phaser.Scene {
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
     this.FONT_UI = FONT_UI;
 
-    // 1. Фон Лавки мастера
+    // 1. Фон Лавки мастера (лёгкая вуаль, чтобы интерьер хорошо просвечивал сквозь карточки)
     if (this.textures.exists('shop_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'shop_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.5).setDepth(0);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.24).setDepth(0);
     } else {
       const bg = this.add.graphics().setDepth(0);
       bg.fillGradientStyle(0x21160d, 0x21160d, 0x0d0805, 0x0d0805, 1);
@@ -30,9 +30,9 @@ export class ShopScene extends Phaser.Scene {
 
     this.generateHDToolVariants();
 
-    // Верхняя шапка лавки
+    // Полупрозрачная верхняя шапка лавки
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.84);
     headerBg.fillRect(0, 0, width, 108);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 108, width, 108);
@@ -61,7 +61,7 @@ export class ShopScene extends Phaser.Scene {
     const startX = width * 0.05 + tabW / 2;
     const tabY = 78;
 
-    this.tabToolsBg = this.add.rectangle(startX, tabY, tabW - 4, tabH, 0x1e130b)
+    this.tabToolsBg = this.add.rectangle(startX, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabToolsTxt = this.add.text(startX, tabY, 'Инструменты', {
@@ -71,7 +71,7 @@ export class ShopScene extends Phaser.Scene {
       resolution: this.dpr
     }).setOrigin(0.5).setDepth(21);
 
-    this.tabWorkshopBg = this.add.rectangle(startX + tabW, tabY, tabW - 4, tabH, 0x1e130b)
+    this.tabWorkshopBg = this.add.rectangle(startX + tabW, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabWorkshopTxt = this.add.text(startX + tabW, tabY, 'Верстак', {
@@ -81,7 +81,7 @@ export class ShopScene extends Phaser.Scene {
       resolution: this.dpr
     }).setOrigin(0.5).setDepth(21);
 
-    this.tabMuseumBg = this.add.rectangle(startX + tabW * 2, tabY, tabW - 4, tabH, 0x1e130b)
+    this.tabMuseumBg = this.add.rectangle(startX + tabW * 2, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabMuseumTxt = this.add.text(startX + tabW * 2, tabY, 'Музей', {
@@ -127,9 +127,9 @@ export class ShopScene extends Phaser.Scene {
     this.refreshTabs();
     this.renderContent();
 
-    // Нижняя панель с кнопкой возврата
+    // Полупрозрачная нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.97);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.88);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -139,7 +139,7 @@ export class ShopScene extends Phaser.Scene {
     const btnY = height - 33;
 
     const backGfx = this.add.graphics().setDepth(31);
-    backGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
+    backGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 0.94);
     backGfx.fillRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 11);
     backGfx.lineStyle(1.5, 0xc89d54, 0.9);
     backGfx.strokeRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 11);
@@ -335,7 +335,7 @@ export class ShopScene extends Phaser.Scene {
 
   refreshTabs() {
     const setTab = (bg, txt, active) => {
-      bg.setFillStyle(active ? 0xd99b26 : 0x24180f);
+      bg.setFillStyle(active ? 0xd99b26 : 0x24180f, active ? 0.96 : 0.82);
       bg.setStrokeStyle(1.5, active ? 0xfef08a : 0x8c6239);
       txt.setColor(active ? '#1a1004' : '#d6c3a5');
     };
@@ -387,33 +387,38 @@ export class ShopScene extends Phaser.Scene {
 
       const card = this.add.container(width / 2, cardY);
 
+      // Полупрозрачная стеклянная карточка в тёплых тонах
       const cardBg = this.add.graphics();
-      cardBg.fillStyle(0x21160d, 0.96);
+      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.56);
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0x8c6239, 0.85);
+      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      const icon = this.add.image(-cardW / 2 + 38, 0, tool.icon).setDisplaySize(52, 52);
+      // Лёгкая тёмная подложка под иконку инструмента
+      cardBg.fillStyle(0x0d0805, 0.45);
+      cardBg.fillRoundedRect(-cardW / 2 + 10, -28, 56, 56, 9);
 
-      const title = this.add.text(-cardW / 2 + 72, -18, tool.name, {
+      const icon = this.add.image(-cardW / 2 + 38, 0, tool.icon).setDisplaySize(48, 48);
+
+      const title = this.add.text(-cardW / 2 + 74, -18, tool.name, {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 72, 2, tool.desc, {
+      const desc = this.add.text(-cardW / 2 + 74, 2, tool.desc, {
         fontSize: '10px',
         fontFamily: FONT_UI,
-        color: '#d6c3a5',
+        color: '#e6d5bc',
         wordWrap: { width: cardW - 165 },
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 3, false, true);
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
       const actionGfx = this.add.graphics();
-      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, 1);
+      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
       actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
       actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
       actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
@@ -480,9 +485,15 @@ export class ShopScene extends Phaser.Scene {
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
-      cardBg.fillStyle(isCurrent ? 0x332215 : 0x21160d, 0.96);
+      cardBg.fillGradientStyle(
+        isCurrent ? 0x3b2614 : 0x261a10,
+        isCurrent ? 0x3b2614 : 0x261a10,
+        0x170f09,
+        0x170f09,
+        isCurrent ? 0.72 : 0.56
+      );
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(isCurrent ? 1.8 : 1.2, isCurrent ? 0xfacc15 : (isOwned ? 0x4ade80 : 0x8c6239), 0.9);
+      cardBg.lineStyle(isCurrent ? 1.8 : 1.2, isCurrent ? 0xfacc15 : (isOwned ? 0x4ade80 : 0xc89d54), 0.9);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
       const title = this.add.text(-cardW / 2 + 18, -18, item.name, {
@@ -491,15 +502,15 @@ export class ShopScene extends Phaser.Scene {
         color: '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 4, false, true);
 
       const desc = this.add.text(-cardW / 2 + 18, 2, item.desc, {
         fontSize: '10px',
         fontFamily: FONT_UI,
-        color: '#d6c3a5',
+        color: '#e6d5bc',
         wordWrap: { width: cardW - 135 },
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 3, false, true);
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
       const canBuy = (!isOwned && item.tier === currentTier + 1);
@@ -507,7 +518,7 @@ export class ShopScene extends Phaser.Scene {
       const actionGfx = this.add.graphics();
       const btnColor = isCurrent ? 0x3b2614 : (canBuy ? 0xd99b26 : 0x1a120b);
       const strokeColor = isCurrent ? 0xfacc15 : (canBuy ? 0xfef08a : 0x5c3d22);
-      actionGfx.fillStyle(btnColor, 1);
+      actionGfx.fillStyle(btnColor, canBuy ? 0.98 : 0.88);
       actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
       actionGfx.lineStyle(1, strokeColor, 0.95);
       actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
@@ -573,9 +584,9 @@ export class ShopScene extends Phaser.Scene {
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
-      cardBg.fillStyle(0x21160d, 0.96);
+      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.56);
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0x8c6239, 0.85);
+      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
       const name = this.add.text(-cardW / 2 + 18, -18, exp.name, {
@@ -584,19 +595,19 @@ export class ShopScene extends Phaser.Scene {
         color: '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 4, false, true);
 
       const desc = this.add.text(-cardW / 2 + 18, 2, exp.desc, {
         fontSize: '10px',
         fontFamily: FONT_UI,
-        color: '#d6c3a5',
+        color: '#e6d5bc',
         wordWrap: { width: cardW - 135 },
         resolution: dpr
-      });
+      }).setShadow(0, 1, '#000000', 3, false, true);
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
       const actionGfx = this.add.graphics();
-      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, 1);
+      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
       actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
       actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
       actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
