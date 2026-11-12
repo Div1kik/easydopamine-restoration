@@ -14,7 +14,7 @@ export class ShopScene extends Phaser.Scene {
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
     this.FONT_UI = FONT_UI;
 
-    // 1. Фон Лавки мастера (лёгкая вуаль, чтобы интерьер хорошо просвечивал сквозь карточки)
+    // 1. Фон Лавки мастера
     if (this.textures.exists('shop_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'shop_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
@@ -30,7 +30,7 @@ export class ShopScene extends Phaser.Scene {
 
     this.generateHDToolVariants();
 
-    // Полупрозрачная верхняя шапка лавки
+    // Верхняя шапка лавки
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.84);
     headerBg.fillRect(0, 0, width, 108);
@@ -127,7 +127,7 @@ export class ShopScene extends Phaser.Scene {
     this.refreshTabs();
     this.renderContent();
 
-    // Полупрозрачная нижняя панель с кнопкой возврата
+    // Нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.88);
     footerBg.fillRect(0, height - 66, width, 66);
@@ -464,38 +464,34 @@ export class ShopScene extends Phaser.Scene {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
     const currentTier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = Storage.getActiveWorkbenchSkin
-      ? Storage.getActiveWorkbenchSkin()
-      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${currentTier}`);
-
-    const ownedSkins = Storage.getOwnedWorkbenchSkins
-      ? Storage.getOwnedWorkbenchSkins()
-      : JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
+    const activeSkin = localStorage.getItem('active_workbench_skin') || `workbench_bg_${currentTier}`;
+    const ownedSkins = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
+    const pityCount = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10);
 
     const tiers = [
       // Базовые улучшения мастерской (Tier 1..4)
       { id: 'workbench_bg_1', type: 'base', tier: 1, name: 'Сырой подвал', desc: 'Рабочий стол с тусклой свечой и тисками', price: 0 },
-      { id: 'workbench_bg_2', type: 'base', tier: 2, name: 'Чердак антиквара', desc: 'Уютный дубовый стол с керосиновой лампой', price: 350 },
-      { id: 'workbench_bg_3', type: 'base', tier: 3, name: 'Кабинет реставратора', desc: 'Стол из красного дерева с латунными приборами', price: 750 },
-      { id: 'workbench_bg_4', type: 'base', tier: 4, name: 'Ювелирная мастерская', desc: 'Прецизионная мастерская с мрамором и золотом', price: 1800 },
+      { id: 'workbench_bg_2', type: 'base', tier: 2, name: 'Чердак антиквара', desc: 'Уютный дубовый стол с керосиновой лампой', price: 600 },
+      { id: 'workbench_bg_3', type: 'base', tier: 3, name: 'Кабинет реставратора', desc: 'Стол из красного дерева с латунными приборами', price: 1800 },
+      { id: 'workbench_bg_4', type: 'base', tier: 4, name: 'Ювелирная мастерская', desc: 'Прецизионная мастерская с мрамором и золотом', price: 4500 },
 
-      // Эпохальные верстаки (в 2 раза дешевле легендарных)
-      { id: 'workbench_bg_9', type: 'era', name: 'Эпоха: Древний Египет', desc: 'Верстак из песчаника с амулетами и папирусами', price: 1000 },
-      { id: 'workbench_bg_10', type: 'era', name: 'Эпоха: Античность', desc: 'Мраморная плита с амфорами и оливковыми ветвями', price: 1000 },
-      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековая Европа', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 1000 },
-      { id: 'workbench_bg_12', type: 'era', name: 'Эпоха: Япония', desc: 'Лакированный стол с тушью и бамбуком', price: 1000 },
-      { id: 'workbench_bg_13', type: 'era', name: 'Эпоха: Ацтеки', desc: 'Массивное тропическое дерево с обсидианом и масками', price: 1000 },
-      { id: 'workbench_bg_14', type: 'era', name: 'Эпоха: Викинги', desc: 'Северный дуб с мехами, рунами и щитами', price: 1000 },
-      { id: 'workbench_bg_15', type: 'era', name: 'Эпоха: Ренессанс', desc: 'Полированный орех с чертежами и масляными красками', price: 1000 },
+      // Эпохальные верстаки (7 500 🪙 или 5% из сундука)
+      { id: 'workbench_bg_9', type: 'era', name: 'Эпоха: Древний Египет', desc: 'Верстак из песчаника с амулетами и папирусами', price: 7500 },
+      { id: 'workbench_bg_10', type: 'era', name: 'Эпоха: Античность', desc: 'Мраморная плита с амфорами и оливковыми ветвями', price: 7500 },
+      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековая Европа', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 7500 },
+      { id: 'workbench_bg_12', type: 'era', name: 'Эпоха: Япония', desc: 'Лакированный стол с тушью и бамбуком', price: 7500 },
+      { id: 'workbench_bg_13', type: 'era', name: 'Эпоха: Ацтеки', desc: 'Массивное тропическое дерево с обсидианом и масками', price: 7500 },
+      { id: 'workbench_bg_14', type: 'era', name: 'Эпоха: Викинги', desc: 'Северный дуб с мехами, рунами и щитами', price: 7500 },
+      { id: 'workbench_bg_15', type: 'era', name: 'Эпоха: Ренессанс', desc: 'Полированный орех с чертежами и масляными красками', price: 7500 },
 
-      // Легендарные кастомные верстаки
-      { id: 'workbench_bg_5', type: 'legendary', name: 'Эксклюзив: Алхимия', desc: 'Тайная каменная плита со светящимися зельями', price: 2000 },
-      { id: 'workbench_bg_6', type: 'legendary', name: 'Эксклюзив: Киберпанк', desc: 'Лаборатория будущего с неонами и платами', price: 2000 },
-      { id: 'workbench_bg_7', type: 'legendary', name: 'Эксклюзив: Батискаф', desc: 'Подводная станция с иллюминаторами и трубами', price: 2000 },
-      { id: 'workbench_bg_8', type: 'legendary', name: 'Эксклюзив: Космос', desc: 'Орбитальная станция с панорамным видом на звёзды', price: 2000 }
+      // Легендарные эксклюзивные верстаки (ТОЛЬКО ИЗ СУНДУКА ИСКАТЕЛЯ)
+      { id: 'workbench_bg_5', type: 'legendary', name: '★ Эксклюзив: Алхимия', desc: 'Тайная каменная плита со светящимися зельями', price: null },
+      { id: 'workbench_bg_6', type: 'legendary', name: '★ Эксклюзив: Киберпанк', desc: 'Лаборатория будущего с неонами и платами', price: null },
+      { id: 'workbench_bg_7', type: 'legendary', name: '★ Эксклюзив: Батискаф', desc: 'Подводная станция с иллюминаторами и трубами', price: null },
+      { id: 'workbench_bg_8', type: 'legendary', name: '★ Эксклюзив: Космос', desc: 'Орбитальная станция с панорамным видом на звёзды', price: null }
     ];
 
-    const cardH = 76;
+    const cardH = 78;
     const cardW = width * 0.90;
     let cardIdx = 0;
 
@@ -505,7 +501,7 @@ export class ShopScene extends Phaser.Scene {
       const boxCont = this.add.container(width / 2, cardY);
 
       const boxBg = this.add.graphics();
-      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.78);
+      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.80);
       boxBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
       boxBg.lineStyle(2, 0xeab308, 0.95);
       boxBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
@@ -524,7 +520,7 @@ export class ShopScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
 
-      const title = this.add.text(-cardW / 2 + 74, -20, '📦 СУНДУК ИСКАТЕЛЯ', {
+      const title = this.add.text(-cardW / 2 + 74, -24, '📦 СУНДУК ИСКАТЕЛЯ', {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: '#fef08a',
@@ -532,15 +528,15 @@ export class ShopScene extends Phaser.Scene {
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 74, -1, 'Шанс 10% выбить редкий верстак!\nИли: Золотой лак / 100–600 монет.', {
-        fontSize: '9.5px',
+      const desc = this.add.text(-cardW / 2 + 74, -7, `Шанс: 2.5% эксклюзив, 5% эпоха (гарант: ${pityCount}/15)\nУтешительно: лак Кинцуги или 450–1100 🪙`, {
+        fontSize: '9px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
         wordWrap: { width: cardW - 165 },
         resolution: dpr
       }).setShadow(0, 1, '#000000', 3, false, true);
 
-      const lootboxPrice = Storage.getLootboxCost ? Storage.getLootboxCost() : 750;
+      const lootboxPrice = 2200;
       const openBtn = this.add.container(cardW / 2 - 45, 0);
       const openGfx = this.add.graphics();
       openGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 0.98);
@@ -564,7 +560,7 @@ export class ShopScene extends Phaser.Scene {
         if (this.isDragging || isOpening) return;
         isOpening = true;
 
-        const res = this.rollLootboxSafe(lootboxPrice);
+        const res = this.rollLootboxRebalanced(lootboxPrice);
         if (res.success) {
           if (AudioManager.playCoin) AudioManager.playCoin();
 
@@ -575,31 +571,43 @@ export class ShopScene extends Phaser.Scene {
           const overlay = this.add.rectangle(width / 2, this.scale.height / 2, width, this.scale.height, 0x080503, 0.85)
             .setInteractive();
 
+          const isRareSkin = res.type === 'skin';
           const modalBg = this.add.graphics();
-          modalBg.fillGradientStyle(0x2d180c, 0x2d180c, 0x140a04, 0x140a04, 0.96);
-          modalBg.fillRoundedRect(width / 2 - 125, this.scale.height / 2 - 76, 250, 152, 14);
-          modalBg.lineStyle(1.5, 0xeab308, 0.95);
-          modalBg.strokeRoundedRect(width / 2 - 125, this.scale.height / 2 - 76, 250, 152, 14);
+          modalBg.fillGradientStyle(
+            isRareSkin ? 0x3b1f0e : 0x2d180c,
+            isRareSkin ? 0x3b1f0e : 0x2d180c,
+            0x140a04,
+            0x140a04,
+            0.97
+          );
+          modalBg.fillRoundedRect(width / 2 - 128, this.scale.height / 2 - 78, 256, 156, 14);
+          modalBg.lineStyle(isRareSkin ? 2.2 : 1.5, isRareSkin ? 0xc084fc : 0xeab308, 0.95);
+          modalBg.strokeRoundedRect(width / 2 - 128, this.scale.height / 2 - 78, 256, 156, 14);
 
-          const modalTitle = this.add.text(width / 2, this.scale.height / 2 - 48, '🎉 НАГРАДА ИЗ СУНДУКА!', {
-            fontSize: '12.5px',
-            fontFamily: FONT_UI,
-            color: '#fde047',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
+          const modalTitle = this.add.text(
+            width / 2,
+            this.scale.height / 2 - 50,
+            isRareSkin ? '✨ РЕДКАЯ НАХОДКА!' : '📦 НАГРАДА ИЗ СУНДУКА!',
+            {
+              fontSize: '12.5px',
+              fontFamily: FONT_UI,
+              color: isRareSkin ? '#e879f9' : '#fde047',
+              fontStyle: 'bold',
+              resolution: dpr
+            }
+          ).setOrigin(0.5);
 
-          const rewardTxt = this.add.text(width / 2, this.scale.height / 2 - 8, res.name, {
+          const rewardTxt = this.add.text(width / 2, this.scale.height / 2 - 10, res.name, {
             fontSize: '13.5px',
             fontFamily: FONT_UI,
             color: '#ffffff',
             fontStyle: 'bold',
             align: 'center',
-            wordWrap: { width: 220 },
+            wordWrap: { width: 224 },
             resolution: dpr
           }).setOrigin(0.5);
 
-          const tipTxtStr = res.type === 'skin' ? 'Верстак добавлен в коллекцию!' : 'Награда зачислена';
+          const tipTxtStr = isRareSkin ? 'Верстак добавлен в вашу коллекцию!' : 'Награда зачислена в казну';
           const tipTxt = this.add.text(width / 2, this.scale.height / 2 + 22, tipTxtStr, {
             fontSize: '10px',
             fontFamily: FONT_UI,
@@ -609,12 +617,12 @@ export class ShopScene extends Phaser.Scene {
 
           const closeGfx = this.add.graphics();
           closeGfx.fillStyle(0x452a18, 1);
-          closeGfx.fillRoundedRect(width / 2 - 48, this.scale.height / 2 + 40, 96, 26, 7);
+          closeGfx.fillRoundedRect(width / 2 - 48, this.scale.height / 2 + 42, 96, 26, 7);
           closeGfx.lineStyle(1, 0xc89d54, 0.9);
-          closeGfx.strokeRoundedRect(width / 2 - 48, this.scale.height / 2 + 40, 96, 26, 7);
+          closeGfx.strokeRoundedRect(width / 2 - 48, this.scale.height / 2 + 42, 96, 26, 7);
 
-          const closeZone = this.add.zone(width / 2, this.scale.height / 2 + 53, 96, 26).setInteractive({ useHandCursor: true });
-          const closeTxt = this.add.text(width / 2, this.scale.height / 2 + 53, 'ЗАБРАТЬ', {
+          const closeZone = this.add.zone(width / 2, this.scale.height / 2 + 55, 96, 26).setInteractive({ useHandCursor: true });
+          const closeTxt = this.add.text(width / 2, this.scale.height / 2 + 55, 'ЗАБРАТЬ', {
             fontSize: '10.5px',
             fontFamily: FONT_UI,
             color: '#fef08a',
@@ -645,6 +653,7 @@ export class ShopScene extends Phaser.Scene {
       const cardY = cardIdx * (cardH + 8) + cardH / 2;
 
       const isBase = item.type === 'base';
+      const isExclusive = item.type === 'legendary';
       const isBaseOwned = isBase && item.tier <= currentTier;
       const canUpgradeBase = isBase && item.tier === currentTier + 1;
       const isBaseLocked = isBase && item.tier > currentTier + 1;
@@ -652,22 +661,24 @@ export class ShopScene extends Phaser.Scene {
       const isCustomOwned = !isBase && ownedSkins.includes(item.id);
       const isPurchased = isBaseOwned || isCustomOwned;
       const isCurrentActive = activeSkin === item.id;
+      const isChestOnlyLocked = isExclusive && !isPurchased;
 
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
       cardBg.fillGradientStyle(
-        isCurrentActive ? 0x3b2614 : 0x261a10,
-        isCurrentActive ? 0x3b2614 : 0x261a10,
+        isCurrentActive ? 0x3b2614 : (isExclusive ? 0x28182e : 0x261a10),
+        isCurrentActive ? 0x3b2614 : (isExclusive ? 0x28182e : 0x261a10),
         0x170f09,
         0x170f09,
-        isCurrentActive ? 0.74 : 0.56
+        isCurrentActive ? 0.74 : 0.58
       );
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
       let borderClr = 0xc89d54;
       if (isCurrentActive) borderClr = 0xfacc15;
       else if (isPurchased) borderClr = 0x4ade80;
+      else if (isExclusive) borderClr = 0xc084fc;
       else if (isBaseLocked) borderClr = 0x5c3d22;
 
       cardBg.lineStyle(isCurrentActive ? 1.8 : 1.2, borderClr, isBaseLocked ? 0.45 : 0.9);
@@ -676,7 +687,7 @@ export class ShopScene extends Phaser.Scene {
       const title = this.add.text(-cardW / 2 + 16, -18, item.name, {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
-        color: isBaseLocked ? '#9c8265' : '#fdf6e3',
+        color: isBaseLocked ? '#9c8265' : (isExclusive ? '#f3e8ff' : '#fdf6e3'),
         fontStyle: 'bold',
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
@@ -690,7 +701,7 @@ export class ShopScene extends Phaser.Scene {
       }).setShadow(0, 1, '#000000', 3, false, true);
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
-      const canBuy = canUpgradeBase || (!isBase && !isPurchased);
+      const canBuy = canUpgradeBase || (!isBase && !isExclusive && !isPurchased);
 
       const actionGfx = this.add.graphics();
       let btnColor = 0x1a120b;
@@ -701,6 +712,9 @@ export class ShopScene extends Phaser.Scene {
       } else if (isPurchased) {
         btnColor = 0x1e3322;
         strokeColor = 0x4ade80;
+      } else if (isChestOnlyLocked) {
+        btnColor = 0x2e1738;
+        strokeColor = 0xc084fc;
       } else if (canBuy) {
         btnColor = 0xd99b26;
         strokeColor = 0xfef08a;
@@ -712,19 +726,22 @@ export class ShopScene extends Phaser.Scene {
       actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
 
       const actionZone = this.add.zone(0, 0, 74, 30);
-      if (!isBaseLocked && !isCurrentActive) {
+      if (!isBaseLocked && !isCurrentActive && !isChestOnlyLocked) {
         actionZone.setInteractive({ useHandCursor: true });
       }
 
       let btnLabel = `TIER ${item.tier - 1}`;
       if (isCurrentActive) btnLabel = 'АКТИВЕН';
       else if (isPurchased) btnLabel = 'ВЫБРАТЬ';
+      else if (isChestOnlyLocked) btnLabel = 'В СУНДУКЕ';
       else if (canBuy) btnLabel = `${item.price} 🪙`;
 
       const actionTxt = this.add.text(0, 0, btnLabel, {
-        fontSize: '10.5px',
+        fontSize: isChestOnlyLocked ? '9.5px' : '10.5px',
         fontFamily: FONT_UI,
-        color: isCurrentActive ? '#facc15' : (isPurchased ? '#86efac' : (canBuy ? '#1a1004' : '#8c735b')),
+        color: isCurrentActive
+          ? '#facc15'
+          : (isPurchased ? '#86efac' : (isChestOnlyLocked ? '#e879f9' : (canBuy ? '#1a1004' : '#8c735b'))),
         fontStyle: 'bold',
         resolution: dpr
       }).setOrigin(0.5);
@@ -732,11 +749,11 @@ export class ShopScene extends Phaser.Scene {
       actionBtn.add([actionGfx, actionTxt, actionZone]);
 
       actionZone.on('pointerdown', () => {
-        if (this.isDragging || isCurrentActive || isBaseLocked) return;
+        if (this.isDragging || isCurrentActive || isBaseLocked || isChestOnlyLocked) return;
 
         if (isPurchased) {
           if (AudioManager.playClick) AudioManager.playClick();
-          this.setActiveSkinSafe(item.id);
+          localStorage.setItem('active_workbench_skin', item.id);
           this.renderContent();
         } else if (canBuy) {
           const coins = Storage.getCoins ? Storage.getCoins() : 0;
@@ -746,7 +763,7 @@ export class ShopScene extends Phaser.Scene {
               Storage.setWorkshopTier(item.tier);
             }
             this.unlockSkinSafe(item.id);
-            this.setActiveSkinSafe(item.id);
+            localStorage.setItem('active_workbench_skin', item.id);
             if (AudioManager.playCoin) AudioManager.playCoin();
             this.updateCoinsDisplay();
             this.renderContent();
@@ -765,67 +782,76 @@ export class ShopScene extends Phaser.Scene {
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
 
-  setActiveSkinSafe(skinId) {
-    if (Storage.setActiveWorkbenchSkin) {
-      Storage.setActiveWorkbenchSkin(skinId);
-    } else {
-      localStorage.setItem('active_workbench_skin', skinId);
-    }
-  }
-
   unlockSkinSafe(skinId) {
-    if (Storage.unlockWorkbenchSkin) {
-      Storage.unlockWorkbenchSkin(skinId);
-    } else {
-      const list = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
-      if (!list.includes(skinId)) {
-        list.push(skinId);
-        localStorage.setItem('owned_workbench_skins', JSON.stringify(list));
-      }
+    const list = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
+    if (!list.includes(skinId)) {
+      list.push(skinId);
+      localStorage.setItem('owned_workbench_skins', JSON.stringify(list));
     }
   }
 
-  rollLootboxSafe(cost) {
-    if (Storage.openLootbox) {
-      return Storage.openLootbox();
-    }
+  rollLootboxRebalanced(cost) {
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
     if (coins < cost) return { success: false };
 
     Storage.addCoins(-cost);
+
+    const exclusiveSkins = [
+      { id: 'workbench_bg_5', name: '★ Эксклюзив: Алхимия' },
+      { id: 'workbench_bg_6', name: '★ Эксклюзив: Киберпанк' },
+      { id: 'workbench_bg_7', name: '★ Эксклюзив: Батискаф' },
+      { id: 'workbench_bg_8', name: '★ Эксклюзив: Космос' }
+    ];
+
+    const eraSkins = [
+      { id: 'workbench_bg_9', name: 'Эпоха: Древний Египет' },
+      { id: 'workbench_bg_10', name: 'Эпоха: Античность' },
+      { id: 'workbench_bg_11', name: 'Эпоха: Средневековая Европа' },
+      { id: 'workbench_bg_12', name: 'Эпоха: Япония' },
+      { id: 'workbench_bg_13', name: 'Эпоха: Ацтеки' },
+      { id: 'workbench_bg_14', name: 'Эпоха: Викинги' },
+      { id: 'workbench_bg_15', name: 'Эпоха: Ренессанс' }
+    ];
+
+    const owned = JSON.parse(localStorage.getItem('owned_workbench_skins') || '[]');
+    const unownedExclusive = exclusiveSkins.filter((s) => !owned.includes(s.id));
+    const unownedEra = eraSkins.filter((s) => !owned.includes(s.id));
+    const allUnowned = [...unownedExclusive, ...unownedEra];
+
+    let pity = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10) + 1;
     const rand = Math.random() * 100;
 
-    if (rand < 10) {
-      const potentialSkins = [
-        { id: 'workbench_bg_5', name: 'Верстак «Алхимия»' },
-        { id: 'workbench_bg_6', name: 'Верстак «Киберпанк»' },
-        { id: 'workbench_bg_7', name: 'Верстак «Батискаф»' },
-        { id: 'workbench_bg_8', name: 'Верстак «Космос»' },
-        { id: 'workbench_bg_9', name: 'Верстак «Египет»' },
-        { id: 'workbench_bg_10', name: 'Верстак «Античность»' },
-        { id: 'workbench_bg_11', name: 'Верстак «Европа»' },
-        { id: 'workbench_bg_12', name: 'Верстак «Япония»' },
-        { id: 'workbench_bg_13', name: 'Верстак «Ацтеки»' },
-        { id: 'workbench_bg_14', name: 'Верстак «Викинги»' },
-        { id: 'workbench_bg_15', name: 'Верстак «Ренессанс»' }
-      ];
-      const owned = JSON.parse(localStorage.getItem('owned_workbench_skins') || '[]');
-      const notOwned = potentialSkins.filter((s) => !owned.includes(s.id));
-      if (notOwned.length > 0) {
-        const win = notOwned[Math.floor(Math.random() * notOwned.length)];
-        this.unlockSkinSafe(win.id);
-        return { success: true, type: 'skin', id: win.id, name: win.name };
-      }
+    // 1. Гарантированный верстак на 15-м сундуке без скина
+    if (pity >= 15 && allUnowned.length > 0) {
+      const pool = unownedExclusive.length > 0 && Math.random() < 0.45 ? unownedExclusive : allUnowned;
+      const win = pool[Math.floor(Math.random() * pool.length)];
+      this.unlockSkinSafe(win.id);
+      localStorage.setItem('lootbox_pity_count', '0');
+      return { success: true, type: 'skin', id: win.id, name: win.name };
     }
 
-    if (rand < 35) {
-      const reward = Math.round(100 + Math.random() * 500);
-      Storage.addCoins(reward);
-      return { success: true, type: 'coins', amount: reward, name: `${reward} 🪙` };
+    // 2. Шанс 2.5% на эксклюзивный верстак (только из сундука)
+    if (rand < 2.5 && unownedExclusive.length > 0) {
+      const win = unownedExclusive[Math.floor(Math.random() * unownedExclusive.length)];
+      this.unlockSkinSafe(win.id);
+      localStorage.setItem('lootbox_pity_count', '0');
+      return { success: true, type: 'skin', id: win.id, name: win.name };
     }
 
-    if (rand < 60) {
-      const lac = Math.random() < 0.8 ? 1 : 2;
+    // 3. Шанс 5% (диапазон 2.5..7.5) на эпохальный верстак
+    if (rand < 7.5 && unownedEra.length > 0) {
+      const win = unownedEra[Math.floor(Math.random() * unownedEra.length)];
+      this.unlockSkinSafe(win.id);
+      localStorage.setItem('lootbox_pity_count', '0');
+      return { success: true, type: 'skin', id: win.id, name: win.name };
+    }
+
+    // Скин не выпал — сохраняем прогресс гаранта
+    localStorage.setItem('lootbox_pity_count', String(pity));
+
+    // 4. Шанс 22.5% (7.5..30) на Золотой лак Кинцуги (1-2 шт.)
+    if (rand < 30) {
+      const lac = Math.random() < 0.75 ? 1 : 2;
       if (Storage.addKintsugiLacquer) {
         Storage.addKintsugiLacquer(lac);
       } else {
@@ -835,8 +861,10 @@ export class ShopScene extends Phaser.Scene {
       return { success: true, type: 'lacquer', amount: lac, name: `Золотой лак (${lac} шт.) ✨` };
     }
 
-    Storage.addCoins(300);
-    return { success: true, type: 'coins', amount: 300, name: '300 🪙' };
+    // 5. Утешительный приз: золото (450–1100 🪙, не окупает сундук полностью)
+    const reward = Math.round((450 + Math.random() * 650) / 10) * 10;
+    Storage.addCoins(reward);
+    return { success: true, type: 'coins', amount: reward, name: `${reward} 🪙` };
   }
 
   renderMuseumExpansions(width) {
