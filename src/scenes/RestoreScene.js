@@ -852,24 +852,36 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = localStorage.getItem('active_workbench_skin')
-      || (Storage.getActiveWorkbenchSkin ? Storage.getActiveWorkbenchSkin() : `workbench_bg_${tier}`);
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
-    // Отрисовка выбранного фона верстака (из 15 доступных тем)
+    const applyBgTexture = (key) => {
+      if (this.workbenchBgImg) this.workbenchBgImg.destroy();
+      this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
+      this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
+      if (!this.workbenchDimOverlay) {
+        this.workbenchDimOverlay = this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1.5);
+      }
+    };
+
     if (this.textures.exists(activeSkin)) {
-      const bg = this.add.image(width / 2, height / 2, activeSkin).setDepth(1);
-      bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1);
-    } else if (this.textures.exists(`workbench_bg_${tier}`)) {
-      const bg = this.add.image(width / 2, height / 2, `workbench_bg_${tier}`).setDepth(1);
-      bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1);
+      applyBgTexture(activeSkin);
     } else {
-      const bg = this.add.graphics().setDepth(1);
-      bg.fillStyle(0x0d0805, 1);
-      bg.fillRect(0, 0, width, height);
+      // Временный тёмный фон, пока выбранный скин догружается на лету
+      const fallbackBg = this.add.graphics().setDepth(0.5);
+      fallbackBg.fillStyle(0x0d0805, 1);
+      fallbackBg.fillRect(0, 0, width, height);
+
+      this.load.image(activeSkin, `assets/backgrounds/${activeSkin}.png`);
+      this.load.once(`filecomplete-image-${activeSkin}`, () => {
+        if (this.scene && this.scene.isActive()) {
+          applyBgTexture(activeSkin);
+        }
+      });
+      this.load.start();
     }
 
     const matPadX = 16;
