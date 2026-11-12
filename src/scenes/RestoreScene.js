@@ -276,13 +276,14 @@ export class RestoreScene extends Phaser.Scene {
     const firstTask = this.artifactData.tasks[0];
     const initialTool = firstTask.requiredTool || 'tool_scraper';
 
+    // Рабочий кончик инструмента (верхний край спрайта, origin y = 0.08) совпадает ровно с точкой касания
     this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(initialTool))
-      .setOrigin(0.5, 0.88)
+      .setOrigin(0.5, 0.10)
       .setScale(0.75)
       .setAlpha(0)
       .setDepth(100);
 
-    this.assemblyContainer = this.add.container(0, 0).setDepth(25).setVisible(false);
+    this.assemblyContainer = this.add.container(0, 0).setDepth(35).setVisible(false);
 
     // 6. НИЖНИЙ ТРЕЙ ИНСТРУМЕНТОВ
     this.createToolTray(trayY, width, dpr);
@@ -298,10 +299,10 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
+    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (ТОЧНО ПОД ПАЛЬЦЕМ)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
-      if (pointer.y > trayTopLimit) return;
+      if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (!currentTask) return;
@@ -311,7 +312,8 @@ export class RestoreScene extends Phaser.Scene {
         return;
       }
 
-      this.toolSprite.setPosition(pointer.x, pointer.y - 12);
+      // Инструмент позиционируется ровно под точкой касания пальца
+      this.toolSprite.setPosition(pointer.x, pointer.y);
       this.animateToolUnderFinger(pointer);
 
       if (this.activeTool !== currentTask.requiredTool) {
@@ -327,14 +329,6 @@ export class RestoreScene extends Phaser.Scene {
 
       this.toolWarning.setText('');
 
-      if (!this.lastCleanPos) {
-        this.lastCleanPos = new Phaser.Math.Vector2(pointer.x, pointer.y);
-      }
-      const dist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
-      if (dist > 6) {
-        this.lastCleanPos.set(pointer.x, pointer.y);
-      }
-
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
 
@@ -342,8 +336,10 @@ export class RestoreScene extends Phaser.Scene {
 
       const tier = this.getToolTier(this.activeTool);
       const requiredPasses = tier >= 3 ? 1 : 2;
+      const brushKey = `${this.activeTool}_t${tier}`;
 
-      this.dirtLayer.erase(this.activeTool, localX, localY);
+      // Вычитаем половину размера текстуры кисти (32px), чтобы центр стирания попал точно в (localX, localY)
+      this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
       this.emitDustFX(pointer.x, pointer.y);
 
       const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
@@ -390,9 +386,8 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     this.input.on('pointerdown', (p) => {
-      if (p.y > trayTopLimit) return;
+      if (p.y > trayTopLimit || p.y < workspaceTop) return;
       this.lastTouchPos = { x: p.x, y: p.y };
-      this.lastCleanPos = null;
       this.toolSprite.setAlpha(1);
       processInteraction(p);
     });
@@ -404,7 +399,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
-      this.lastCleanPos = null;
       this.tweens.add({
         targets: this.toolSprite,
         alpha: 0,
@@ -424,12 +418,6 @@ export class RestoreScene extends Phaser.Scene {
   getToolTextureForTier(toolId) {
     const tier = this.getToolTier(toolId);
     const key = `tex_hd_${toolId}_t${tier}`;
-    return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
-  }
-
-  getFrameForToolTier(toolId, tier) {
-    const raw = toolId.replace('tool_', '');
-    const key = `tex_hd_tool_${raw}_t${tier}`;
     return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
   }
 
@@ -454,9 +442,9 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   generateDetailedToolTextures() {
-    const makeTex = (key, drawFn) => {
+    const makeTex = (key, size, drawFn) => {
       if (this.textures.exists(key)) return;
-      const cvs = this.textures.createCanvas(key, 128, 128);
+      const cvs = this.textures.createCanvas(key, size, size);
       const ctx = cvs.getContext();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
@@ -464,29 +452,30 @@ export class RestoreScene extends Phaser.Scene {
       cvs.refresh();
     };
 
+    // Кисти стирания строго 64x64 с центром в (32, 32) для точного совпадения с пальцем
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
-    const baseRadii = { scraper: 22, brush: 28, solvent: 24, polish: 26 };
-    const tierRadiusBonus = [0, 0, 6, 11, 16];
-    const tierCenterAlpha = [0, 0.62, 0.72, 0.85, 1.0];
+    const baseRadii = { scraper: 18, brush: 22, solvent: 20, polish: 21 };
+    const tierRadiusBonus = [0, 0, 3, 6, 9];
+    const tierCenterAlpha = [0, 0.65, 0.76, 0.88, 1.0];
 
     toolTypes.forEach((type) => {
       [1, 2, 3, 4].forEach((tier) => {
-        const rad = baseRadii[type] + tierRadiusBonus[tier];
+        const rad = Math.min(31, baseRadii[type] + tierRadiusBonus[tier]);
         const alpha = tierCenterAlpha[tier];
-        makeTex(`tool_${type}`, (ctx) => {
-          const grad = ctx.createRadialGradient(64, 64, rad * 0.25, 64, 64, rad);
+        makeTex(`tool_${type}_t${tier}`, 64, (ctx) => {
+          const grad = ctx.createRadialGradient(32, 32, rad * 0.25, 32, 32, rad);
           grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
-          grad.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.75})`);
+          grad.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.78})`);
           grad.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(64, 64, rad, 0, Math.PI * 2);
+          ctx.arc(32, 32, rad, 0, Math.PI * 2);
           ctx.fill();
         });
       });
     });
 
-    makeTex('tex_hd_tool_glue', (ctx) => {
+    makeTex('tex_hd_tool_glue', 128, (ctx) => {
       ctx.fillStyle = '#78350f';
       ctx.beginPath();
       ctx.roundRect(58, 36, 12, 74, 6);
@@ -503,7 +492,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_scraper_t${tier}`, (ctx) => {
+      makeTex(`tex_hd_tool_scraper_t${tier}`, 128, (ctx) => {
         const hGrad = ctx.createLinearGradient(56, 60, 72, 60);
         if (tier === 1) {
           hGrad.addColorStop(0, '#5c3a21');
@@ -563,7 +552,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_brush_t${tier}`, (ctx) => {
+      makeTex(`tex_hd_tool_brush_t${tier}`, 128, (ctx) => {
         ctx.fillStyle = tier >= 3 ? '#1e293b' : '#78350f';
         ctx.beginPath();
         ctx.roundRect(58, 56, 12, 58, 5);
@@ -603,7 +592,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_solvent_t${tier}`, (ctx) => {
+      makeTex(`tex_hd_tool_solvent_t${tier}`, 128, (ctx) => {
         ctx.fillStyle = tier === 4 ? '#6366f1' : (tier === 3 ? '#0d9488' : (tier === 2 ? '#0284c7' : '#38bdf8'));
         ctx.beginPath();
         ctx.roundRect(42, 42, 44, 68, 12);
@@ -616,7 +605,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_polish_t${tier}`, (ctx) => {
+      makeTex(`tex_hd_tool_polish_t${tier}`, 128, (ctx) => {
         if (tier === 4) {
           ctx.fillStyle = '#eab308';
           ctx.beginPath();
@@ -655,10 +644,10 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   createDustParticles() {
-    this.particles = this.add.particles(0, 0, 'tool_scraper', {
+    this.particles = this.add.particles(0, 0, 'tool_scraper_t1', {
       lifespan: { min: 200, max: 350 },
       speed: { min: 40, max: 95 },
-      scale: { start: 0.28, end: 0 },
+      scale: { start: 0.45, end: 0 },
       alpha: { start: 0.85, end: 0 },
       emitting: false
     }).setDepth(16);
@@ -862,21 +851,21 @@ export class RestoreScene extends Phaser.Scene {
       this.targetValidCells = this.totalCells;
     }
   }
+
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = Storage.getActiveWorkbenchSkin
-      ? Storage.getActiveWorkbenchSkin()
-      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
+    const activeSkin = localStorage.getItem('active_workbench_skin')
+      || (Storage.getActiveWorkbenchSkin ? Storage.getActiveWorkbenchSkin() : `workbench_bg_${tier}`);
 
     // Отрисовка выбранного фона верстака (из 15 доступных тем)
     if (this.textures.exists(activeSkin)) {
       const bg = this.add.image(width / 2, height / 2, activeSkin).setDepth(1);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.20).setDepth(1);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1);
     } else if (this.textures.exists(`workbench_bg_${tier}`)) {
       const bg = this.add.image(width / 2, height / 2, `workbench_bg_${tier}`).setDepth(1);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.20).setDepth(1);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1);
     } else {
       const bg = this.add.graphics().setDepth(1);
       bg.fillStyle(0x0d0805, 1);
@@ -904,8 +893,7 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    // Полупрозрачный рабочий мат, чтобы сквозь него просвечивала фактура выбранного верстака
-    matGfx.fillStyle(palette.fill, 0.56);
+    matGfx.fillStyle(palette.fill, 0.54);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(2.5, palette.border, 0.9);
@@ -954,7 +942,7 @@ export class RestoreScene extends Phaser.Scene {
       return;
     }
 
-    this.toolSprite.setPosition(pointer.x, pointer.y - 12);
+    this.toolSprite.setPosition(pointer.x, pointer.y);
     this.toolSprite.setAlpha(1);
 
     if (!this.shardsList || this.shardsList.length === 0) return;
@@ -969,15 +957,12 @@ export class RestoreScene extends Phaser.Scene {
           newlyGlued = true;
           s.border.clear();
           s.border.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
-          s.border.strokeCircle(s.targetX, s.targetY, 24);
+          s.border.strokeCircle(0, 0, s.radius);
 
           this.breakHoleGfx.fillStyle(0x0d0805, 0.85);
-          this.breakHoleGfx.fillCircle(s.targetX, s.targetY, 24);
-
-          if (this.isKintsugiMode) {
-            this.breakHoleGfx.lineStyle(2.5, 0xfacc15, 0.95);
-            this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, 24);
-          }
+          this.breakHoleGfx.fillCircle(s.targetX, s.targetY, s.radius);
+          this.breakHoleGfx.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
+          this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, s.radius);
 
           this.particles.setParticleTint(this.isKintsugiMode ? 0xfacc15 : 0x38bdf8);
           this.particles.emitParticleAt(s.targetX, s.targetY, 6);
@@ -1015,8 +1000,8 @@ export class RestoreScene extends Phaser.Scene {
     const colW = this.artW / this.gridCols;
     const rowH = this.artH / this.gridRows;
 
-    for (let gy = 3; gy < this.gridRows - 3; gy++) {
-      for (let gx = 3; gx < this.gridCols - 3; gx++) {
+    for (let gy = 4; gy < this.gridRows - 4; gy++) {
+      for (let gx = 4; gx < this.gridCols - 4; gx++) {
         const idx = gy * this.gridCols + gx;
         if (this.validCellsMask[idx] === 1) {
           candidates.push({
@@ -1029,7 +1014,7 @@ export class RestoreScene extends Phaser.Scene {
 
     Phaser.Utils.Array.Shuffle(candidates);
     const chosen = [];
-    const minDistance = 64;
+    const minDistance = 68;
 
     for (let i = 0; i < candidates.length; i++) {
       const pt = candidates[i];
@@ -1047,13 +1032,48 @@ export class RestoreScene extends Phaser.Scene {
     return chosen;
   }
 
-setupBreakAndAssembleStage(task) {
+  createShardTexture(texKey, targetX, targetY, radius, idx) {
+    const shardKey = `shard_tex_${Date.now()}_${idx}`;
+    if (this.textures.exists(shardKey)) {
+      this.textures.remove(shardKey);
+    }
+
+    const size = radius * 2 + 8;
+    const half = size / 2;
+    const cvs = this.textures.createCanvas(shardKey, size, size);
+    const ctx = cvs.getContext();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Вырезаем реальный фрагмент артефакта в локальной системе координат (half, half)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(half, half, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const srcImg = this.textures.get(texKey).getSourceImage();
+    if (srcImg) {
+      const offsetX = this.topLeftX - targetX + half;
+      const offsetY = this.topLeftY - targetY + half;
+      ctx.drawImage(srcImg, offsetX, offsetY, this.artW, this.artH);
+    } else {
+      ctx.fillStyle = '#c89d54';
+      ctx.fillRect(0, 0, size, size);
+    }
+    ctx.restore();
+
+    cvs.refresh();
+    return shardKey;
+  }
+
+  setupBreakAndAssembleStage(task) {
     const { width } = this.scale;
     const dpr = this.dpr;
 
     this.assemblyContainer.removeAll(true);
     this.assemblyContainer.setVisible(true);
-    this.assemblyContainer.setDepth(30);
+    this.assemblyContainer.setDepth(35);
 
     this.progressBarFill.width = 6;
     this.shardsList = [];
@@ -1068,10 +1088,10 @@ setupBreakAndAssembleStage(task) {
     this.breakHoleGfx.setVisible(true);
 
     const scatterOffsets = [
-      { dx: -115, dy: -65 },
-      { dx: 115, dy: -65 },
-      { dx: -95, dy: 105 },
-      { dx: 95, dy: 105 }
+      { dx: -115, dy: -60 },
+      { dx: 115, dy: -60 },
+      { dx: -95, dy: 100 },
+      { dx: 95, dy: 100 }
     ];
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
@@ -1082,30 +1102,23 @@ setupBreakAndAssembleStage(task) {
       const targetY = pt.y;
       const radius = 25;
 
-      // Тёмное гнездо скола на артефакте
+      // Тёмное углубление скола на артефакте
       this.breakHoleGfx.fillStyle(0x0d0805, 0.94);
       this.breakHoleGfx.fillCircle(targetX, targetY, radius);
       this.breakHoleGfx.lineStyle(2, 0xef4444, 0.9);
       this.breakHoleGfx.strokeCircle(targetX, targetY, radius);
 
-      const pieceContainer = this.add.container(0, 0).setDepth(35);
+      // Генерируем самостоятельную текстуру осколка без WebGL GeometryMask
+      const shardTexKey = this.createShardTexture(texKey, targetX, targetY, radius, idx);
 
-      const pieceImg = this.add.image(this.centerX, this.centerY, texKey)
-        .setDisplaySize(this.artW, this.artH);
-
-      // Маска рисуется в локальном (0, 0), а её положение сдвигается через setPosition
-      const shardMaskShape = this.make.graphics({ x: targetX, y: targetY, add: false });
-      shardMaskShape.fillStyle(0xffffff);
-      shardMaskShape.fillCircle(0, 0, radius);
-
-      const shardMask = shardMaskShape.createGeometryMask();
-      pieceImg.setMask(shardMask);
+      const pieceContainer = this.add.container(targetX, targetY).setDepth(40);
+      const pieceImg = this.add.image(0, 0, shardTexKey);
 
       const pieceBorder = this.add.graphics();
       pieceBorder.lineStyle(2.5, 0xfacc15, 0.95);
-      pieceBorder.strokeCircle(targetX, targetY, radius);
+      pieceBorder.strokeCircle(0, 0, radius);
 
-      const hitZone = this.add.circle(targetX, targetY, 36, 0xfacc15, 0.06)
+      const hitZone = this.add.circle(0, 0, 38, 0xfacc15, 0.05)
         .setInteractive({ draggable: true, useHandCursor: true });
 
       pieceContainer.add([pieceImg, pieceBorder, hitZone]);
@@ -1113,17 +1126,18 @@ setupBreakAndAssembleStage(task) {
       this.assemblyContainer.add(pieceContainer);
 
       const scatter = scatterOffsets[idx % scatterOffsets.length];
-      const restOffsetX = (this.centerX + scatter.dx) - targetX;
-      const restOffsetY = (this.centerY + scatter.dy) - targetY;
+      const restX = this.centerX + scatter.dx;
+      const restY = this.centerY + scatter.dy;
 
       const shardObj = {
         id: idx,
         targetX,
         targetY,
-        restOffsetX,
-        restOffsetY,
+        restX,
+        restY,
+        radius,
+        texKey: shardTexKey,
         container: pieceContainer,
-        maskShape: shardMaskShape,
         border: pieceBorder,
         hitZone,
         glued: false,
@@ -1133,15 +1147,11 @@ setupBreakAndAssembleStage(task) {
 
       this.tweens.add({
         targets: pieceContainer,
-        x: restOffsetX,
-        y: restOffsetY,
+        x: restX,
+        y: restY,
         duration: 380 + idx * 60,
         ease: 'Bounce.easeOut',
-        onUpdate: () => {
-          shardMaskShape.setPosition(targetX + pieceContainer.x, targetY + pieceContainer.y);
-        },
         onComplete: () => {
-          shardMaskShape.setPosition(targetX + restOffsetX, targetY + restOffsetY);
           if (idx === 0) {
             this.selectTool('tool_glue', 'tex_hd_tool_glue', true);
             this.toolWarning.setText(`Нанесите Клей на все места сколов (${points.length} шт.)!`);
@@ -1155,33 +1165,29 @@ setupBreakAndAssembleStage(task) {
           this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
           return;
         }
-        const dx = pointer.x - targetX;
-        const dy = pointer.y - targetY;
-        pieceContainer.x = dx;
-        pieceContainer.y = dy;
-        shardMaskShape.setPosition(targetX + dx, targetY + dy);
+        pieceContainer.x = pointer.x;
+        pieceContainer.y = pointer.y;
       });
 
       hitZone.on('dragend', () => {
         if (shardObj.placed || !shardObj.glued) return;
 
-        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, 0, 0);
-        if (dist < 40) {
+        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
+        if (dist < 42) {
           shardObj.placed = true;
-          pieceContainer.x = 0;
-          pieceContainer.y = 0;
-          shardMaskShape.setPosition(targetX, targetY);
+          pieceContainer.x = targetX;
+          pieceContainer.y = targetY;
           hitZone.disableInteractive();
           hitZone.setFillStyle(0xffffff, 0);
           pieceBorder.clear();
 
           if (this.isKintsugiMode) {
             pieceBorder.lineStyle(3, 0xfacc15, 0.95);
-            pieceBorder.strokeCircle(targetX, targetY, radius);
+            pieceBorder.strokeCircle(0, 0, radius);
             if (AudioManager.playShine) AudioManager.playShine();
           } else {
             pieceBorder.lineStyle(1, 0x4ade80, 0.45);
-            pieceBorder.strokeCircle(targetX, targetY, radius);
+            pieceBorder.strokeCircle(0, 0, radius);
             if (AudioManager.playCoin) AudioManager.playCoin();
           }
 
@@ -1216,13 +1222,10 @@ setupBreakAndAssembleStage(task) {
           this.toolWarning.setText('⚠️ Этот осколок не подходит сюда — ищите его родное место!');
           this.tweens.add({
             targets: pieceContainer,
-            x: restOffsetX,
-            y: restOffsetY,
+            x: restX,
+            y: restY,
             duration: 200,
-            ease: 'Back.easeOut',
-            onUpdate: () => {
-              shardMaskShape.setPosition(targetX + pieceContainer.x, targetY + pieceContainer.y);
-            }
+            ease: 'Back.easeOut'
           });
         }
       });
@@ -1239,7 +1242,7 @@ setupBreakAndAssembleStage(task) {
   showKintsugiBanner(width, dpr) {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
-    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(40);
+    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(45);
     const bannerW = width * 0.88;
     const bannerH = 44;
 
