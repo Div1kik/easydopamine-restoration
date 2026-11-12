@@ -9,10 +9,10 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const textRes = 3;
+    const textRes = 2;
 
-    const FONT_TITLE = '"Cormorant Garamond", "Palatino Linotype", Georgia, serif';
-    const FONT_UI = '"Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
+    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
     // 1. Фон кабинета реставратора
     if (this.textures.exists('menu_bg')) {
@@ -56,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
     divider.lineBetween(width / 2 - 54, headerY - 18, width / 2 + 54, headerY - 18);
 
     this.add.text(width / 2, headerY + 3, 'АРТЕФАКТЫ ВРЕМЕНИ', {
-      fontSize: '25px',
+      fontSize: '23px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
