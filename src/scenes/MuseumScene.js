@@ -8,10 +8,9 @@ export class MuseumScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const dpr = Math.max(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.dpr = dpr;
 
-    // Фон музея
     const bg = this.add.graphics().setDepth(0);
     bg.fillStyle(0x07090e, 1);
     bg.fillRect(0, 0, width, height);
@@ -20,30 +19,29 @@ export class MuseumScene extends Phaser.Scene {
       AudioManager.playShopBell();
     }
 
-    // Шапка
     const title = this.add.text(width / 2, 26, '🏛️ ЗАЛ СЛАВЫ МУЗЕЯ', {
       fontSize: '18px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#e2b35b',
       fontStyle: 'bold',
-      letterSpacing: 2
+      letterSpacing: 2,
+      resolution: dpr
     }).setOrigin(0.5).setDepth(20);
-    title.setResolution(dpr);
 
     this.infoText = this.add.text(width / 2, 46, '', {
       fontSize: '11.5px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#94a3b8'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+      color: '#94a3b8',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(20);
-    this.infoText.setResolution(dpr);
 
     this.incomeText = this.add.text(width / 2, 62, '', {
       fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#34d399',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(20);
-    this.incomeText.setResolution(dpr);
 
     this.listTopY = 82;
     this.listBottomY = height - 66;
@@ -59,7 +57,6 @@ export class MuseumScene extends Phaser.Scene {
     this.setupScroll();
     this.renderExhibitGrid();
 
-    // Нижняя кнопка возврата
     this.add.rectangle(width / 2, height - 33, width, 66, 0x07090e, 0.95).setDepth(30);
 
     const backBtn = this.add.rectangle(width / 2, height - 33, width * 0.88, 42, 0x141a24)
@@ -67,13 +64,13 @@ export class MuseumScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
 
-    const backTxt = this.add.text(width / 2, height - 33, 'В главное меню', {
+    this.add.text(width / 2, height - 33, 'В главное меню', {
       fontSize: '14.5px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(32);
-    backTxt.setResolution(dpr);
 
     backBtn.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
@@ -151,12 +148,11 @@ export class MuseumScene extends Phaser.Scene {
 
     this.updateHeader();
 
-    // Параметры сетки 2xN (плитка)
     const cols = 2;
     const gap = 12;
     const padX = 16;
     const tileW = (width - padX * 2 - gap) / cols;
-    const tileH = 196;
+    const tileH = 210;
 
     const totalSlots = Math.max(inventory.length, maxSlots);
 
@@ -164,7 +160,7 @@ export class MuseumScene extends Phaser.Scene {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const tileX = padX + tileW / 2 + col * (tileW + gap);
-      const tileY = 10 + tileH / 2 + row * (tileH + gap);
+      const tileY = 8 + tileH / 2 + row * (tileH + gap);
 
       const tile = this.add.container(tileX, tileY);
       const item = inventory[i];
@@ -172,75 +168,95 @@ export class MuseumScene extends Phaser.Scene {
       if (item) {
         const isDamaged = (item.stars === 1);
 
-        // Фон витрины (меняется от купленных апгрейдов)
-        const bgColor = custom.hasRoyalHall ? 0x1a150e : (custom.hasVelvet ? 0x1e1018 : 0x111622);
-        const strokeColor = isDamaged
+        // Фон витрины (тёмный мрамор / королевский антрацит)
+        const bgHex = custom.hasRoyalHall ? 0x16120c : 0x0e131d;
+        const borderHex = isDamaged
           ? 0xef4444
-          : (custom.hasRoyalHall ? 0xfacc15 : (custom.hasDome ? 0x38bdf8 : 0x273142));
+          : (custom.hasRoyalHall ? 0xe2b35b : (custom.hasDome ? 0x38bdf8 : 0x273142));
 
-        const cardBg = this.add.rectangle(0, 0, tileW, tileH, bgColor, 0.96)
-          .setStrokeStyle(custom.hasRoyalHall ? 2 : 1.5, strokeColor, 0.9);
+        const cardBg = this.add.graphics();
+        cardBg.fillStyle(bgHex, 0.96);
+        cardBg.fillRoundedRect(-tileW / 2, -tileH / 2, tileW, tileH, 14);
+        cardBg.lineStyle(custom.hasRoyalHall ? 1.8 : 1.2, borderHex, 0.85);
+        cardBg.strokeRoundedRect(-tileW / 2, -tileH / 2, tileW, tileH, 14);
+        tile.add(cardBg);
 
-        // Неоновая подсветка снизу (если куплена в лавке)
-        if (custom.hasDome && !isDamaged) {
-          const glow = this.add.ellipse(0, 12, tileW * 0.65, 24, 0x38bdf8, 0.25);
-          tile.add(glow);
-        }
+        // Луч софита сверху (мягкий световой конус вместо грубой коробки)
+        const spotlight = this.add.graphics();
+        const beamColor = custom.hasRoyalHall ? 0xfacc15 : (custom.hasDome ? 0x38bdf8 : 0x94a3b8);
+        spotlight.fillStyle(beamColor, custom.hasDome ? 0.12 : 0.06);
+        spotlight.beginPath();
+        spotlight.moveTo(-22, -tileH / 2 + 2);
+        spotlight.lineTo(22, -tileH / 2 + 2);
+        spotlight.lineTo(tileW * 0.42, 24);
+        spotlight.lineTo(-tileW * 0.42, 24);
+        spotlight.closePath();
+        spotlight.fillPath();
+        tile.add(spotlight);
 
-        // Постамент под артефактом
-        const pedestalColor = custom.hasVelvet ? 0x881337 : 0x334155;
-        const pedestal = this.add.rectangle(0, 22, tileW * 0.62, 12, pedestalColor)
-          .setStrokeStyle(1, custom.hasRoyalHall ? 0xfacc15 : 0x64748b, 0.8);
+        // Объёмный двухступенчатый постамент
+        const pedGfx = this.add.graphics();
+        const pedBase = custom.hasVelvet ? 0x881337 : 0x1e293b;
+        const pedTop = custom.hasRoyalHall ? 0xca8a04 : (custom.hasVelvet ? 0xbe123c : 0x334155);
 
-        // Спрайт артефакта
+        // Нижняя ступенька
+        pedGfx.fillStyle(pedBase, 1);
+        pedGfx.fillRoundedRect(-tileW * 0.34, 22, tileW * 0.68, 10, 4);
+        // Верхняя плита постамента
+        pedGfx.fillStyle(pedTop, 1);
+        pedGfx.fillRoundedRect(-tileW * 0.28, 16, tileW * 0.56, 7, 3);
+        // Тень от артефакта на постаменте
+        pedGfx.fillStyle(0x000000, 0.35);
+        pedGfx.fillEllipse(0, 16, tileW * 0.38, 6);
+        tile.add(pedGfx);
+
+        // Крупный артефакт в центре композиции
         const tex = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
-        const icon = this.add.image(0, -18, tex).setDisplaySize(72, 72);
+        const icon = this.add.image(0, -24, tex).setDisplaySize(86, 86);
+        tile.add(icon);
 
-        tile.add([cardBg, pedestal, icon]);
-
-        // Стеклянный купол поверх (если куплен в лавке)
+        // Деликатный стеклянный блик (если куплен купол V)
         if (custom.hasDome) {
-          const dome = this.add.graphics();
-          dome.lineStyle(1.5, 0xbae6fd, 0.45);
-          dome.strokeRoundedRect(-tileW * 0.36, -62, tileW * 0.72, 86, { tl: 36, tr: 36, bl: 4, br: 4 });
-          dome.fillStyle(0xe0f2fe, 0.06);
-          dome.fillRoundedRect(-tileW * 0.36, -62, tileW * 0.72, 86, { tl: 36, tr: 36, bl: 4, br: 4 });
-          tile.add(dome);
+          const glassShine = this.add.graphics();
+          glassShine.lineStyle(1.5, 0xbae6fd, 0.28);
+          glassShine.beginPath();
+          glassShine.arc(0, -24, 46, Math.PI * 1.15, Math.PI * 1.45);
+          glassShine.strokePath();
+          tile.add(glassShine);
         }
 
-        // Звезды и статус
+        // Звёзды качества вверху
         const starsBadge = item.stars ? '⭐'.repeat(item.stars) : '⭐⭐⭐';
-        const starsTxt = this.add.text(0, -78, item.isKintsugi ? `${starsBadge} ✨` : starsBadge, {
+        const starsTxt = this.add.text(0, -tileH / 2 + 14, item.isKintsugi ? `${starsBadge} ✨` : starsBadge, {
           fontSize: '10px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          resolution: dpr
         }).setOrigin(0.5);
-        starsTxt.setResolution(dpr);
 
-        // Название артефакта
-        const nameTxt = this.add.text(0, 42, item.name || 'Реликвия', {
-          fontSize: '12px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: '#ffffff',
+        // Музейная табличка с названием
+        const nameTxt = this.add.text(0, 48, item.name || 'Реликвия', {
+          fontSize: '11.5px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+          color: '#f8fafc',
           fontStyle: 'bold',
           align: 'center',
-          wordWrap: { width: tileW - 16 }
+          wordWrap: { width: tileW - 18 },
+          resolution: dpr
         }).setOrigin(0.5);
-        nameTxt.setResolution(dpr);
 
-        // Кнопка продажи с ценой внизу плитки
+        // Кнопка продажи внизу карточки
         const sellPrice = item.marketValue || 100;
-        const btnBg = this.add.rectangle(0, 74, tileW - 24, 28, isDamaged ? 0x450a0a : 0x064e3b)
-          .setStrokeStyle(1, isDamaged ? 0xef4444 : 0x10b981, 0.9)
+        const btnBg = this.add.rectangle(0, tileH / 2 - 22, tileW - 22, 26, isDamaged ? 0x450a0a : 0x064e3b)
+          .setStrokeStyle(1, isDamaged ? 0xef4444 : 0x10b981, 0.85)
           .setInteractive({ useHandCursor: true });
 
         const btnLabel = isDamaged ? `СКУПЩИКУ ${sellPrice} 🪙` : `ПРОДАТЬ ${sellPrice} 🪙`;
-        const btnTxt = this.add.text(0, 74, btnLabel, {
-          fontSize: '10px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        const btnTxt = this.add.text(0, tileH / 2 - 22, btnLabel, {
+          fontSize: '9.5px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
           color: isDamaged ? '#fca5a5' : '#34d399',
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          resolution: dpr
         }).setOrigin(0.5);
-        btnTxt.setResolution(dpr);
 
         let isSold = false;
         btnBg.on('pointerup', () => {
@@ -255,7 +271,7 @@ export class MuseumScene extends Phaser.Scene {
           this.tweens.add({
             targets: tile,
             alpha: 0,
-            scale: 0.85,
+            scale: 0.88,
             duration: 180,
             onComplete: () => this.renderExhibitGrid()
           });
@@ -263,33 +279,39 @@ export class MuseumScene extends Phaser.Scene {
 
         tile.add([starsTxt, nameTxt, btnBg, btnTxt]);
       } else {
-        // Пустой свободный постамент
-        const emptyBg = this.add.rectangle(0, 0, tileW, tileH, 0x0a0e17, 0.75)
-          .setStrokeStyle(1, 0x1e293b, 0.8);
+        // Пустая витрина с силуэтом постамента
+        const emptyGfx = this.add.graphics();
+        emptyGfx.fillStyle(0x0a0e17, 0.7);
+        emptyGfx.fillRoundedRect(-tileW / 2, -tileH / 2, tileW, tileH, 14);
+        emptyGfx.lineStyle(1, 0x1e293b, 0.8);
+        emptyGfx.strokeRoundedRect(-tileW / 2, -tileH / 2, tileW, tileH, 14);
 
-        const pedestal = this.add.rectangle(0, 14, tileW * 0.55, 10, 0x1e293b);
+        emptyGfx.fillStyle(0x1e293b, 0.9);
+        emptyGfx.fillRoundedRect(-tileW * 0.28, 16, tileW * 0.56, 8, 3);
+        tile.add(emptyGfx);
 
-        const plusTxt = this.add.text(0, -18, '🏛️', {
-          fontSize: '26px',
-          alpha: 0.35
+        const iconEmpty = this.add.text(0, -22, '🏛️', {
+          fontSize: '28px',
+          alpha: 0.25,
+          resolution: dpr
         }).setOrigin(0.5);
 
-        const emptyTitle = this.add.text(0, 44, 'Свободный стенд', {
+        const emptyTitle = this.add.text(0, 46, 'Свободная витрина', {
           fontSize: '11px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
           color: '#475569',
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          resolution: dpr
         }).setOrigin(0.5);
-        emptyTitle.setResolution(dpr);
 
-        const emptySub = this.add.text(0, 62, 'Место для реликвии', {
+        const emptySub = this.add.text(0, 64, 'Отреставрируйте находку', {
           fontSize: '9.5px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: '#334155'
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+          color: '#334155',
+          resolution: dpr
         }).setOrigin(0.5);
-        emptySub.setResolution(dpr);
 
-        tile.add([emptyBg, pedestal, plusTxt, emptyTitle, emptySub]);
+        tile.add([iconEmpty, emptyTitle, emptySub]);
       }
 
       this.listCont.add(tile);
