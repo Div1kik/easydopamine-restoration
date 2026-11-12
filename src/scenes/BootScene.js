@@ -3,14 +3,18 @@ export class BootScene extends Phaser.Scene {
     super('BootScene');
   }
 
-    preload() {
+  preload() {
+    // Основные фоны сцен
     this.load.image('menu_bg', 'assets/backgrounds/menu_bg.png');
     this.load.image('museum_bg', 'assets/backgrounds/museum_bg.png');
     this.load.image('shop_bg', 'assets/backgrounds/shop_bg.png');
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
+
+    // Все 15 вариативных фонов верстака (4 базовых тира + 4 легендарных + 7 эпохальных)
+    for (let i = 1; i <= 15; i++) {
+      this.load.image(`workbench_bg_${i}`, `assets/backgrounds/workbench_bg_${i}.png`);
+    }
   }
-
-
 
   create() {
     try {
@@ -19,8 +23,24 @@ export class BootScene extends Phaser.Scene {
       console.error('Ошибка createRestorationAssets:', err);
     }
 
+    // Текстура сундука-лутбокса для Лавки мастера
+    if (!this.textures.exists('lootbox_chest')) {
+      const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+      gfx.fillStyle(0x3d2614, 1);
+      gfx.fillRoundedRect(10, 15, 76, 60, 10);
+      gfx.fillStyle(0xeab308, 1);
+      gfx.fillRect(40, 25, 16, 40);
+      gfx.lineStyle(3, 0xc89d54, 1);
+      gfx.strokeRoundedRect(10, 15, 76, 60, 10);
+      gfx.generateTexture('lootbox_chest', 96, 96);
+      gfx.destroy();
+    }
+
     this.scene.start('MenuScene');
   }
+
+  createRestorationAssets() {
+
 
   createRestorationAssets() {
     const make = (key, w, h, fn) => {
