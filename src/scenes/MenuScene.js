@@ -11,89 +11,112 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    // Фоновая подложка
-    this.add.rectangle(width / 2, height / 2, width, height, 0x07090e);
+    // 1. Фон кабинета реставратора с адаптивным покрытием экрана
+    if (this.textures.exists('menu_bg')) {
+      const bg = this.add.image(width / 2, height / 2, 'menu_bg');
+      const scaleX = width / bg.width;
+      const scaleY = height / bg.height;
+      bg.setScale(Math.max(scaleX, scaleY));
+      // Лёгкое затемнение поверх фона, чтобы текст и кнопки читались идеально
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.42);
+    } else {
+      this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
+    }
+
+    // Верхняя декоративная рамка-виньетка
+    const headerPanel = this.add.rectangle(width / 2, height * 0.11, width * 0.9, height * 0.13, 0x1a120b, 0.78);
+    headerPanel.setStrokeStyle(1.5, 0xc89d54, 0.65);
 
     // Студия
-    this.add.text(width / 2, height * 0.065, 'EASY DOPAMINE GAMES', {
-      fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#c5a059',
+    this.add.text(width / 2, height * 0.062, 'EASY DOPAMINE GAMES', {
+      fontSize: '10px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#d4af37',
       fontStyle: 'bold',
       letterSpacing: 2,
       resolution: dpr
     }).setOrigin(0.5);
 
     const divider = this.add.graphics();
-    divider.lineStyle(1, 0xc5a059, 0.4);
-    divider.lineBetween(width / 2 - 50, height * 0.08, width / 2 + 50, height * 0.08);
+    divider.lineStyle(1, 0xc89d54, 0.45);
+    divider.lineBetween(width / 2 - 44, height * 0.08, width / 2 + 44, height * 0.08);
 
     // Заголовок
-    this.add.text(width / 2, height * 0.115, 'АРТЕФАКТЫ ВРЕМЕНИ', {
-      fontSize: '24px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#ffffff',
+    this.add.text(width / 2, height * 0.112, 'АРТЕФАКТЫ ВРЕМЕНИ', {
+      fontSize: '23px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#fdf6e3',
       fontStyle: 'bold',
-      letterSpacing: 2,
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setShadow(0, 2, '#000000', 4, false, true);
 
-    this.add.text(width / 2, height * 0.15, 'Мастерская реставратора', {
+    this.add.text(width / 2, height * 0.148, 'Мастерская реставратора', {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#94a3b8',
-      letterSpacing: 1,
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontStyle: 'italic',
+      color: '#d6c3a5',
       resolution: dpr
     }).setOrigin(0.5);
 
     // Парящий логотип артефакта
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.265, logoKey)
-        .setDisplaySize(120, 150)
-        .setDepth(5);
+      const logo = this.add.image(width / 2, height * 0.255, logoKey);
+      logo.setDisplaySize(104, 104);
+      logo.setDepth(10);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.245,
-        duration: 2000,
+        y: height * 0.242,
+        duration: 2200,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
       });
     }
 
-    // Плашка ранга (клик открывает табель 50 уровней)
-    this.renderRankWidget(width, height * 0.405, dpr);
+    // Плашка ранга
+    this.renderRankWidget(width, height * 0.445, dpr);
 
     // Кнопки переключения звука
     this.createAudioToggles(width);
 
-    // Фабрика кнопок меню
-    const createBtn = (y, text, colorBg, colorStroke, textColor, onClick) => {
-      const btnW = width * 0.82;
+    // Фабрика кнопок меню в стиле бронзы и тёмного дуба
+    const createBtn = (y, text, fillColor, strokeColor, textColor, onClick) => {
+      const btnW = width * 0.84;
       const btnH = 48;
 
-      const btn = this.add.rectangle(width / 2, y, btnW, btnH, colorBg, 0.95)
-        .setStrokeStyle(1.5, colorStroke, 0.9)
+      const shadow = this.add.rectangle(width / 2, y + 3, btnW, btnH, 0x090604, 0.75);
+      const btn = this.add.rectangle(width / 2, y, btnW, btnH, fillColor, 0.94)
+        .setStrokeStyle(1.5, strokeColor, 0.9)
         .setInteractive({ useHandCursor: true });
 
       const label = this.add.text(width / 2, y, text, {
-        fontSize: '14.5px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSize: '14px',
+        fontFamily: 'Georgia, "Times New Roman", serif',
         color: textColor,
         fontStyle: 'bold',
+        letterSpacing: 1,
         resolution: dpr
       }).setOrigin(0.5);
+
+      btn.on('pointerover', () => {
+        btn.setStrokeStyle(2, 0xfde68a, 1);
+      });
+
+      btn.on('pointerout', () => {
+        btn.setStrokeStyle(1.5, strokeColor, 0.9);
+      });
 
       btn.on('pointerdown', () => {
         if (AudioManager.playClick) AudioManager.playClick();
         this.tweens.add({
-          targets: [btn, label],
-          scale: 0.96,
+          targets: [btn, label, shadow],
+          scaleX: 0.96,
+          scaleY: 0.96,
           duration: 70,
           yoyo: true,
-          ease: 'Quad.easeInOut',
+          ease: 'Quad.easeOut',
           onComplete: () => onClick()
         });
       });
@@ -101,139 +124,129 @@ export class MenuScene extends Phaser.Scene {
       return btn;
     };
 
-    const startY = height * 0.51;
+    const startY = height * 0.565;
 
-    // 1. «НА ВЕРСТАК» — честный рандом строго из наличия на складе (> 0)
-    createBtn(startY, '🔨 НА ВЕРСТАК', 0x164e63, 0x06b6d4, '#ffffff', () => {
+    // 1. «НА ВЕРСТАК» — главная золотисто-бронзовая кнопка
+    createBtn(startY, '⚒  НА ВЕРСТАК', 0xd99b26, 0xfef08a, '#1a1106', () => {
       this.startQuickRestore();
     });
 
-    // 2. «ЭКСПЕДИЦИИ» — выбор эпох и артефактов
-    createBtn(startY + 56, '🗺️ ЭКСПЕДИЦИИ', 0x1c1917, 0xd97706, '#facc15', () => {
-      this.scene.start('EraSelectScene');
+    // 2. «ЭКСПЕДИЦИИ»
+    createBtn(startY + 58, '🧭  ЭКСПЕДИЦИИ', 0x2b1d12, 0xb08948, '#f5e6c8', () => {
+      this.scene.start('WorldMapScene');
     });
 
     // 3. «ЛАВКА МАСТЕРА»
-    createBtn(startY + 112, '🛒 ЛАВКА МАСТЕРА', 0x1e1b4b, 0x6366f1, '#ffffff', () => {
+    createBtn(startY + 116, '🕯  ЛАВКА МАСТЕРА', 0x2b1d12, 0xb08948, '#f5e6c8', () => {
       this.scene.start('ShopScene');
     });
 
     // 4. «ЗАЛ СЛАВЫ (МУЗЕЙ)»
-    createBtn(startY + 168, '🏛️ ЗАЛ СЛАВЫ (МУЗЕЙ)', 0x14532d, 0x22c55e, '#ffffff', () => {
+    createBtn(startY + 174, '🏛  ЗАЛ СЛАВЫ (МУЗЕЙ)', 0x2b1d12, 0xb08948, '#f5e6c8', () => {
       this.scene.start('MuseumScene');
     });
 
     // Инвентарь лака
-    const lacquer = Storage.getKintsugiLacquer ? Storage.getKintsugiLacquer() : 0;
-    this.add.text(width / 2, height * 0.81, `✨ Золотой лак Кинцуги: ${lacquer}`, {
+    const lacquer = Storage.getBindingLacquer ? Storage.getBindingLacquer() : 0;
+    const lacquerBadge = this.add.rectangle(width / 2, height * 0.925, width * 0.72, 26, 0x1a120b, 0.85)
+      .setStrokeStyle(1, 0xc89d54, 0.5);
+    this.add.text(width / 2, height * 0.925, `✨ Золотой лак в наличии: ${lacquer} шт.`, {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: 'Georgia, "Times New Roman", serif',
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
     // Фоновая музыка
-    if (AudioManager.playEraMusic) AudioManager.playEraMusic('menu');
+    if (AudioManager.playMusic) AudioManager.playMusic('menu');
 
-    // Оффлайн доход
+    // Оффлайн-доход
     this.checkOfflineEarnings(width, height, dpr);
 
     // Срочный контракт
-    this.renderContractWidget(width, height * 0.89, dpr);
+    this.renderContractWidget(width, height * 0.35, dpr);
   }
 
-  // =========================================================================
-  // БЫСТРЫЙ ВХОД НА ВЕРСТАК: РАНДОМ СТРОГО ИЗ НАЛИЧИЯ (> 0)
-  // =========================================================================
   startQuickRestore() {
-    // 1. Сбрасываем старую зависшую сессию
-    if (Storage.setActiveSession) {
-      Storage.setActiveSession(null);
+    if (Storage.hasActiveSession && Storage.hasActiveSession()) {
+      this.scene.start('RestoreScene');
+      return;
     }
 
-    // 2. Получаем открытые эпохи и актуальный склад
     const unlocked = Storage.getUnlockedRegions ? Storage.getUnlockedRegions() : ['egypt'];
     const availablePool = [];
 
-    // 3. Собираем артефакты: строго с количеством > 0
-    unlocked.forEach(regId => {
-      const stock = Storage.getRegionStock(regId, ARTIFACT_TEMPLATES);
+    unlocked.forEach((regionId) => {
+      const stock = Storage.getRegionStock(regionId, ARTIFACT_TEMPLATES);
       if (stock) {
         Object.entries(stock).forEach(([templateId, count]) => {
           if (count > 0) {
-            const tmpl = ARTIFACT_TEMPLATES.find(t => t.id === templateId && t.regionId === regId);
+            const tmpl = ARTIFACT_TEMPLATES.find((t) => t.id === templateId && t.regionId === regionId);
             if (tmpl) {
-              availablePool.push({ regionId: regId, templateId });
+              availablePool.push({ regionId, templateId });
             }
           }
         });
       }
     });
 
-    // 4. Если на складе вообще пусто — сразу уходим в меню эпох
     if (availablePool.length === 0) {
-      this.scene.start('EraSelectScene');
+      this.scene.start('WorldMapScene');
       return;
     }
 
-    // 5. Честный рандом строго по имеющимся в наличии
     const randomIndex = Math.floor(Math.random() * availablePool.length);
     const chosen = availablePool[randomIndex];
 
-    // 6. Списываем 1 шт. и открываем верстак
-    Storage.decrementArtifactStock(chosen.regionId, chosen.templateId);
+    Storage.setActiveSession(chosen.regionId, chosen.templateId);
     this.scene.start('RestoreScene', {
       regionId: chosen.regionId,
       templateId: chosen.templateId
     });
   }
 
-  // =========================================================================
-  // ПЛАШКА РАНГА И ОКНО 50 РАНГОВ
-  // =========================================================================
   renderRankWidget(width, y, dpr) {
-    const lvlData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Ученик', progressRatio: 0 };
+    const lvlData = Storage.getLevelData ? Storage.getLevelData() : { level: 1, title: 'Новичок', progressRatio: 0 };
     const boxW = width * 0.84;
     const boxH = 46;
 
-    const rankCont = this.add.container(width / 2, y).setDepth(10);
+    const rankCont = this.add.container(width / 2, y);
 
-    const bg = this.add.rectangle(0, 0, boxW, boxH, 0x0f172a, 0.95)
-      .setStrokeStyle(1.5, 0xca8a04, 0.8)
+    const bg = this.add.rectangle(0, 0, boxW, boxH, 0x1c130c, 0.9)
+      .setStrokeStyle(1.5, 0xc89d54, 0.75)
       .setInteractive({ useHandCursor: true });
 
-    const lvlBadge = this.add.text(-boxW / 2 + 14, -8, `УР. ${lvlData.level}`, {
-      fontSize: '13px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    const lvlBadge = this.add.text(-boxW / 2 + 12, -8, `УР. ${lvlData.level}`, {
+      fontSize: '12px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0, 0.5);
 
-    const rankTitle = this.add.text(-boxW / 2 + 75, -8, lvlData.title, {
+    const rankTitle = this.add.text(-boxW / 2 + 68, -8, lvlData.title, {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#e2e8f0',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0, 0.5);
 
-    const tapHint = this.add.text(boxW / 2 - 12, -8, 'Табель ❯', {
-      fontSize: '10.5px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#38bdf8',
-      fontStyle: 'bold',
+    const tapHint = this.add.text(boxW / 2 - 12, -8, 'Путь ›', {
+      fontSize: '10px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#d6c3a5',
       resolution: dpr
     }).setOrigin(1, 0.5);
 
-    const barW = boxW - 28;
-    const barH = 7;
-    const barY = 12;
+    const barW = boxW - 24;
+    const barH = 6;
+    const barY = 11;
 
-    const barBg = this.add.rectangle(0, barY, barW, barH, 0x1e293b).setOrigin(0.5);
-    const barFillW = barW * Phaser.Math.Clamp(lvlData.progressRatio, 0, 1);
-    const barFill = this.add.rectangle(-barW / 2, barY, barFillW, barH, 0x10b981).setOrigin(0, 0.5);
+    const barBg = this.add.rectangle(0, barY, barW, barH, 0x0f0a06);
+    const fillW = Math.max(4, barW * Phaser.Math.Clamp(lvlData.progressRatio, 0, 1));
+    const barFill = this.add.rectangle(-barW / 2, barY, fillW, barH, 0xd99b26).setOrigin(0, 0.5);
 
     rankCont.add([bg, lvlBadge, rankTitle, tapHint, barBg, barFill]);
 
@@ -245,30 +258,29 @@ export class MenuScene extends Phaser.Scene {
 
   openLevelProgressModal(width, height, dpr) {
     const curLevel = Storage.getLevelData ? Storage.getLevelData().level : 1;
-
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85)
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.88)
       .setDepth(40)
       .setInteractive();
 
     const modalCont = this.add.container(width / 2, height / 2).setDepth(41);
-    const modalW = width * 0.92;
+    const modalW = width * 0.88;
     const modalH = height * 0.78;
 
-    const bg = this.add.rectangle(0, 0, modalW, modalH, 0x0b0f17, 0.98)
-      .setStrokeStyle(1.5, 0xd4af37, 0.9);
+    const bg = this.add.rectangle(0, 0, modalW, modalH, 0x1e140d, 0.98)
+      .setStrokeStyle(1.5, 0xc89d54, 0.9);
 
-    const title = this.add.text(0, -modalH / 2 + 24, '🏆 ТАБЕЛЬ РАНГОВ И НАГРАД', {
-      fontSize: '16px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    const title = this.add.text(0, -modalH / 2 + 24, '🏆 ПУТЬ МАСТЕРА ВРЕМЕНИ', {
+      fontSize: '14px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
-    const subtitle = this.add.text(0, -modalH / 2 + 44, `Текущий ранг: Уровень ${curLevel} из 50`, {
-      fontSize: '11.5px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#94a3b8',
+    const subTitle = this.add.text(0, -modalH / 2 + 44, `Текущий ранг: Уровень ${curLevel} из 50`, {
+      fontSize: '11px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#d6c3a5',
       resolution: dpr
     }).setOrigin(0.5);
 
@@ -276,19 +288,19 @@ export class MenuScene extends Phaser.Scene {
 
     const maskGfx = this.make.graphics();
     maskGfx.fillStyle(0xffffff);
-    maskGfx.fillRect(width / 2 - modalW / 2 + 8, height / 2 - modalH / 2 + 62, modalW - 16, modalH - 124);
+    maskGfx.fillRect(width / 2 - modalW / 2 + 8, height / 2 - modalH / 2 + 60, modalW - 16, modalH - 124);
     listCont.setMask(new Phaser.Display.Masks.GeometryMask(this, maskGfx));
 
-    const itemH = 50;
-    const startListY = -modalH / 2 + 88;
+    const itemH = 54;
+    const startListY = -modalH / 2 + 66;
 
     const epochUnlocks = {
       1: '🇪🇬 Египет',
-      3: '🏛️ Античность',
+      3: '🏛 Античность',
       6: '⚔️ Средневековье',
-      10: '⛩️ Япония',
-      15: '🦅 Ацтеки',
-      20: '🛡️ Викинги',
+      10: '🐉 Восток',
+      15: '🗿 Майя',
+      20: '🛡 Викинги',
       25: '🎨 Ренессанс'
     };
 
@@ -299,61 +311,64 @@ export class MenuScene extends Phaser.Scene {
       const isPassed = (lvl < curLevel);
 
       const rowCont = this.add.container(0, itemY);
-      const rowBgColor = isCurrent ? 0x1e293b : (isPassed ? 0x0f172a : 0x090d14);
-      const strokeColor = isCurrent ? 0xfacc15 : (isPassed ? 0x10b981 : 0x1e293b);
 
-      const rowBg = this.add.rectangle(0, 0, modalW - 28, itemH - 6, rowBgColor, 0.95)
-        .setStrokeStyle(isCurrent ? 2 : 1, strokeColor, 0.85);
+      const rowBgColor = isCurrent ? 0x3b2614 : (isPassed ? 0x261a11 : 0x160f0a);
+      const rowStroke = isCurrent ? 0xfacc15 : (isPassed ? 0x8c6239 : 0x4a3525);
 
-      const numTxt = this.add.text(-modalW / 2 + 24, 0, `${lvl}`, {
-        fontSize: '13px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: isCurrent ? '#facc15' : (isPassed ? '#10b981' : '#64748b'),
+      const rowBg = this.add.rectangle(0, itemH / 2 - 3, modalW - 24, itemH - 6, rowBgColor, 0.92)
+        .setStrokeStyle(isCurrent ? 1.5 : 1, rowStroke, 0.85);
+
+      const numTxt = this.add.text(-modalW / 2 + 20, 12, `УР. ${lvl}`, {
+        fontSize: '12px',
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        color: isCurrent ? '#facc15' : (isPassed ? '#e2b866' : '#8c735b'),
         fontStyle: 'bold',
         resolution: dpr
-      }).setOrigin(0.5);
+      }).setOrigin(0, 0.5);
 
-      const titleTxt = this.add.text(-modalW / 2 + 44, -7, cfg.title, {
-        fontSize: '11px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: isCurrent ? '#ffffff' : (isPassed ? '#cbd5e1' : '#64748b'),
+      const titleTxt = this.add.text(-modalW / 2 + 68, 12, cfg.title, {
+        fontSize: '12px',
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        color: isCurrent ? '#ffffff' : (isPassed ? '#f5e6c8' : '#7a6552'),
         fontStyle: isCurrent ? 'bold' : 'normal',
         resolution: dpr
       }).setOrigin(0, 0.5);
 
-      const rewardCoins = lvl * 160 + 100;
-      let rewardStr = `+${rewardCoins} 🪙`;
-      if (lvl % 5 === 0) rewardStr += '  +2 ✨';
-      else if (lvl % 2 === 0) rewardStr += '  +1 ✨';
+      const rewardCoins = lvl * 100 + 100;
+      let rewardStr = `Награда: +${rewardCoins} 🪙`;
+      if (lvl % 5 === 0) rewardStr += ' + 1 ✨ Лак';
 
-      const rewardTxt = this.add.text(-modalW / 2 + 44, 9, rewardStr, {
+      const rewardTxt = this.add.text(-modalW / 2 + 68, 32, rewardStr, {
         fontSize: '10px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#ca8a04',
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        color: '#e2b866',
         resolution: dpr
       }).setOrigin(0, 0.5);
 
       if (epochUnlocks[lvl]) {
-        const epochTxt = this.add.text(modalW / 2 - 28, 0, epochUnlocks[lvl], {
+        const epochTxt = this.add.text(modalW / 2 - 20, 32, epochUnlocks[lvl], {
           fontSize: '9.5px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#38bdf8',
           fontStyle: 'bold',
           resolution: dpr
         }).setOrigin(1, 0.5);
         rowCont.add(epochTxt);
-      } else if (isPassed) {
-        const checkTxt = this.add.text(modalW / 2 - 28, 0, '✓', {
-          fontSize: '12px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: '#10b981',
+      }
+
+      if (isPassed) {
+        const checkTxt = this.add.text(modalW / 2 - 20, 12, '✓', {
+          fontSize: '14px',
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          color: '#86efac',
+          fontStyle: 'bold',
           resolution: dpr
         }).setOrigin(1, 0.5);
         rowCont.add(checkTxt);
       } else if (isCurrent) {
-        const curTxt = this.add.text(modalW / 2 - 28, 0, '★ ВЫ ЗДЕСЬ', {
+        const curTxt = this.add.text(modalW / 2 - 20, 12, '• ВЫ ЗДЕСЬ', {
           fontSize: '9.5px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          fontFamily: 'Georgia, "Times New Roman", serif',
           color: '#facc15',
           fontStyle: 'bold',
           resolution: dpr
@@ -365,12 +380,12 @@ export class MenuScene extends Phaser.Scene {
       listCont.add(rowCont);
     }
 
-    const initialScrollY = Phaser.Math.Clamp(-(curLevel - 3) * itemH, -(50 * itemH - (modalH - 140)), 0);
+    const initialScrollY = Math.min(0, -((curLevel - 3) * itemH) - (50 * itemH - modalH + 140));
     listCont.y = initialScrollY;
 
     let startY = 0;
     let isDragging = false;
-    const minScrollY = -(50 * itemH - (modalH - 140));
+    const minScrollY = -(50 * itemH - (modalH - 130));
 
     overlay.on('pointerdown', (p) => {
       startY = p.y;
@@ -384,17 +399,18 @@ export class MenuScene extends Phaser.Scene {
       listCont.y = Phaser.Math.Clamp(listCont.y + dy, minScrollY, 0);
     });
 
-    overlay.on('pointerup', () => { isDragging = false; });
-    overlay.on('pointerout', () => { isDragging = false; });
+    overlay.on('pointerup', () => {
+      isDragging = false;
+    });
 
-    const closeBtn = this.add.rectangle(0, modalH / 2 - 28, modalW * 0.7, 36, 0x1e293b)
-      .setStrokeStyle(1.5, 0x475569)
+    const closeBtn = this.add.rectangle(0, modalH / 2 - 28, modalW * 0.7, 36, 0x3b2614)
+      .setStrokeStyle(1.5, 0xc89d54, 0.9)
       .setInteractive({ useHandCursor: true });
 
     const closeTxt = this.add.text(0, modalH / 2 - 28, 'ЗАКРЫТЬ', {
-      fontSize: '12.5px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#f8fafc',
+      fontSize: '12px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
@@ -406,12 +422,9 @@ export class MenuScene extends Phaser.Scene {
       overlay.destroy();
     });
 
-    modalCont.add([bg, title, subtitle, listCont, closeBtn, closeTxt]);
+    modalCont.add([bg, title, subTitle, listCont, closeBtn, closeTxt]);
   }
 
-  // =========================================================================
-  // СРОЧНЫЙ КОНТРАКТ И ТАЙМЕРЫ
-  // =========================================================================
   formatTimeRemaining(ms) {
     if (ms <= 0) return '00:00:00';
     const totalSec = Math.floor(ms / 1000);
@@ -422,28 +435,28 @@ export class MenuScene extends Phaser.Scene {
   }
 
   renderContractWidget(width, y, dpr) {
-    const contract = Storage.getDailyContract ? Storage.getDailyContract(ARTIFACT_TEMPLATES) : null;
+    const contract = Storage.getContract ? Storage.getContract(ARTIFACT_TEMPLATES) : null;
     if (!contract) return;
 
     const boxW = width * 0.84;
-    const boxH = 56;
+    const boxH = 54;
 
-    const box = this.add.rectangle(width / 2, y, boxW, boxH, 0x0f172a, 0.95)
-      .setStrokeStyle(1.5, contract.completed ? 0x22c55e : 0xeab308, 0.85);
+    const box = this.add.rectangle(width / 2, y, boxW, boxH, 0x1c130c, 0.9)
+      .setStrokeStyle(1.5, contract.completed ? 0x86efac : 0xc89d54, 0.85);
 
     if (contract.completed) {
-      this.add.text(width / 2, y - 10, '✓ КОНТРАКТ ВЫПОЛНЕН', {
-        fontSize: '12px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#10b981',
+      this.add.text(width / 2, y - 10, '✓ КОНТРАКТ ВЫПОЛНЕН!', {
+        fontSize: '11px',
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        color: '#86efac',
         fontStyle: 'bold',
         resolution: dpr
       }).setOrigin(0.5);
 
       const timerTxt = this.add.text(width / 2, y + 10, 'Новый через: 00:00:00', {
-        fontSize: '11px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#94a3b8',
+        fontSize: '10px',
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        color: '#d6c3a5',
         resolution: dpr
       }).setOrigin(0.5);
 
@@ -468,34 +481,34 @@ export class MenuScene extends Phaser.Scene {
 
     box.setInteractive({ useHandCursor: true });
 
-    this.add.text(width / 2 - boxW / 2 + 12, y - 20, `📜 ЗАКАЗ: ${contract.client}`, {
+    this.add.text(width / 2 - boxW / 2 + 12, y - 16, '📜 СРОЧНЫЙ ЗАКАЗ МУЗЕЯ', {
       fontSize: '10px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#eab308',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0);
 
-    this.add.text(width / 2 - boxW / 2 + 12, y - 3, contract.name, {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#ffffff',
+    this.add.text(width / 2 - boxW / 2 + 12, y - 2, contract.title, {
+      fontSize: '11px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0);
 
     this.add.text(width / 2 - boxW / 2 + 12, y + 13, `+${contract.rewardCoins} 🪙 | +${contract.bonusXP} XP`, {
       fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#34d399',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#e2b866',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0);
 
-    const timerTxt = this.add.text(width / 2 + boxW / 2 - 12, y - 20, '00:00:00', {
+    const timerTxt = this.add.text(width / 2 + boxW / 2 - 12, y - 18, '00:00:00', {
       fontSize: '10px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#94a3b8',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#d6c3a5',
       resolution: dpr
     }).setOrigin(1, 0);
 
@@ -516,14 +529,14 @@ export class MenuScene extends Phaser.Scene {
     });
     updateTimer();
 
-    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 44, y + 6, 74, 28, 0x164e63)
-      .setStrokeStyle(1, 0x06b6d4)
+    const takeBtn = this.add.rectangle(width / 2 + boxW / 2 - 44, y + 6, 74, 28, 0xd99b26)
+      .setStrokeStyle(1, 0xfef08a)
       .setInteractive({ useHandCursor: true });
 
     this.add.text(width / 2 + boxW / 2 - 44, y + 6, 'ВЗЯТЬ', {
       fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#ffffff',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#1a1106',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
@@ -541,50 +554,53 @@ export class MenuScene extends Phaser.Scene {
     takeBtn.on('pointerdown', startContract);
   }
 
-  // =========================================================================
-  // ОФФЛАЙН ДОХОД
-  // =========================================================================
   checkOfflineEarnings(width, height, dpr) {
     const offline = Storage.getOfflineEarnings ? Storage.getOfflineEarnings() : { coins: 0, minutes: 0 };
     if (!offline || offline.coins <= 0) return;
 
     if (AudioManager.playShine) AudioManager.playShine();
 
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.85).setDepth(45).setInteractive();
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.85)
+      .setDepth(45)
+      .setInteractive();
+
     const box = this.add.container(width / 2, height / 2).setDepth(46);
 
-    const bg = this.add.rectangle(0, 0, width * 0.84, 180, 0x0f172a, 0.98)
-      .setStrokeStyle(1.5, 0xca8a04, 0.9);
+    const bg = this.add.rectangle(0, 0, width * 0.84, 180, 0x1e140d, 0.98)
+      .setStrokeStyle(1.5, 0xc89d54, 0.9);
 
-    const title = this.add.text(0, -50, '🏛️ ДОХОД МУЗЕЯ ЗА ВРЕМЯ ОТСУТСТВИЯ', {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    const title = this.add.text(0, -56, '🏛 ДОХОД МУЗЕЯ ЗА ВРЕМЯ ОТСУТСТВИЯ', {
+      fontSize: '11.5px',
+      fontFamily: 'Georgia, "Times New Roman", serif',
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
-    const desc = this.add.text(0, -10, `Пока вас не было (${offline.minutes} мин),\nпосетители оставили в казне:`, {
+    const desc = this.add.text(0, -14, `Пока вас не было (${offline.minutes} мин),\nпосетители оставили в казне:`, {
       fontSize: '11px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#cbd5e1',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#f5e6c8',
       align: 'center',
       resolution: dpr
     }).setOrigin(0.5);
 
     const sumTxt = this.add.text(0, 22, `+${offline.coins} 🪙`, {
       fontSize: '18px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#34d399',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
-    const claimBtn = this.add.rectangle(0, 58, width * 0.55, 34, 0xca8a04).setInteractive({ useHandCursor: true });
+    const claimBtn = this.add.rectangle(0, 58, width * 0.65, 36, 0xd99b26)
+      .setStrokeStyle(1, 0xfef08a)
+      .setInteractive({ useHandCursor: true });
+
     const claimTxt = this.add.text(0, 58, 'ЗАБРАТЬ В КАЗНУ', {
       fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#000000',
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      color: '#1a1106',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
@@ -600,12 +616,9 @@ export class MenuScene extends Phaser.Scene {
     box.add([bg, title, desc, sumTxt, claimBtn, claimTxt]);
   }
 
-  // =========================================================================
-  // ЗВУКОВЫЕ ТУМБЛЕРЫ
-  // =========================================================================
   createAudioToggles(width) {
-    const musicBtn = this.add.circle(width - 70, 36, 17, AudioManager.isMusicOn() ? 0x142033 : 0x221a24)
-      .setStrokeStyle(1.5, AudioManager.isMusicOn() ? 0x38bdf8 : 0xef4444, 0.9)
+    const musicBtn = this.add.circle(width - 70, 36, 17, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.5, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(30);
 
@@ -615,14 +628,14 @@ export class MenuScene extends Phaser.Scene {
 
     musicBtn.on('pointerdown', () => {
       const state = AudioManager.toggleMusic();
-      musicBtn.setFillStyle(state ? 0x142033 : 0x221a24);
-      musicBtn.setStrokeStyle(1.5, state ? 0x38bdf8 : 0xef4444, 0.9);
+      musicBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      musicBtn.setStrokeStyle(1.5, state ? 0xc89d54 : 0x7f1d1d, 0.9);
       musicIcon.setText(state ? '🎵' : '🔇');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    const sfxBtn = this.add.circle(width - 30, 36, 17, AudioManager.isSfxOn() ? 0x14261d : 0x221a24)
-      .setStrokeStyle(1.5, AudioManager.isSfxOn() ? 0x22c55e : 0xef4444, 0.9)
+    const sfxBtn = this.add.circle(width - 30, 36, 17, AudioManager.isSfxOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.5, AudioManager.isSfxOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(30);
 
@@ -632,8 +645,8 @@ export class MenuScene extends Phaser.Scene {
 
     sfxBtn.on('pointerdown', () => {
       const state = AudioManager.toggleSfx();
-      sfxBtn.setFillStyle(state ? 0x14261d : 0x221a24);
-      sfxBtn.setStrokeStyle(1.5, state ? 0x22c55e : 0xef4444, 0.9);
+      sfxBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      sfxBtn.setStrokeStyle(1.5, state ? 0xc89d54 : 0x7f1d1d, 0.9);
       sfxIcon.setText(state ? '🔊' : '🔈');
       if (AudioManager.playClick) AudioManager.playClick();
     });
