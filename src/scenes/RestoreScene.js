@@ -1,4 +1,4 @@
-import { ArtifactModels } from '../data/artifacts.js';
+import ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
