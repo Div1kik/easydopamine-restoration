@@ -9,12 +9,10 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    // Повышенное разрешение рендера текста (3x), чтобы полностью убрать пиксельную лесенку
     const textRes = 3;
 
-    // Единый гладкий стек шрифтов
-    const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
-    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    const FONT_TITLE = '"Cormorant Garamond", "Palatino Linotype", Georgia, serif';
+    const FONT_UI = '"Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
     // 1. Фон кабинета реставратора
     if (this.textures.exists('menu_bg')) {
@@ -27,10 +25,10 @@ export class MenuScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
     }
 
-    // 2. Звуковые тумблеры (подняты выше, чтобы не задевать шапку)
+    // 2. Звуковые тумблеры
     this.createAudioToggles(width, textRes);
 
-    // 3. Верхняя плашка заголовка (скруглённая, с бронзовой рамкой и внутренним бликом)
+    // 3. Верхняя плашка заголовка
     const headerW = width * 0.88;
     const headerH = 98;
     const headerY = 104;
@@ -58,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
     divider.lineBetween(width / 2 - 54, headerY - 18, width / 2 + 54, headerY - 18);
 
     this.add.text(width / 2, headerY + 3, 'АРТЕФАКТЫ ВРЕМЕНИ', {
-      fontSize: '23px',
+      fontSize: '25px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -90,7 +88,7 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // 5. Виджет срочного контракта (если активен)
+    // 5. Виджет срочного контракта
     this.renderContractWidget(width, height * 0.365, textRes, FONT_UI);
 
     // 6. Плашка ранга
@@ -123,11 +121,9 @@ export class MenuScene extends Phaser.Scene {
       const gfx = this.add.graphics();
       const drawState = (hovered) => {
         gfx.clear();
-        // Мягкая тень снизу
         gfx.fillStyle(0x050302, 0.65);
         gfx.fillRoundedRect(-btnW / 2, -btnH / 2 + 4, btnW, btnH, 12);
 
-        // Основной градиент кнопки
         gfx.fillGradientStyle(
           palette.fillTop,
           palette.fillTop,
@@ -137,14 +133,12 @@ export class MenuScene extends Phaser.Scene {
         );
         gfx.fillRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 12);
 
-        // Верхний внутренний блик (объём фаски)
         gfx.lineStyle(1, 0xffffff, isPrimary ? 0.45 : 0.14);
         gfx.beginPath();
         gfx.moveTo(-btnW / 2 + 12, -btnH / 2 + 1.5);
         gfx.lineTo(btnW / 2 - 12, -btnH / 2 + 1.5);
         gfx.strokePath();
 
-        // Внешняя рамка
         gfx.lineStyle(hovered ? 2 : 1.5, hovered ? palette.strokeHover : palette.stroke, 0.95);
         gfx.strokeRoundedRect(-btnW / 2, -btnH / 2, btnW, btnH, 12);
       };
@@ -164,7 +158,6 @@ export class MenuScene extends Phaser.Scene {
         label.setShadow(0, 1, palette.shadowText, 3, false, true);
       }
 
-      // Невидимая интерактивная зона точно по размеру кнопки
       const hitZone = this.add.zone(0, 0, btnW, btnH).setInteractive({ useHandCursor: true });
 
       hitZone.on('pointerover', () => drawState(true));
@@ -204,7 +197,7 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('MuseumScene');
     });
 
-    // 8. Нижний бейдж золотого лака (скруглённая капсула)
+    // 8. Нижний бейдж золотого лака
     const lacquer = Storage.getBindingLacquer ? Storage.getBindingLacquer() : 0;
     const badgeW = width * 0.74;
     const badgeH = 30;
@@ -232,7 +225,6 @@ export class MenuScene extends Phaser.Scene {
     this.checkOfflineEarnings(width, height, textRes, FONT_UI);
   }
 
-  // Универсальный рисовальщик скруглённых панелей с градиентом и бликом
   drawStyledBox(x, y, w, h, opts) {
     const gfx = this.add.graphics();
     const r = opts.radius || 10;
@@ -332,7 +324,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(1, 0.5);
 
-    // Скруглённый прогресс-бар
     const barW = boxW - 28;
     const barH = 7;
     const barY = 11;
