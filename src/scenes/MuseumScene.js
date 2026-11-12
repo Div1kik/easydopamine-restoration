@@ -8,9 +8,10 @@ export class MuseumScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.max(window.devicePixelRatio || 1, 2.5);
+    this.dpr = dpr;
 
-    // Глубокий фон залов музея
+    // Фон музея
     const bg = this.add.graphics().setDepth(0);
     bg.fillStyle(0x07090e, 1);
     bg.fillRect(0, 0, width, height);
@@ -19,89 +20,93 @@ export class MuseumScene extends Phaser.Scene {
       AudioManager.playShopBell();
     }
 
-    // Верхняя плашка и заголовок
-    this.add.text(width / 2, 28, '🏛️ ЗАЛ СЛАВЫ МУЗЕЯ', {
+    // Шапка
+    const title = this.add.text(width / 2, 26, '🏛️ ЗАЛ СЛАВЫ МУЗЕЯ', {
       fontSize: '18px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#e2b35b',
       fontStyle: 'bold',
-      letterSpacing: 2,
-      resolution: dpr
+      letterSpacing: 2
     }).setOrigin(0.5).setDepth(20);
+    title.setResolution(dpr);
 
-    this.infoText = this.add.text(width / 2, 48, '', {
+    this.infoText = this.add.text(width / 2, 46, '', {
       fontSize: '11.5px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#94a3b8',
-      resolution: dpr
+      color: '#94a3b8'
     }).setOrigin(0.5).setDepth(20);
+    this.infoText.setResolution(dpr);
 
-    this.incomeText = this.add.text(width / 2, 64, '', {
+    this.incomeText = this.add.text(width / 2, 62, '', {
       fontSize: '11px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#34d399',
-      fontStyle: 'bold',
-      resolution: dpr
+      fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(20);
+    this.incomeText.setResolution(dpr);
 
-    // Границы списка витрин
     this.listTopY = 82;
-    this.listBottomY = height - 68;
+    this.listBottomY = height - 66;
     this.listHeight = this.listBottomY - this.listTopY;
 
     this.listCont = this.add.container(0, this.listTopY).setDepth(5);
 
-    // Маска скролла
     const maskShape = this.make.graphics();
     maskShape.fillStyle(0xffffff);
     maskShape.fillRect(0, this.listTopY, width, this.listHeight);
     this.listCont.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
 
     this.setupScroll();
-    this.renderExhibitList();
+    this.renderExhibitGrid();
 
-    // Нижняя плашка возврата
-    this.add.rectangle(width / 2, height - 34, width, 68, 0x07090e, 0.95).setDepth(30);
+    // Нижняя кнопка возврата
+    this.add.rectangle(width / 2, height - 33, width, 66, 0x07090e, 0.95).setDepth(30);
 
-    const backBtn = this.add.rectangle(
-      width / 2,
-      height - 34,
-      width * 0.88,
-      44,
-      0x141a24
-    )
+    const backBtn = this.add.rectangle(width / 2, height - 33, width * 0.88, 42, 0x141a24)
       .setStrokeStyle(1.5, 0x475569, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
 
-    this.add.text(width / 2, height - 34, 'В главное меню', {
-      fontSize: '15px',
+    const backTxt = this.add.text(width / 2, height - 33, 'В главное меню', {
+      fontSize: '14.5px',
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: '#ffffff',
-      fontStyle: 'bold',
-      resolution: dpr
+      fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(32);
+    backTxt.setResolution(dpr);
 
     backBtn.on('pointerdown', () => {
-      if (AudioManager.playClick) {
-        AudioManager.playClick();
-      }
+      if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
   }
 
+  getMuseumCustomizations() {
+    return {
+      hasVelvet: localStorage.getItem('museum_upg_pedestal_1') === 'true',
+      hasDome: localStorage.getItem('museum_upg_pedestal_2') === 'true',
+      hasAntiqueHall: localStorage.getItem('museum_upg_hall_antique') === 'true',
+      hasRoyalHall: localStorage.getItem('museum_upg_hall_royal') === 'true'
+    };
+  }
+
   updateHeader() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    const maxSlots = Storage.getMaxMuseumCapacity ? Storage.getMaxMuseumCapacity() : 6;
+    const custom = this.getMuseumCustomizations();
+    const bonusSlots = (custom.hasVelvet ? 1 : 0) + (custom.hasDome ? 1 : 0);
+    const maxSlots = (Storage.getMaxMuseumCapacity ? Storage.getMaxMuseumCapacity() : 6) + bonusSlots;
 
-    // Считаем экспонаты, приносящие доход (без сколов / со звездами >= 2)
     const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
-    const incomePerHour = validExhibits.length * 12; // 2 монеты за каждые 10 минут = 12/час
+    let mult = 1.0;
+    if (custom.hasVelvet) mult += 0.10;
+    if (custom.hasDome) mult += 0.25;
+    if (custom.hasRoyalHall) mult += 0.50;
 
-    this.infoText.setText(`Экспонаты: ${inventory.length}/${maxSlots}  |  Казна: ${coins} 🪙`);
-    this.incomeText.setText(`Доход посетителей: +${incomePerHour} 🪙/час (${validExhibits.length} на витринах)`);
+    const incomePerHour = Math.round(validExhibits.length * 12 * mult);
+
+    this.infoText.setText(`Витрины: ${inventory.length}/${maxSlots}  |  Казна: ${coins} 🪙`);
+    this.incomeText.setText(`Доход посетителей: +${incomePerHour} 🪙/час`);
   }
 
   setupScroll() {
@@ -133,209 +138,165 @@ export class MuseumScene extends Phaser.Scene {
     });
   }
 
-  renderExhibitList() {
+  renderExhibitGrid() {
     this.listCont.removeAll(true);
     this.listCont.y = this.listTopY;
 
-    const { width, height } = this.scale;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const { width } = this.scale;
+    const dpr = this.dpr;
     const inventory = Storage.getInventory ? Storage.getInventory() : [];
-    const maxSlots = Storage.getMaxMuseumCapacity ? Storage.getMaxMuseumCapacity() : 6;
+    const custom = this.getMuseumCustomizations();
+    const bonusSlots = (custom.hasVelvet ? 1 : 0) + (custom.hasDome ? 1 : 0);
+    const maxSlots = (Storage.getMaxMuseumCapacity ? Storage.getMaxMuseumCapacity() : 6) + bonusSlots;
+
     this.updateHeader();
 
-    const cardH = 88;
-    const spacing = 10;
-    const cardW = width * 0.90;
+    // Параметры сетки 2xN (плитка)
+    const cols = 2;
+    const gap = 12;
+    const padX = 16;
+    const tileW = (width - padX * 2 - gap) / cols;
+    const tileH = 196;
 
-    // Пустой музей
-    if (inventory.length === 0) {
-      this.minScrollY = this.listTopY;
-      const box = this.add.rectangle(
-        width / 2,
-        height * 0.38 - this.listTopY,
-        width * 0.88,
-        130,
-        0x111622
-      ).setStrokeStyle(1.5, 0x334155, 0.7);
+    const totalSlots = Math.max(inventory.length, maxSlots);
 
-      const t1 = this.add.text(
-        width / 2,
-        height * 0.38 - this.listTopY - 16,
-        'ВИТРИНЫ МУЗЕЯ ПУСТЫ',
-        {
-          fontSize: '15px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: '#64748b',
-          fontStyle: 'bold',
-          resolution: dpr
+    for (let i = 0; i < totalSlots; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const tileX = padX + tileW / 2 + col * (tileW + gap);
+      const tileY = 10 + tileH / 2 + row * (tileH + gap);
+
+      const tile = this.add.container(tileX, tileY);
+      const item = inventory[i];
+
+      if (item) {
+        const isDamaged = (item.stars === 1);
+
+        // Фон витрины (меняется от купленных апгрейдов)
+        const bgColor = custom.hasRoyalHall ? 0x1a150e : (custom.hasVelvet ? 0x1e1018 : 0x111622);
+        const strokeColor = isDamaged
+          ? 0xef4444
+          : (custom.hasRoyalHall ? 0xfacc15 : (custom.hasDome ? 0x38bdf8 : 0x273142));
+
+        const cardBg = this.add.rectangle(0, 0, tileW, tileH, bgColor, 0.96)
+          .setStrokeStyle(custom.hasRoyalHall ? 2 : 1.5, strokeColor, 0.9);
+
+        // Неоновая подсветка снизу (если куплена в лавке)
+        if (custom.hasDome && !isDamaged) {
+          const glow = this.add.ellipse(0, 12, tileW * 0.65, 24, 0x38bdf8, 0.25);
+          tile.add(glow);
         }
-      ).setOrigin(0.5);
 
-      const t2 = this.add.text(
-        width / 2,
-        height * 0.38 - this.listTopY + 16,
-        'Отреставрируйте артефакты в экспедициях,\nчтобы выставить их на всеобщее обозрение.',
-        {
+        // Постамент под артефактом
+        const pedestalColor = custom.hasVelvet ? 0x881337 : 0x334155;
+        const pedestal = this.add.rectangle(0, 22, tileW * 0.62, 12, pedestalColor)
+          .setStrokeStyle(1, custom.hasRoyalHall ? 0xfacc15 : 0x64748b, 0.8);
+
+        // Спрайт артефакта
+        const tex = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
+        const icon = this.add.image(0, -18, tex).setDisplaySize(72, 72);
+
+        tile.add([cardBg, pedestal, icon]);
+
+        // Стеклянный купол поверх (если куплен в лавке)
+        if (custom.hasDome) {
+          const dome = this.add.graphics();
+          dome.lineStyle(1.5, 0xbae6fd, 0.45);
+          dome.strokeRoundedRect(-tileW * 0.36, -62, tileW * 0.72, 86, { tl: 36, tr: 36, bl: 4, br: 4 });
+          dome.fillStyle(0xe0f2fe, 0.06);
+          dome.fillRoundedRect(-tileW * 0.36, -62, tileW * 0.72, 86, { tl: 36, tr: 36, bl: 4, br: 4 });
+          tile.add(dome);
+        }
+
+        // Звезды и статус
+        const starsBadge = item.stars ? '⭐'.repeat(item.stars) : '⭐⭐⭐';
+        const starsTxt = this.add.text(0, -78, item.isKintsugi ? `${starsBadge} ✨` : starsBadge, {
+          fontSize: '10px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        }).setOrigin(0.5);
+        starsTxt.setResolution(dpr);
+
+        // Название артефакта
+        const nameTxt = this.add.text(0, 42, item.name || 'Реликвия', {
           fontSize: '12px',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: '#475569',
-          align: 'center',
-          resolution: dpr
-        }
-      ).setOrigin(0.5);
-
-      this.listCont.add([box, t1, t2]);
-      return;
-    }
-
-    // 1. Отрисовка существующих экспонатов
-    inventory.forEach((item, idx) => {
-      const cardY = idx * (cardH + spacing) + cardH / 2 + 6;
-      const card = this.add.container(width / 2, cardY);
-
-      const isDamaged = (item.stars === 1);
-      const cardBg = this.add.rectangle(
-        0,
-        0,
-        cardW,
-        cardH,
-        0x111622,
-        0.96
-      ).setStrokeStyle(1.5, isDamaged ? 0xef4444 : 0x273142, 0.85);
-
-      // Текстура артефакта
-      const tex = this.textures.exists(item.textureKey)
-        ? item.textureKey
-        : 'art_egypt_scarab';
-      const icon = this.add.image(-cardW / 2 + 42, 0, tex).setDisplaySize(58, 58);
-
-      const name = this.add.text(
-        -cardW / 2 + 80,
-        -20,
-        item.name || 'Артефакт',
-        {
-          fontSize: '14.5px',
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           color: '#ffffff',
           fontStyle: 'bold',
-          resolution: dpr
-        }
-      );
+          align: 'center',
+          wordWrap: { width: tileW - 16 }
+        }).setOrigin(0.5);
+        nameTxt.setResolution(dpr);
 
-      const sellPrice = item.marketValue || 100;
-      const starsBadge = item.stars ? '⭐'.repeat(item.stars) : '⭐⭐⭐';
-      const statusColor = isDamaged ? '#ef4444' : '#22c55e';
-      const statusText = isDamaged ? 'СКОЛЫ (НЕТ БИЛЕТОВ)' : 'В ЭКСПОЗИЦИИ';
+        // Кнопка продажи с ценой внизу плитки
+        const sellPrice = item.marketValue || 100;
+        const btnBg = this.add.rectangle(0, 74, tileW - 24, 28, isDamaged ? 0x450a0a : 0x064e3b)
+          .setStrokeStyle(1, isDamaged ? 0xef4444 : 0x10b981, 0.9)
+          .setInteractive({ useHandCursor: true });
 
-      const val = this.add.text(
-        -cardW / 2 + 80,
-        10,
-        `${sellPrice} 🪙  ${starsBadge} ${statusText}`,
-        {
+        const btnLabel = isDamaged ? `СКУПЩИКУ ${sellPrice} 🪙` : `ПРОДАТЬ ${sellPrice} 🪙`;
+        const btnTxt = this.add.text(0, 74, btnLabel, {
+          fontSize: '10px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          color: isDamaged ? '#fca5a5' : '#34d399',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        btnTxt.setResolution(dpr);
+
+        let isSold = false;
+        btnBg.on('pointerup', () => {
+          if (this.isDragging || isSold) return;
+          isSold = true;
+          btnBg.disableInteractive();
+
+          if (AudioManager.playCoin) AudioManager.playCoin();
+          Storage.addCoins(sellPrice);
+          Storage.removeArtifactFromInventory(item.instanceId);
+
+          this.tweens.add({
+            targets: tile,
+            alpha: 0,
+            scale: 0.85,
+            duration: 180,
+            onComplete: () => this.renderExhibitGrid()
+          });
+        });
+
+        tile.add([starsTxt, nameTxt, btnBg, btnTxt]);
+      } else {
+        // Пустой свободный постамент
+        const emptyBg = this.add.rectangle(0, 0, tileW, tileH, 0x0a0e17, 0.75)
+          .setStrokeStyle(1, 0x1e293b, 0.8);
+
+        const pedestal = this.add.rectangle(0, 14, tileW * 0.55, 10, 0x1e293b);
+
+        const plusTxt = this.add.text(0, -18, '🏛️', {
+          fontSize: '26px',
+          alpha: 0.35
+        }).setOrigin(0.5);
+
+        const emptyTitle = this.add.text(0, 44, 'Свободный стенд', {
           fontSize: '11px',
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: statusColor,
-          fontStyle: 'bold',
-          resolution: dpr
-        }
-      );
+          color: '#475569',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        emptyTitle.setResolution(dpr);
 
-      // Кнопка продажи
-      const btnBgColor = isDamaged ? 0x261418 : 0x16241a;
-      const btnStroke = isDamaged ? 0xef4444 : 0x22c55e;
-      const btnLabel = isDamaged ? 'СКУПЩИКУ' : 'ПРОДАТЬ';
-
-      const sellBtnBg = this.add.rectangle(
-        cardW / 2 - 50,
-        0,
-        80,
-        36,
-        btnBgColor
-      )
-        .setStrokeStyle(1.5, btnStroke, 0.8)
-        .setInteractive({ useHandCursor: true });
-
-      const sellBtnTxt = this.add.text(
-        cardW / 2 - 50,
-        0,
-        btnLabel,
-        {
-          fontSize: '10.5px',
+        const emptySub = this.add.text(0, 62, 'Место для реликвии', {
+          fontSize: '9.5px',
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          color: isDamaged ? '#fca5a5' : '#22c55e',
-          fontStyle: 'bold',
-          resolution: dpr
-        }
-      ).setOrigin(0.5);
+          color: '#334155'
+        }).setOrigin(0.5);
+        emptySub.setResolution(dpr);
 
-      let isSold = false;
-      sellBtnBg.on('pointerup', () => {
-        if (this.isDragging || isSold) return;
-        isSold = true;
-        sellBtnBg.disableInteractive();
+        tile.add([emptyBg, pedestal, plusTxt, emptyTitle, emptySub]);
+      }
 
-        if (AudioManager.playCoin) {
-          AudioManager.playCoin();
-        }
-
-        Storage.addCoins(sellPrice);
-        Storage.removeArtifactFromInventory(item.instanceId);
-
-        this.updateHeader();
-
-        sellBtnBg.setFillStyle(0x334155, 0.5);
-        sellBtnTxt.setText('ПРОДАНО');
-        sellBtnTxt.setColor('#94a3b8');
-
-        this.tweens.add({
-          targets: card,
-          alpha: 0,
-          scaleX: 0.85,
-          scaleY: 0.85,
-          duration: 180,
-          ease: 'Power2',
-          onComplete: () => {
-            this.renderExhibitList();
-          }
-        });
-      });
-
-      card.add([cardBg, icon, name, val, sellBtnBg, sellBtnTxt]);
-      this.listCont.add(card);
-    });
-
-    // 2. Отрисовка свободных витринных мест
-    const freeSlots = Math.max(0, maxSlots - inventory.length);
-    let currentTotalItems = inventory.length;
-
-    for (let i = 0; i < freeSlots; i++) {
-      const slotY = currentTotalItems * (cardH + spacing) + cardH / 2 + 6;
-      const emptySlot = this.add.container(width / 2, slotY);
-
-      const slotBg = this.add.rectangle(0, 0, cardW, cardH, 0x090d14, 0.7)
-        .setStrokeStyle(1, 0x1e293b, 0.8);
-
-      const slotTxt = this.add.text(0, -8, '🏛️ СВОБОДНЫЙ СТЕНД', {
-        fontSize: '12.5px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#475569',
-        fontStyle: 'bold',
-        resolution: dpr
-      }).setOrigin(0.5);
-
-      const slotSub = this.add.text(0, 12, 'Отреставрируйте артефакт, чтобы занять место', {
-        fontSize: '10.5px',
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        color: '#334155',
-        resolution: dpr
-      }).setOrigin(0.5);
-
-      emptySlot.add([slotBg, slotTxt, slotSub]);
-      this.listCont.add(emptySlot);
-      currentTotalItems++;
+      this.listCont.add(tile);
     }
 
-    const totalHeight = currentTotalItems * (cardH + spacing) + 20;
+    const totalRows = Math.ceil(totalSlots / cols);
+    const totalHeight = totalRows * (tileH + gap) + 24;
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalHeight);
   }
 }
