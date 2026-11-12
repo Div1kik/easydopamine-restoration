@@ -852,7 +852,7 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
- renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -889,12 +889,15 @@ export class RestoreScene extends Phaser.Scene {
       this.load.start();
     }
 
-    const matPadX = 18;
-    const matTop = topBound + 8;
-    const matBottom = bottomBound - 10;
-    const matW = width - matPadX * 2;
-    const matH = matBottom - matTop;
-    const matCenterY = matTop + matH / 2;
+    // Компактный реставрационный коврик строго вокруг артефакта, чтобы не закрывать красивый фон верстака
+    const artW = this.artW || 300;
+    const artH = this.artH || 290;
+    const maxMatW = width - 48;
+    const maxMatH = (bottomBound - topBound) - 36;
+
+    const matW = Math.min(artW + 52, maxMatW);
+    const matH = Math.min(artH + 64, maxMatH);
+    const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
 
     this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
 
@@ -910,35 +913,35 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    // Полупрозрачный стеклянно-бархатный коврик, чтобы фон верстака читался во всей красе
-    matGfx.fillStyle(palette.fill, 0.18);
+    // Лёгкая тонированная подложка под артефактом, чтобы фон стола свободно дышал вокруг
+    matGfx.fillStyle(palette.fill, 0.22);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(2.5, palette.border, 0.85);
+    matGfx.lineStyle(2, palette.border, 0.85);
     matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(1, palette.line, 0.3);
-    matGfx.strokeRoundedRect(-halfW + 6, -halfH + 6, matW - 12, matH - 12, 12);
+    matGfx.strokeRoundedRect(-halfW + 5, -halfH + 5, matW - 10, matH - 10, 12);
 
     const rivets = [
-      { x: -halfW + 12, y: -halfH + 12 },
-      { x: halfW - 12, y: -halfH + 12 },
-      { x: -halfW + 12, y: halfH - 12 },
-      { x: halfW - 12, y: halfH - 12 }
+      { x: -halfW + 11, y: -halfH + 11 },
+      { x: halfW - 11, y: -halfH + 11 },
+      { x: -halfW + 11, y: halfH - 11 },
+      { x: halfW - 11, y: halfH - 11 }
     ];
     rivets.forEach((r) => {
       matGfx.fillStyle(palette.border, 0.9);
-      matGfx.fillCircle(r.x, r.y, 3);
+      matGfx.fillCircle(r.x, r.y, 2.5);
     });
 
     const grid = this.add.graphics();
-    grid.lineStyle(1, palette.line, 0.06);
-    const step = 36;
-    for (let x = -halfW + 36; x <= halfW - 36; x += step) {
-      grid.lineBetween(x, -halfH + 12, x, halfH - 12);
+    grid.lineStyle(1, palette.line, 0.07);
+    const step = 32;
+    for (let x = -halfW + 24; x <= halfW - 24; x += step) {
+      grid.lineBetween(x, -halfH + 10, x, halfH - 10);
     }
-    for (let y = -halfH + 36; y <= halfH - 36; y += step) {
-      grid.lineBetween(-halfW + 12, y, halfW - 12, y);
+    for (let y = -halfH + 24; y <= halfH - 24; y += step) {
+      grid.lineBetween(-halfW + 10, y, halfW - 10, y);
     }
 
     this.matContainer.add([matGfx, grid]);
