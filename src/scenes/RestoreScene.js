@@ -19,7 +19,7 @@ export class RestoreScene extends Phaser.Scene {
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRestoreHistory ? Storage.getRestoreHistory() : [];
-    const reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
+    let reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
     let reqTemplateId = (data && data.templateId) ? data.templateId : null;
 
     if (!reqTemplateId) {
@@ -93,7 +93,7 @@ export class RestoreScene extends Phaser.Scene {
 
     // 3. ВЕРХНИЙ БАР (АНТИКВАРНО-БРОНЗОВЫЙ)
     const topBarGfx = this.add.graphics().setDepth(200);
-    topBarGfx.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
+    topBarGfx.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.94);
     topBarGfx.fillRect(0, systemTopPad, width, topBarHeight);
     topBarGfx.lineStyle(1, 0xc89d54, 0.55);
     topBarGfx.lineBetween(0, systemTopPad + topBarHeight, width, systemTopPad + topBarHeight);
@@ -178,7 +178,7 @@ export class RestoreScene extends Phaser.Scene {
     const artInfoCont = this.add.container(0, systemTopPad + 46).setDepth(190);
 
     const infoPanelGfx = this.add.graphics();
-    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.94);
+    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.90);
     infoPanelGfx.fillRect(0, 0, width, infoPanelHeight);
     infoPanelGfx.lineStyle(1.2, 0xc89d54, 0.55);
     infoPanelGfx.lineBetween(0, infoPanelHeight, width, infoPanelHeight);
@@ -343,7 +343,6 @@ export class RestoreScene extends Phaser.Scene {
       const tier = this.getToolTier(this.activeTool);
       const requiredPasses = tier >= 3 ? 1 : 2;
 
-      const dabObj = this.textures.getFrame(this.activeTool, null);
       this.dirtLayer.erase(this.activeTool, localX, localY);
       this.emitDustFX(pointer.x, pointer.y);
 
@@ -487,7 +486,6 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    // Кисточка для клея
     makeTex('tex_hd_tool_glue', (ctx) => {
       ctx.fillStyle = '#78350f';
       ctx.beginPath();
@@ -504,7 +502,6 @@ export class RestoreScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // 1. СКРЕБОК (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
       makeTex(`tex_hd_tool_scraper_t${tier}`, (ctx) => {
         const hGrad = ctx.createLinearGradient(56, 60, 72, 60);
@@ -565,7 +562,6 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    // 2. КИСТЬ (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
       makeTex(`tex_hd_tool_brush_t${tier}`, (ctx) => {
         ctx.fillStyle = tier >= 3 ? '#1e293b' : '#78350f';
@@ -606,7 +602,6 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    // 3. РЕАГЕНТ (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
       makeTex(`tex_hd_tool_solvent_t${tier}`, (ctx) => {
         ctx.fillStyle = tier === 4 ? '#6366f1' : (tier === 3 ? '#0d9488' : (tier === 2 ? '#0284c7' : '#38bdf8'));
@@ -620,7 +615,6 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    // 4. ПОЛИРОВКА (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
       makeTex(`tex_hd_tool_polish_t${tier}`, (ctx) => {
         if (tier === 4) {
@@ -703,9 +697,8 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_polish', icon: this.getToolTextureForTier('tool_polish'), label: 'Блеск' }
     ];
 
-    // Нижняя деревянно-бронзовая плашка трея
     const trayBgGfx = this.add.graphics().setDepth(180);
-    trayBgGfx.fillGradientStyle(0x24180f, 0x24180f, 0x120b07, 0x120b07, 0.96);
+    trayBgGfx.fillGradientStyle(0x24180f, 0x24180f, 0x120b07, 0x120b07, 0.94);
     trayBgGfx.fillRect(0, trayY - 52, width, 114);
     trayBgGfx.lineStyle(1.5, 0xc89d54, 0.65);
     trayBgGfx.lineBetween(0, trayY - 52, width, trayY - 52);
@@ -871,9 +864,24 @@ export class RestoreScene extends Phaser.Scene {
   }
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const bg = this.add.graphics().setDepth(1);
-    bg.fillStyle(0x0d0805, 1);
-    bg.fillRect(0, 0, width, height);
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
+
+    // Отрисовка выбранного фона верстака (из 15 доступных тем)
+    if (this.textures.exists(activeSkin)) {
+      const bg = this.add.image(width / 2, height / 2, activeSkin).setDepth(1);
+      bg.setScale(Math.max(width / bg.width, height / bg.height));
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.20).setDepth(1);
+    } else if (this.textures.exists(`workbench_bg_${tier}`)) {
+      const bg = this.add.image(width / 2, height / 2, `workbench_bg_${tier}`).setDepth(1);
+      bg.setScale(Math.max(width / bg.width, height / bg.height));
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.20).setDepth(1);
+    } else {
+      const bg = this.add.graphics().setDepth(1);
+      bg.fillStyle(0x0d0805, 1);
+      bg.fillRect(0, 0, width, height);
+    }
 
     const matPadX = 16;
     const matTop = topBound + 6;
@@ -896,7 +904,8 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    matGfx.fillStyle(palette.fill, 1);
+    // Полупрозрачный рабочий мат, чтобы сквозь него просвечивала фактура выбранного верстака
+    matGfx.fillStyle(palette.fill, 0.56);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(2.5, palette.border, 0.9);
@@ -1419,3 +1428,4 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 }
+
