@@ -3,12 +3,17 @@ export class BootScene extends Phaser.Scene {
     super('BootScene');
   }
 
+  preload() {
+    this.load.image('menu_bg', 'assets/backgrounds/menu_bg.png');
+  }
+
   create() {
     try {
       this.createRestorationAssets();
     } catch (err) {
-      console.error('Ошибка в createRestorationAssets:', err);
+      console.error('Ошибка createRestorationAssets:', err);
     }
+
     this.scene.start('MenuScene');
   }
 
