@@ -1,3 +1,5 @@
+import { Storage } from '../utils/Storage.js';
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('BootScene');
@@ -9,11 +11,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('museum_bg', 'assets/backgrounds/museum_bg.png');
     this.load.image('shop_bg', 'assets/backgrounds/shop_bg.png');
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
+    this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
-    // Все 15 вариативных фонов верстака (4 базовых тира + 4 легендарных + 7 эпохальных)
-    for (let i = 1; i <= 15; i++) {
-      this.load.image(`workbench_bg_${i}`, `assets/backgrounds/workbench_bg_${i}.png`);
-    }
+    // Ленивая стратегия: на старте грузим ТОЛЬКО активный скин верстака (1 файл вместо 15)
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
+    this.load.image(activeSkin, `assets/backgrounds/${activeSkin}.png`);
   }
 
   create() {
@@ -38,7 +42,6 @@ export class BootScene extends Phaser.Scene {
 
     this.scene.start('MenuScene');
   }
-
 
   createRestorationAssets() {
     const make = (key, w, h, fn) => {
@@ -825,7 +828,6 @@ export class BootScene extends Phaser.Scene {
     });
 
     // --- 6. ВИКИНГИ ---
-    // 6.1 РОГ ДЛЯ ЭЛЯ (ПОЛИРОВАННЫЙ ТУРИЙ РОГ В СЕРЕБРЯНОЙ ОПРАВЕ)
     make('art_viking_horn', W, H, (ctx) => {
       const hornGrad = ctx.createLinearGradient(cx - 150, cy - 150, cx + 150, cy + 200);
       hornGrad.addColorStop(0, '#fef3c7');
@@ -842,7 +844,6 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Серебряный чеканный раструб
       const silverGrad = ctx.createLinearGradient(cx - 140, 0, cx - 120, 0);
       silverGrad.addColorStop(0, '#64748b'); silverGrad.addColorStop(0.5, '#f8fafc'); silverGrad.addColorStop(1, '#94a3b8');
       ctx.fillStyle = silverGrad;
@@ -851,13 +852,11 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
       ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 14; ctx.stroke();
 
-      // Опоясывающее серебряное кольцо с рунами
       ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 22;
       ctx.beginPath();
       ctx.moveTo(cx - 15, cy - 20); ctx.lineTo(cx + 70, cy + 30);
       ctx.stroke();
 
-      // Литой наконечник в виде клюва ворона
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
       ctx.moveTo(cx + 110, cy + 270);
@@ -867,7 +866,6 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // 6.2 ФИБУЛА ЯРЛА (МАССИВНАЯ ПОДКОВООБРАЗНАЯ ЗАСТЁЖКА С ВИТЫМ УЗОРОМ)
     make('art_viking_brooch', W, H, (ctx) => {
       const ringGrad = ctx.createRadialGradient(cx, cy, 60, cx, cy, 190);
       ringGrad.addColorStop(0, '#94a3b8'); ringGrad.addColorStop(0.6, '#f1f5f9'); ringGrad.addColorStop(1, '#475569');
@@ -879,7 +877,6 @@ export class BootScene extends Phaser.Scene {
       ctx.arc(cx, cy, 155, 0.55, Math.PI * 2 - 0.55);
       ctx.stroke();
 
-      // Шарообразные гранёные окончания подковы
       ctx.fillStyle = '#e2e8f0';
       const endAngle1 = 0.55;
       const endAngle2 = Math.PI * 2 - 0.55;
@@ -888,7 +885,6 @@ export class BootScene extends Phaser.Scene {
       ctx.arc(cx + Math.cos(endAngle2) * 155, cy + Math.sin(endAngle2) * 155, 26, 0, Math.PI * 2);
       ctx.fill();
 
-      // Длинная кованая булавка фибулы
       const needleGrad = ctx.createLinearGradient(cx - 200, cy + 160, cx + 180, cy - 180);
       needleGrad.addColorStop(0, '#334155'); needleGrad.addColorStop(0.5, '#f8fafc'); needleGrad.addColorStop(1, '#94a3b8');
       ctx.strokeStyle = needleGrad;
@@ -899,7 +895,6 @@ export class BootScene extends Phaser.Scene {
       ctx.lineTo(cx + 170, cy - 180);
       ctx.stroke();
 
-      // Кольцо-шарнир иглы
       ctx.fillStyle = '#64748b';
       ctx.beginPath();
       ctx.arc(cx - 90, cy + 95, 28, 0, Math.PI * 2);
@@ -986,15 +981,12 @@ export class BootScene extends Phaser.Scene {
     });
 
     // --- 7. РЕНЕССАНС ---
-    // 7.1 МОРСКОЙ КОМПАС (ОРЕХОВЫЙ ФУТЛЯР С ЛАТУННОЙ КАРТУШКОЙ)
     make('art_renaissance_compass', W, H, (ctx) => {
-      // Квадратный полированный футляр из темного ореха
       const boxGrad = ctx.createLinearGradient(cx - 170, cy - 170, cx + 170, cy + 170);
       boxGrad.addColorStop(0, '#582910'); boxGrad.addColorStop(0.5, '#78350f'); boxGrad.addColorStop(1, '#2b1206');
       ctx.fillStyle = boxGrad;
       drawRoundRect(ctx, cx - 165, cy - 165, 330, 330, 24); ctx.fill();
 
-      // Латунные уголки шкатулки
       ctx.fillStyle = '#d4af37';
       const corners = [
         { x: cx - 160, y: cy - 160 }, { x: cx + 125, y: cy - 160 },
@@ -1004,35 +996,29 @@ export class BootScene extends Phaser.Scene {
         drawRoundRect(ctx, c.x, c.y, 35, 35, 6); ctx.fill();
       });
 
-      // Латунный круглый чан компаса
       const bowlGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 140);
       bowlGrad.addColorStop(0, '#fef08a'); bowlGrad.addColorStop(0.7, '#eab308'); bowlGrad.addColorStop(1, '#854d0e');
       ctx.fillStyle = bowlGrad;
       ctx.beginPath(); ctx.arc(cx, cy, 138, 0, Math.PI * 2); ctx.fill();
 
-      // Белый циферблат с делениями
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath(); ctx.arc(cx, cy, 115, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
 
-      // Роза ветров (8-лучевая звезда)
       drawStar(ctx, cx, cy, 8, 95, 28);
       ctx.fillStyle = '#b45309'; ctx.fill();
 
-      // Стальная стрелка с синей и алой половинами
-      ctx.fillStyle = '#dc2626'; // Север
+      ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       ctx.moveTo(cx, cy); ctx.lineTo(cx + 18, cy); ctx.lineTo(cx, cy - 105);
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#1e3a8a'; // Юг
+      ctx.fillStyle = '#1e3a8a';
       ctx.beginPath();
       ctx.moveTo(cx, cy); ctx.lineTo(cx - 18, cy); ctx.lineTo(cx, cy + 105);
       ctx.closePath(); ctx.fill();
     });
 
-    // 7.2 ВЕНЕЦИАНСКИЙ КУБОК (МУРАНСКОЕ СТЕКЛО С РУБИНОВЫМИ НИТЯМИ)
     make('art_renaissance_goblet', W, H, (ctx) => {
-      // Полупрозрачная хрустальная чаша
       const glassGrad = ctx.createLinearGradient(cx - 130, cy, cx + 130, cy);
       glassGrad.addColorStop(0, 'rgba(191, 219, 254, 0.45)');
       glassGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.85)');
@@ -1047,34 +1033,27 @@ export class BootScene extends Phaser.Scene {
       ctx.bezierCurveTo(cx - 35, cy + 70, cx - 110, cy + 20, cx - 120, cy - 220);
       ctx.closePath(); ctx.fill();
 
-      // Внутренние рубиновые спирали в стекле
       ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(cx - 80, cy - 200); ctx.quadraticCurveTo(cx, cy - 60, cx + 60, cy - 160);
       ctx.moveTo(cx + 80, cy - 200); ctx.quadraticCurveTo(cx, cy - 40, cx - 60, cy - 140);
       ctx.stroke();
 
-      // Фигурная барочная золотая ножка с балясиной
       const goldGrad = ctx.createLinearGradient(cx - 50, 0, cx + 50, 0);
       goldGrad.addColorStop(0, '#ca8a04'); goldGrad.addColorStop(0.5, '#fde047'); goldGrad.addColorStop(1, '#854d0e');
       ctx.fillStyle = goldGrad;
 
-      // Узел ножки
       ctx.beginPath(); ctx.ellipse(cx, cy + 120, 32, 24, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillRect(cx - 14, cy + 85, 28, 160);
 
-      // Круглое ступенчатое основание
       ctx.beginPath(); ctx.ellipse(cx, cy + 265, 125, 38, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 4; ctx.stroke();
     });
 
-    // 7.3 ЛАТУННАЯ АСТРОЛЯБИЯ (ТОЧНЫЙ НАВИГАЦИОННЫЙ ПРИБОР)
     make('art_renaissance_astrolabe', W, H, (ctx) => {
-      // Мощное подвесное кольцо (армилла)
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 22;
       ctx.beginPath(); ctx.arc(cx, cy - 240, 52, 0, Math.PI * 2); ctx.stroke();
 
-      // Основной латунный диск (матер)
       const brassGrad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 210);
       brassGrad.addColorStop(0, '#fef08a');
       brassGrad.addColorStop(0.5, '#eab308');
@@ -1084,7 +1063,6 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath(); ctx.arc(cx, cy, 195, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#78350f'; ctx.lineWidth = 6; ctx.stroke();
 
-      // Градуированный лимб с делениями
       ctx.strokeStyle = '#451a03'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 175, 0, Math.PI * 2); ctx.stroke();
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 18) {
@@ -1094,7 +1072,6 @@ export class BootScene extends Phaser.Scene {
         ctx.stroke();
       }
 
-      // Ажурная паутина (рети) с указателями звезд
       ctx.strokeStyle = '#291205'; ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(cx, cy, 120, 0, Math.PI * 2);
@@ -1103,7 +1080,6 @@ export class BootScene extends Phaser.Scene {
       ctx.moveTo(cx, cy - 170); ctx.lineTo(cx, cy + 170);
       ctx.stroke();
 
-      // Алидада (вращающаяся линейка визирования)
       ctx.fillStyle = '#78350f';
       ctx.save();
       ctx.translate(cx, cy);
@@ -1111,13 +1087,10 @@ export class BootScene extends Phaser.Scene {
       drawRoundRect(ctx, -195, -12, 390, 24, 6); ctx.fill();
       ctx.restore();
 
-      // Центральный винт
       ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.fill();
     });
 
-    // 7.4 НЮРНБЕРГСКОЕ ЯЙЦО (ПЕРВЫЕ КАРМАННЫЕ ЧАСЫ ПЕТЕРА ХЕНЛЯЙНА)
     make('art_renaissance_clock', W, H, (ctx) => {
-      // Овальный позолоченный корпус часов
       const goldEgg = ctx.createRadialGradient(cx - 40, cy - 40, 40, cx, cy, 220);
       goldEgg.addColorStop(0, '#fffbeb');
       goldEgg.addColorStop(0.35, '#fde047');
@@ -1130,16 +1103,13 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
       ctx.strokeStyle = '#713f12'; ctx.lineWidth = 6; ctx.stroke();
 
-      // Резная ажурная кайма вокруг циферблата
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 8;
       ctx.beginPath(); ctx.arc(cx, cy, 105, 0, Math.PI * 2); ctx.stroke();
 
-      // Серебряный циферблат
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath(); ctx.arc(cx, cy, 95, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 3; ctx.stroke();
 
-      // Часовые деления и римские метки
       ctx.strokeStyle = '#09090b'; ctx.lineWidth = 3;
       for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
         ctx.beginPath();
@@ -1148,26 +1118,22 @@ export class BootScene extends Phaser.Scene {
         ctx.stroke();
       }
 
-      // Одиночная фигурная стрелка эпохи Возрождения
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + 8, cy - 25);
-      ctx.lineTo(cx, cy - 70); // Острие вверх
+      ctx.lineTo(cx, cy - 70);
       ctx.lineTo(cx - 8, cy - 25);
       ctx.closePath();
       ctx.fill();
 
-      // Заводная головка и дужка сверху
       ctx.fillStyle = '#eab308';
       drawRoundRect(ctx, cx - 22, cy - 245, 44, 34, 6); ctx.fill();
       ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 10;
       ctx.beginPath(); ctx.arc(cx, cy - 260, 28, 0, Math.PI * 2); ctx.stroke();
     });
 
-    // 7.5 ПОРТРЕТ ФЛОРЕНТИЙКИ (ЖИВОПИСЬ НА ДЕРЕВЯННОЙ ПАНЕЛИ В БАГЕТЕ)
     make('art_renaissance_mona', W, H, (ctx) => {
-      // Резная широкая рама из мореного золоченого дуба
       const frameGrad = ctx.createLinearGradient(cx - 170, cy - 260, cx + 170, cy + 260);
       frameGrad.addColorStop(0, '#78350f');
       frameGrad.addColorStop(0.5, '#d4af37');
@@ -1175,17 +1141,14 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = frameGrad;
       drawRoundRect(ctx, cx - 160, cy - 250, 320, 500, 18); ctx.fill();
 
-      // Внутренний золотой профилированный кант
       ctx.strokeStyle = '#fde047'; ctx.lineWidth = 8;
       ctx.strokeRect(cx - 138, cy - 228, 276, 456);
 
-      // Тополиная доска под живопись (темно-оливковый фон)
       const canvasBg = ctx.createRadialGradient(cx, cy - 40, 20, cx, cy, 210);
       canvasBg.addColorStop(0, '#1e293b'); canvasBg.addColorStop(0.7, '#0f172a'); canvasBg.addColorStop(1, '#020617');
       ctx.fillStyle = canvasBg;
       ctx.fillRect(cx - 130, cy - 220, 260, 440);
 
-      // Силуэт платья из темно-бордового бархата
       ctx.fillStyle = '#881337';
       ctx.beginPath();
       ctx.moveTo(cx - 95, cy + 215);
@@ -1196,13 +1159,11 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Шея и благородный лик флорентийской дамы
       const skinGrad = ctx.createLinearGradient(cx - 40, cy - 120, cx + 40, cy - 60);
       skinGrad.addColorStop(0, '#ffedd5'); skinGrad.addColorStop(1, '#fed7aa');
       ctx.fillStyle = skinGrad;
       ctx.beginPath(); ctx.ellipse(cx, cy - 80, 58, 72, 0, 0, Math.PI * 2); ctx.fill();
 
-      // Шелковое покрывало и прическа с вуалью
       ctx.fillStyle = '#1c1917';
       ctx.beginPath();
       ctx.moveTo(cx - 65, cy - 80);
@@ -1213,7 +1174,6 @@ export class BootScene extends Phaser.Scene {
       ctx.closePath();
       ctx.fill();
 
-      // Изумрудный кулон на золотой нити
       ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(cx, cy - 10, 36, 0.2, Math.PI - 0.2); ctx.stroke();
       ctx.fillStyle = '#10b981';
