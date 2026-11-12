@@ -11,7 +11,7 @@ export class RestoreScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    // 1. ДАННЫЕ И СЕССИЯ (ПОЛНАЯ ГЕНЕРАЦИЯ ЭТАПОВ РЕСТАВРАЦИИ)
+    // 1. ДАННЫЕ И СЕССИЯ (ВЫЗОВ РОДНОГО ГЕНЕРАТОРА ЗАКАЗОВ)
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRestoreHistory ? Storage.getRestoreHistory() : [];
@@ -26,12 +26,20 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
-    if (typeof ArtifactsModule.generateArtifactBundle === 'function') {
-      this.artifactData = ArtifactsModule.generateArtifactBundle(reqRegion, reqTemplateId);
+    if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
+      this.artifactData = ArtifactsModule.generateArtifactOrder(reqRegion, history, reqTemplateId);
     } else {
       const templates = ArtifactsModule.ARTIFACT_TEMPLATES || [];
       const found = templates.find(t => t.id === reqTemplateId) || templates[0];
-      this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
+      this.artifactData = {
+        ...found,
+        instanceId: `art_${Date.now()}`,
+        tasks: [
+          { name: 'Сколоть окаменелый пласт породы', hint: 'Сколоть окаменелый пласт породы', requiredTool: 'tool_scraper', color: 0x78562d },
+          { name: 'Смести минеральную пыль и песок', hint: 'Смести минеральную пыль и песок', requiredTool: 'tool_brush', color: 0xa89f81 },
+          { name: 'Натереть воском и навести глянец', hint: 'Натереть воском и навести глянец', requiredTool: 'tool_polish', color: 0x18181b }
+        ]
+      };
     }
 
     this.isDuplicate = history.some(item => item.templateId === this.artifactData.id);
