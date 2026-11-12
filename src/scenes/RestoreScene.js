@@ -322,9 +322,10 @@ export class RestoreScene extends Phaser.Scene {
       this.dirtLayer.erase(maskKey, localX, localY);
       this.emitToolFX(pointer.x, pointer.y);
 
-      const baseRadius = (this.activeTool === 'tool_scraper') ? 26 : ((this.activeTool === 'tool_brush') ? 32 : 28);
-      const tierRadiusBonus = [0, 0, 6, 10, 15][tier] || 0;
-      const countRadius = (baseRadius + tierRadiusBonus) * 0.85;
+      const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 27 : 24);
+      const tierRadiusBonus = [0, 0, 5, 9, 14][tier] || 0;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.68;
+
 
       const cellW = this.artW / this.gridCols;
       const cellH = this.artH / this.gridRows;
@@ -356,8 +357,8 @@ export class RestoreScene extends Phaser.Scene {
       const ratio = Math.min(1, this.cleanedScore / maxScore);
       this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * ratio;
 
-      // Порог 88% — тонкие узоры и ручки не заставляют мучиться по минуте
-      if (ratio >= 0.88 && !this.isTaskTransition) {
+      // Порог 94% — тонкие узоры и ручки не заставляют мучиться по минуте
+      if (ratio >= 0.94 && !this.isTaskTransition) {
         this.isTaskTransition = true;
         this.dirtLayer.clear();
         this.completeTaskTransition();
