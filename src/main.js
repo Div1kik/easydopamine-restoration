@@ -5,7 +5,7 @@ const t = Date.now();
 Promise.all([
   import(`./scenes/BootScene.js?t=${t}`),
   import(`./scenes/MenuScene.js?t=${t}`),
-  import(`./scenes/EraSelectScene.js?t=${t}`),
+  imort(`./scenes/EraSelectScene.js?t=${t}`),
   import(`./scenes/RestoreScene.js?t=${t}`),
   import(`./scenes/VictoryScene.js?t=${t}`),
   import(`./scenes/ShopScene.js?t=${t}`),
