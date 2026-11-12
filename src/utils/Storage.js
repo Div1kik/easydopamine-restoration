@@ -3,6 +3,8 @@ export const Storage = {
     COINS: 'art_coins',
     XP: 'art_xp',
     WORKSHOP_TIER: 'art_workshop_tier',
+    ACTIVE_WORKBENCH_SKIN: 'active_workbench_skin',
+    OWNED_WORKBENCH_SKINS: 'owned_workbench_skins',
     INVENTORY: 'art_inventory',
     HISTORY: 'art_history',
     SESSION: 'art_active_session',
@@ -29,6 +31,36 @@ export const Storage = {
     const cur = this.getCoins();
     this.setCoins(cur + amount);
     return this.getCoins();
+  },
+
+  // --- СКИНЫ ВЕРСТАКА (15 ТЕМ) ---
+  getActiveWorkbenchSkin() {
+    const saved = localStorage.getItem(this.KEYS.ACTIVE_WORKBENCH_SKIN);
+    if (saved) return saved;
+    return `workbench_bg_${this.getWorkshopTier()}`;
+  },
+
+  setActiveWorkbenchSkin(skinId) {
+    if (skinId) {
+      localStorage.setItem(this.KEYS.ACTIVE_WORKBENCH_SKIN, skinId);
+    }
+  },
+
+  getOwnedWorkbenchSkins() {
+    try {
+      const list = JSON.parse(localStorage.getItem(this.KEYS.OWNED_WORKBENCH_SKINS));
+      if (Array.isArray(list) && list.length > 0) return list;
+    } catch {}
+    return ['workbench_bg_1', 'workbench_bg_2', 'workbench_bg_3', 'workbench_bg_4'];
+  },
+
+  unlockWorkbenchSkin(skinId) {
+    const list = this.getOwnedWorkbenchSkins();
+    if (!list.includes(skinId)) {
+      list.push(skinId);
+      localStorage.setItem(this.KEYS.OWNED_WORKBENCH_SKINS, JSON.stringify(list));
+    }
+    return list;
   },
 
   // --- ЗОЛОТОЙ ЛАК (КИНЦУГИ) ---
@@ -127,18 +159,14 @@ export const Storage = {
     const idx = Math.max(1, Math.min(level, 50));
     const title = titles[idx - 1] || `Мастер ранга ${idx}`;
 
-    // Быстрый, приятный набор опыта до 25 уровня, затем эндгейм-плато
     let minXP = 0;
     if (idx === 1) minXP = 0;
     else if (idx <= 10) {
-      // 1-10: шаги по 70..180 XP (быстрый старт)
       const baseSteps = [0, 60, 140, 240, 360, 510, 700, 930, 1200, 1520];
       minXP = baseSteps[idx - 1];
     } else if (idx <= 25) {
-      // 11-25: шаги по 350..550 XP (ощутимый, но частый прогресс)
       minXP = 1520 + Math.round((idx - 10) * 420 + Math.pow(idx - 10, 1.25) * 50);
     } else {
-      // 26-50: элитные престиж-уровни для хардкорщиков
       minXP = 11800 + Math.round((idx - 25) * 1100 + Math.pow(idx - 25, 1.4) * 120);
     }
 
@@ -212,15 +240,14 @@ export const Storage = {
   },
 
   grantLevelReward(level) {
-    // Сочные награды за ап уровня для дофаминового подкрепления
     const bonusCoins = level * 160 + 100;
     this.addCoins(bonusCoins);
 
     let lacquerBonus = 0;
     if (level % 5 === 0) {
-      lacquerBonus = 2; // Каждые 5 уровней — щедрый пак лака
+      lacquerBonus = 2;
     } else if (level % 2 === 0) {
-      lacquerBonus = 1; // Каждый четный уровень — 1 флакон лака
+      lacquerBonus = 1;
     }
     if (lacquerBonus > 0) {
       this.addKintsugiLacquer(lacquerBonus);
@@ -317,7 +344,7 @@ export const Storage = {
     const basePrice = target.marketValue || 100;
     const bonusReward = Math.round(basePrice * 0.45) + 80;
     const contractPrice = basePrice + bonusReward;
-    const cooldownDuration = 90 * 60 * 1000; // 1.5 часа вместо 2х
+    const cooldownDuration = 90 * 60 * 1000;
 
     const newContract = {
       id: 'ctr_' + now,
@@ -412,6 +439,10 @@ export const Storage = {
     }
   },
 
+  getRestoreHistory() {
+    return this.getRecentHistory();
+  },
+
   addHistoryEntry(entry) {
     const list = this.getRecentHistory();
     list.unshift(entry);
@@ -428,11 +459,13 @@ export const Storage = {
     }
   },
 
-  setActiveSession(session) {
-    if (!session) {
+  setActiveSession(sessionOrRegion, templateId) {
+    if (!sessionOrRegion) {
       localStorage.removeItem(this.KEYS.SESSION);
+    } else if (typeof sessionOrRegion === 'string') {
+      localStorage.setItem(this.KEYS.SESSION, JSON.stringify({ regionId: sessionOrRegion, templateId }));
     } else {
-      localStorage.setItem(this.KEYS.SESSION, JSON.stringify(session));
+      localStorage.setItem(this.KEYS.SESSION, JSON.stringify(sessionOrRegion));
     }
   },
 
