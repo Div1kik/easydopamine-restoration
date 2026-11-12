@@ -71,9 +71,9 @@ export class RestoreScene extends Phaser.Scene {
     this.generateDetailedToolTextures();
 
     // 2. БЕЗОПАСНАЯ ГЕОМЕТРИЯ ЭКРАНА
-    const systemTopPad = 42;
+    const systemTopPad = 8;
     const topBarHeight = 46;
-    const infoPanelHeight = 84;
+    const infoPanelHeight = 80;
     const workspaceTop = systemTopPad + topBarHeight + infoPanelHeight;
 
     const trayHeight = 90;
@@ -862,15 +862,11 @@ export class RestoreScene extends Phaser.Scene {
       if (this.workbenchBgImg) this.workbenchBgImg.destroy();
       this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
-      if (!this.workbenchDimOverlay) {
-        this.workbenchDimOverlay = this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.16).setDepth(1.5);
-      }
     };
 
     if (this.textures.exists(activeSkin)) {
       applyBgTexture(activeSkin);
     } else {
-      // Временный тёмный фон, пока выбранный скин догружается на лету
       const fallbackBg = this.add.graphics().setDepth(0.5);
       fallbackBg.fillStyle(0x0d0805, 1);
       fallbackBg.fillRect(0, 0, width, height);
@@ -881,11 +877,20 @@ export class RestoreScene extends Phaser.Scene {
           applyBgTexture(activeSkin);
         }
       });
+      this.load.once('loaderror', (file) => {
+        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
+          this.load.image('workbench_bg_1', 'assets/backgrounds/workbench_bg_1.png');
+          this.load.once('filecomplete-image-workbench_bg_1', () => {
+            if (this.scene && this.scene.isActive()) applyBgTexture('workbench_bg_1');
+          });
+          this.load.start();
+        }
+      });
       this.load.start();
     }
 
-    const matPadX = 16;
-    const matTop = topBound + 6;
+    const matPadX = 18;
+    const matTop = topBound + 8;
     const matBottom = bottomBound - 10;
     const matW = width - matPadX * 2;
     const matH = matBottom - matTop;
@@ -905,13 +910,14 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    matGfx.fillStyle(palette.fill, 0.54);
+    // Полупрозрачный стеклянно-бархатный коврик, чтобы фон верстака читался во всей красе
+    matGfx.fillStyle(palette.fill, 0.18);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(2.5, palette.border, 0.9);
+    matGfx.lineStyle(2.5, palette.border, 0.85);
     matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(1, palette.line, 0.35);
+    matGfx.lineStyle(1, palette.line, 0.3);
     matGfx.strokeRoundedRect(-halfW + 6, -halfH + 6, matW - 12, matH - 12, 12);
 
     const rivets = [
@@ -926,7 +932,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     const grid = this.add.graphics();
-    grid.lineStyle(1, palette.line, 0.08);
+    grid.lineStyle(1, palette.line, 0.06);
     const step = 36;
     for (let x = -halfW + 36; x <= halfW - 36; x += step) {
       grid.lineBetween(x, -halfH + 12, x, halfH - 12);
