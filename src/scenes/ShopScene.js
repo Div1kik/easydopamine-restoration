@@ -387,14 +387,12 @@ export class ShopScene extends Phaser.Scene {
 
       const card = this.add.container(width / 2, cardY);
 
-      // Полупрозрачная стеклянная карточка в тёплых тонах
       const cardBg = this.add.graphics();
       cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.56);
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
       cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      // Лёгкая тёмная подложка под иконку инструмента
       cardBg.fillStyle(0x0d0805, 0.45);
       cardBg.fillRoundedRect(-cardW / 2 + 10, -28, 56, 56, 9);
 
@@ -466,101 +464,379 @@ export class ShopScene extends Phaser.Scene {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
     const currentTier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${currentTier}`);
+
+    const ownedSkins = Storage.getOwnedWorkbenchSkins
+      ? Storage.getOwnedWorkbenchSkins()
+      : JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
 
     const tiers = [
-      { tier: 1, name: 'Сырой подвал', desc: 'Рабочий стол с тусклой свечой и базовыми тисками', price: 0 },
-      { tier: 2, name: 'Чердак антиквара', desc: 'Уютный рабочий стол из дуба с естественным светом', price: 350 },
-      { tier: 3, name: 'Кабинет реставратора', desc: 'Изумрудный бархат, теплота и антикварные полки', price: 750 },
-      { tier: 4, name: 'Ювелирная мастерская', desc: 'Точный мрамор, подсветка и золотые держатели', price: 1800 }
+      // Базовые улучшения мастерской (Tier 1..4)
+      { id: 'workbench_bg_1', type: 'base', tier: 1, name: 'Сырой подвал', desc: 'Рабочий стол с тусклой свечой и тисками', price: 0 },
+      { id: 'workbench_bg_2', type: 'base', tier: 2, name: 'Чердак антиквара', desc: 'Уютный дубовый стол с керосиновой лампой', price: 350 },
+      { id: 'workbench_bg_3', type: 'base', tier: 3, name: 'Кабинет реставратора', desc: 'Стол из красного дерева с латунными приборами', price: 750 },
+      { id: 'workbench_bg_4', type: 'base', tier: 4, name: 'Ювелирная мастерская', desc: 'Прецизионная мастерская с мрамором и золотом', price: 1800 },
+
+      // Эпохальные верстаки (в 2 раза дешевле легендарных)
+      { id: 'workbench_bg_9', type: 'era', name: 'Эпоха: Древний Египет', desc: 'Верстак из песчаника с амулетами и папирусами', price: 1000 },
+      { id: 'workbench_bg_10', type: 'era', name: 'Эпоха: Античность', desc: 'Мраморная плита с амфорами и оливковыми ветвями', price: 1000 },
+      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековая Европа', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 1000 },
+      { id: 'workbench_bg_12', type: 'era', name: 'Эпоха: Япония', desc: 'Лакированный стол с тушью и бамбуком', price: 1000 },
+      { id: 'workbench_bg_13', type: 'era', name: 'Эпоха: Ацтеки', desc: 'Массивное тропическое дерево с обсидианом и масками', price: 1000 },
+      { id: 'workbench_bg_14', type: 'era', name: 'Эпоха: Викинги', desc: 'Северный дуб с мехами, рунами и щитами', price: 1000 },
+      { id: 'workbench_bg_15', type: 'era', name: 'Эпоха: Ренессанс', desc: 'Полированный орех с чертежами и масляными красками', price: 1000 },
+
+      // Легендарные кастомные верстаки
+      { id: 'workbench_bg_5', type: 'legendary', name: 'Эксклюзив: Алхимия', desc: 'Тайная каменная плита со светящимися зельями', price: 2000 },
+      { id: 'workbench_bg_6', type: 'legendary', name: 'Эксклюзив: Киберпанк', desc: 'Лаборатория будущего с неонами и платами', price: 2000 },
+      { id: 'workbench_bg_7', type: 'legendary', name: 'Эксклюзив: Батискаф', desc: 'Подводная станция с иллюминаторами и трубами', price: 2000 },
+      { id: 'workbench_bg_8', type: 'legendary', name: 'Эксклюзив: Космос', desc: 'Орбитальная станция с панорамным видом на звёзды', price: 2000 }
     ];
 
     const cardH = 76;
     const cardW = width * 0.90;
+    let cardIdx = 0;
 
-    tiers.forEach((item, i) => {
-      const cardY = i * (cardH + 8) + cardH / 2;
-      const isCurrent = item.tier === currentTier;
-      const isOwned = item.tier <= currentTier;
+    // 1. Карточка Сундука-Лутбокса сверху вкладки «Верстак»
+    {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
+      const boxCont = this.add.container(width / 2, cardY);
+
+      const boxBg = this.add.graphics();
+      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.78);
+      boxBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      boxBg.lineStyle(2, 0xeab308, 0.95);
+      boxBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+
+      boxBg.fillStyle(0x0d0805, 0.45);
+      boxBg.fillRoundedRect(-cardW / 2 + 10, -28, 56, 56, 9);
+
+      const chestIcon = this.add.image(-cardW / 2 + 38, 0, 'lootbox_chest').setDisplaySize(48, 48);
+
+      this.tweens.add({
+        targets: chestIcon,
+        angle: { from: -3, to: 3 },
+        duration: 400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      const title = this.add.text(-cardW / 2 + 74, -20, '📦 СУНДУК ИСКАТЕЛЯ', {
+        fontSize: '12.5px',
+        fontFamily: FONT_UI,
+        color: '#fef08a',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setShadow(0, 1, '#000000', 4, false, true);
+
+      const desc = this.add.text(-cardW / 2 + 74, -1, 'Шанс 10% выбить редкий верстак!\nИли: Золотой лак / 100–600 монет.', {
+        fontSize: '9.5px',
+        fontFamily: FONT_UI,
+        color: '#e6d5bc',
+        wordWrap: { width: cardW - 165 },
+        resolution: dpr
+      }).setShadow(0, 1, '#000000', 3, false, true);
+
+      const lootboxPrice = Storage.getLootboxCost ? Storage.getLootboxCost() : 750;
+      const openBtn = this.add.container(cardW / 2 - 45, 0);
+      const openGfx = this.add.graphics();
+      openGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 0.98);
+      openGfx.fillRoundedRect(-37, -15, 74, 30, 8);
+      openGfx.lineStyle(1.2, 0xfef08a, 0.95);
+      openGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
+
+      const openZone = this.add.zone(0, 0, 74, 30).setInteractive({ useHandCursor: true });
+      const openTxt = this.add.text(0, 0, `${lootboxPrice} 🪙`, {
+        fontSize: '11px',
+        fontFamily: FONT_UI,
+        color: '#1a1004',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      openBtn.add([openGfx, openTxt, openZone]);
+
+      let isOpening = false;
+      openZone.on('pointerdown', () => {
+        if (this.isDragging || isOpening) return;
+        isOpening = true;
+
+        const res = this.rollLootboxSafe(lootboxPrice);
+        if (res.success) {
+          if (AudioManager.playCoin) AudioManager.playCoin();
+
+          chestIcon.setScale(1.2);
+          this.time.delayedCall(120, () => chestIcon.setScale(1));
+
+          const winModal = this.add.container(0, 0).setDepth(200);
+          const overlay = this.add.rectangle(width / 2, this.scale.height / 2, width, this.scale.height, 0x080503, 0.85)
+            .setInteractive();
+
+          const modalBg = this.add.graphics();
+          modalBg.fillGradientStyle(0x2d180c, 0x2d180c, 0x140a04, 0x140a04, 0.96);
+          modalBg.fillRoundedRect(width / 2 - 125, this.scale.height / 2 - 76, 250, 152, 14);
+          modalBg.lineStyle(1.5, 0xeab308, 0.95);
+          modalBg.strokeRoundedRect(width / 2 - 125, this.scale.height / 2 - 76, 250, 152, 14);
+
+          const modalTitle = this.add.text(width / 2, this.scale.height / 2 - 48, '🎉 НАГРАДА ИЗ СУНДУКА!', {
+            fontSize: '12.5px',
+            fontFamily: FONT_UI,
+            color: '#fde047',
+            fontStyle: 'bold',
+            resolution: dpr
+          }).setOrigin(0.5);
+
+          const rewardTxt = this.add.text(width / 2, this.scale.height / 2 - 8, res.name, {
+            fontSize: '13.5px',
+            fontFamily: FONT_UI,
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center',
+            wordWrap: { width: 220 },
+            resolution: dpr
+          }).setOrigin(0.5);
+
+          const tipTxtStr = res.type === 'skin' ? 'Верстак добавлен в коллекцию!' : 'Награда зачислена';
+          const tipTxt = this.add.text(width / 2, this.scale.height / 2 + 22, tipTxtStr, {
+            fontSize: '10px',
+            fontFamily: FONT_UI,
+            color: '#d6c3a5',
+            resolution: dpr
+          }).setOrigin(0.5);
+
+          const closeGfx = this.add.graphics();
+          closeGfx.fillStyle(0x452a18, 1);
+          closeGfx.fillRoundedRect(width / 2 - 48, this.scale.height / 2 + 40, 96, 26, 7);
+          closeGfx.lineStyle(1, 0xc89d54, 0.9);
+          closeGfx.strokeRoundedRect(width / 2 - 48, this.scale.height / 2 + 40, 96, 26, 7);
+
+          const closeZone = this.add.zone(width / 2, this.scale.height / 2 + 53, 96, 26).setInteractive({ useHandCursor: true });
+          const closeTxt = this.add.text(width / 2, this.scale.height / 2 + 53, 'ЗАБРАТЬ', {
+            fontSize: '10.5px',
+            fontFamily: FONT_UI,
+            color: '#fef08a',
+            fontStyle: 'bold',
+            resolution: dpr
+          }).setOrigin(0.5);
+
+          closeZone.on('pointerdown', () => {
+            winModal.destroy();
+            this.updateCoinsDisplay();
+            this.renderContent();
+          });
+
+          winModal.add([overlay, modalBg, modalTitle, rewardTxt, tipTxt, closeGfx, closeTxt, closeZone]);
+        } else {
+          if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+        }
+        isOpening = false;
+      });
+
+      boxCont.add([boxBg, chestIcon, title, desc, openBtn]);
+      this.itemsContainer.add(boxCont);
+      cardIdx++;
+    }
+
+    // 2. Карточки всех 15 верстаков
+    tiers.forEach((item) => {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
+
+      const isBase = item.type === 'base';
+      const isBaseOwned = isBase && item.tier <= currentTier;
+      const canUpgradeBase = isBase && item.tier === currentTier + 1;
+      const isBaseLocked = isBase && item.tier > currentTier + 1;
+
+      const isCustomOwned = !isBase && ownedSkins.includes(item.id);
+      const isPurchased = isBaseOwned || isCustomOwned;
+      const isCurrentActive = activeSkin === item.id;
 
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
       cardBg.fillGradientStyle(
-        isCurrent ? 0x3b2614 : 0x261a10,
-        isCurrent ? 0x3b2614 : 0x261a10,
+        isCurrentActive ? 0x3b2614 : 0x261a10,
+        isCurrentActive ? 0x3b2614 : 0x261a10,
         0x170f09,
         0x170f09,
-        isCurrent ? 0.72 : 0.56
+        isCurrentActive ? 0.74 : 0.56
       );
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(isCurrent ? 1.8 : 1.2, isCurrent ? 0xfacc15 : (isOwned ? 0x4ade80 : 0xc89d54), 0.9);
+
+      let borderClr = 0xc89d54;
+      if (isCurrentActive) borderClr = 0xfacc15;
+      else if (isPurchased) borderClr = 0x4ade80;
+      else if (isBaseLocked) borderClr = 0x5c3d22;
+
+      cardBg.lineStyle(isCurrentActive ? 1.8 : 1.2, borderClr, isBaseLocked ? 0.45 : 0.9);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      const title = this.add.text(-cardW / 2 + 18, -18, item.name, {
-        fontSize: '13px',
+      const title = this.add.text(-cardW / 2 + 16, -18, item.name, {
+        fontSize: '12.5px',
         fontFamily: FONT_UI,
-        color: '#fdf6e3',
+        color: isBaseLocked ? '#9c8265' : '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 18, 2, item.desc, {
+      const desc = this.add.text(-cardW / 2 + 16, 2, item.desc, {
         fontSize: '10px',
         fontFamily: FONT_UI,
-        color: '#e6d5bc',
+        color: isBaseLocked ? '#7a6552' : '#e6d5bc',
         wordWrap: { width: cardW - 135 },
         resolution: dpr
       }).setShadow(0, 1, '#000000', 3, false, true);
 
       const actionBtn = this.add.container(cardW / 2 - 45, 0);
-      const canBuy = (!isOwned && item.tier === currentTier + 1);
+      const canBuy = canUpgradeBase || (!isBase && !isPurchased);
 
       const actionGfx = this.add.graphics();
-      const btnColor = isCurrent ? 0x3b2614 : (canBuy ? 0xd99b26 : 0x1a120b);
-      const strokeColor = isCurrent ? 0xfacc15 : (canBuy ? 0xfef08a : 0x5c3d22);
+      let btnColor = 0x1a120b;
+      let strokeColor = 0x5c3d22;
+      if (isCurrentActive) {
+        btnColor = 0x3b2614;
+        strokeColor = 0xfacc15;
+      } else if (isPurchased) {
+        btnColor = 0x1e3322;
+        strokeColor = 0x4ade80;
+      } else if (canBuy) {
+        btnColor = 0xd99b26;
+        strokeColor = 0xfef08a;
+      }
+
       actionGfx.fillStyle(btnColor, canBuy ? 0.98 : 0.88);
       actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
       actionGfx.lineStyle(1, strokeColor, 0.95);
       actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
 
       const actionZone = this.add.zone(0, 0, 74, 30);
-      if (canBuy) {
+      if (!isBaseLocked && !isCurrentActive) {
         actionZone.setInteractive({ useHandCursor: true });
       }
 
-      let btnLabel = isCurrent ? 'АКТИВЕН' : (isOwned ? 'ОТКРЫТ' : `${item.price} 🪙`);
+      let btnLabel = `TIER ${item.tier - 1}`;
+      if (isCurrentActive) btnLabel = 'АКТИВЕН';
+      else if (isPurchased) btnLabel = 'ВЫБРАТЬ';
+      else if (canBuy) btnLabel = `${item.price} 🪙`;
+
       const actionTxt = this.add.text(0, 0, btnLabel, {
         fontSize: '10.5px',
         fontFamily: FONT_UI,
-        color: isCurrent ? '#facc15' : (canBuy ? '#1a1004' : '#8c735b'),
+        color: isCurrentActive ? '#facc15' : (isPurchased ? '#86efac' : (canBuy ? '#1a1004' : '#8c735b')),
         fontStyle: 'bold',
         resolution: dpr
       }).setOrigin(0.5);
 
       actionBtn.add([actionGfx, actionTxt, actionZone]);
 
-      if (canBuy) {
-        actionZone.on('pointerdown', () => {
-          if (this.isDragging) return;
+      actionZone.on('pointerdown', () => {
+        if (this.isDragging || isCurrentActive || isBaseLocked) return;
+
+        if (isPurchased) {
+          if (AudioManager.playClick) AudioManager.playClick();
+          this.setActiveSkinSafe(item.id);
+          this.renderContent();
+        } else if (canBuy) {
           const coins = Storage.getCoins ? Storage.getCoins() : 0;
           if (coins >= item.price) {
             Storage.addCoins(-item.price);
-            if (Storage.setWorkshopTier) Storage.setWorkshopTier(item.tier);
+            if (isBase && Storage.setWorkshopTier) {
+              Storage.setWorkshopTier(item.tier);
+            }
+            this.unlockSkinSafe(item.id);
+            this.setActiveSkinSafe(item.id);
             if (AudioManager.playCoin) AudioManager.playCoin();
             this.updateCoinsDisplay();
             this.renderContent();
           } else {
             if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
           }
-        });
-      }
+        }
+      });
 
       card.add([cardBg, title, desc, actionBtn]);
       this.itemsContainer.add(card);
+      cardIdx++;
     });
 
-    const totalH = tiers.length * (cardH + 8) + 20;
+    const totalH = cardIdx * (cardH + 8) + 20;
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
+  }
+
+  setActiveSkinSafe(skinId) {
+    if (Storage.setActiveWorkbenchSkin) {
+      Storage.setActiveWorkbenchSkin(skinId);
+    } else {
+      localStorage.setItem('active_workbench_skin', skinId);
+    }
+  }
+
+  unlockSkinSafe(skinId) {
+    if (Storage.unlockWorkbenchSkin) {
+      Storage.unlockWorkbenchSkin(skinId);
+    } else {
+      const list = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
+      if (!list.includes(skinId)) {
+        list.push(skinId);
+        localStorage.setItem('owned_workbench_skins', JSON.stringify(list));
+      }
+    }
+  }
+
+  rollLootboxSafe(cost) {
+    if (Storage.openLootbox) {
+      return Storage.openLootbox();
+    }
+    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    if (coins < cost) return { success: false };
+
+    Storage.addCoins(-cost);
+    const rand = Math.random() * 100;
+
+    if (rand < 10) {
+      const potentialSkins = [
+        { id: 'workbench_bg_5', name: 'Верстак «Алхимия»' },
+        { id: 'workbench_bg_6', name: 'Верстак «Киберпанк»' },
+        { id: 'workbench_bg_7', name: 'Верстак «Батискаф»' },
+        { id: 'workbench_bg_8', name: 'Верстак «Космос»' },
+        { id: 'workbench_bg_9', name: 'Верстак «Египет»' },
+        { id: 'workbench_bg_10', name: 'Верстак «Античность»' },
+        { id: 'workbench_bg_11', name: 'Верстак «Европа»' },
+        { id: 'workbench_bg_12', name: 'Верстак «Япония»' },
+        { id: 'workbench_bg_13', name: 'Верстак «Ацтеки»' },
+        { id: 'workbench_bg_14', name: 'Верстак «Викинги»' },
+        { id: 'workbench_bg_15', name: 'Верстак «Ренессанс»' }
+      ];
+      const owned = JSON.parse(localStorage.getItem('owned_workbench_skins') || '[]');
+      const notOwned = potentialSkins.filter((s) => !owned.includes(s.id));
+      if (notOwned.length > 0) {
+        const win = notOwned[Math.floor(Math.random() * notOwned.length)];
+        this.unlockSkinSafe(win.id);
+        return { success: true, type: 'skin', id: win.id, name: win.name };
+      }
+    }
+
+    if (rand < 35) {
+      const reward = Math.round(100 + Math.random() * 500);
+      Storage.addCoins(reward);
+      return { success: true, type: 'coins', amount: reward, name: `${reward} 🪙` };
+    }
+
+    if (rand < 60) {
+      const lac = Math.random() < 0.8 ? 1 : 2;
+      if (Storage.addKintsugiLacquer) {
+        Storage.addKintsugiLacquer(lac);
+      } else {
+        const cur = parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10);
+        localStorage.setItem('kintsugi_lacquer', cur + lac);
+      }
+      return { success: true, type: 'lacquer', amount: lac, name: `Золотой лак (${lac} шт.) ✨` };
+    }
+
+    Storage.addCoins(300);
+    return { success: true, type: 'coins', amount: 300, name: '300 🪙' };
   }
 
   renderMuseumExpansions(width) {
