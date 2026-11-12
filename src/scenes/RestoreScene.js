@@ -219,7 +219,7 @@ export class RestoreScene extends Phaser.Scene {
 
     artInfoCont.add([badgeTxt, this.artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
 
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (СТРОГО ПО ФИГУРЕ ЧЕРЕЗ BITMAP MASK)
     this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.88, 38, 0x000000, 0.14).setDepth(6);
     this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.65, 24, 0x000000, 0.22).setDepth(6);
 
@@ -269,7 +269,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (ОБЛЕГЧЁННАЯ ОЧИСТКА ТОНКИХ ДЕТАЛЕЙ)
+    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (УВЕЛИЧЕННЫЕ РАДИУСЫ + ПОРОГ 94%)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit) return;
@@ -310,11 +310,6 @@ export class RestoreScene extends Phaser.Scene {
 
       if (localX < 0 || localX > this.artW || localY < 0 || localY > this.artH) return;
 
-      // Комфортный баланс:
-      // Тир 1: 2 прохода, базовый радиус
-      // Тир 2: 2 прохода, радиус +6px (больше площадь)
-      // Тир 3: 1 проход с полупрозрачным шлейфом + радиус +10px
-      // Тир 4: 1 проход с мгновенной чистотой + радиус +15px
       const tier = this.getToolTier(this.activeTool);
       const requiredPasses = tier >= 3 ? 1 : 2;
       const maskKey = this.getEraseMaskForTier(this.activeTool, tier);
@@ -322,10 +317,9 @@ export class RestoreScene extends Phaser.Scene {
       this.dirtLayer.erase(maskKey, localX, localY);
       this.emitToolFX(pointer.x, pointer.y);
 
-      const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 27 : 24);
-      const tierRadiusBonus = [0, 0, 5, 9, 14][tier] || 0;
-      const countRadius = (baseRadius + tierRadiusBonus) * 0.68;
-
+      const baseRadius = (this.activeTool === 'tool_scraper') ? 32 : ((this.activeTool === 'tool_brush') ? 38 : 34);
+      const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.78;
 
       const cellW = this.artW / this.gridCols;
       const cellH = this.artH / this.gridRows;
@@ -357,7 +351,6 @@ export class RestoreScene extends Phaser.Scene {
       const ratio = Math.min(1, this.cleanedScore / maxScore);
       this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * ratio;
 
-      // Порог 94% — тонкие узоры и ручки не заставляют мучиться по минуте
       if (ratio >= 0.94 && !this.isTaskTransition) {
         this.isTaskTransition = true;
         this.dirtLayer.clear();
@@ -435,8 +428,8 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
-    const baseRadii = { scraper: 26, brush: 32, solvent: 28, polish: 28 };
-    const tierRadiusBonus = [0, 0, 6, 10, 15];
+    const baseRadii = { scraper: 32, brush: 38, solvent: 34, polish: 34 };
+    const tierRadiusBonus = [0, 0, 6, 11, 16];
     const tierCenterAlpha = [0, 0.62, 0.72, 0.90, 1.0];
 
     toolTypes.forEach((raw) => {
@@ -925,7 +918,6 @@ export class RestoreScene extends Phaser.Scene {
     const cellW = this.artW / this.gridCols;
     const cellH = this.artH / this.gridRows;
 
-    // Берём только внутренние непрозрачные пиксели фигуры (отступ от края 3 клетки)
     for (let gy = 3; gy < this.gridRows - 3; gy++) {
       for (let gx = 3; gx < this.gridCols - 3; gx++) {
         const idx = gy * this.gridCols + gx;
@@ -941,7 +933,7 @@ export class RestoreScene extends Phaser.Scene {
     Phaser.Utils.Array.Shuffle(candidates);
 
     const chosen = [];
-    const minDistance = 68; // Чтобы осколки не накладывались друг на друга
+    const minDistance = 68;
 
     for (let i = 0; i < candidates.length && chosen.length < count; i++) {
       const pt = candidates[i];
@@ -969,7 +961,6 @@ export class RestoreScene extends Phaser.Scene {
 
     const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : this.artifactData.textureKey;
 
-    // Случайное количество осколков от 1 до 3 в разных частях артефакта
     const shardCount = Phaser.Math.Between(1, 3);
     const points = this.getRandomValidBreakPoints(shardCount);
 
@@ -980,7 +971,6 @@ export class RestoreScene extends Phaser.Scene {
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
 
-    // Позиции для разброса осколков внизу рабочей зоны (чтобы не перекрывались)
     const scatterOffsets = [
       { dx: -85, dy: 105 },
       { dx: 0, dy: 125 },
@@ -993,7 +983,6 @@ export class RestoreScene extends Phaser.Scene {
       const targetX = pt.x;
       const targetY = pt.y;
 
-      // Рисуем гнездо скола на артефакте
       this.breakHoleGfx.fillStyle(0x0b0f17, 0.92);
       this.breakHoleGfx.fillCircle(targetX, targetY, 25);
       this.breakHoleGfx.lineStyle(2, 0xeab308, 0.75);
@@ -1040,7 +1029,6 @@ export class RestoreScene extends Phaser.Scene {
       };
       this.shardsList.push(shardObj);
 
-      // Отлетание фрагмента в сторону
       this.tweens.add({
         targets: pieceContainer,
         x: restOffsetX,
@@ -1072,7 +1060,6 @@ export class RestoreScene extends Phaser.Scene {
       hitZone.on('dragend', () => {
         if (shardObj.placed || !shardObj.glued) return;
 
-        // Проверка попадания строго в СВОЁ родное место (расстояние от смещения (0,0))
         const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, 0, 0);
         if (dist < 38) {
           shardObj.placed = true;
@@ -1094,12 +1081,11 @@ export class RestoreScene extends Phaser.Scene {
 
           this.updateAssemblyProgress();
 
-          // Проверяем, все ли осколки встали на свои места
           const allPlaced = this.shardsList.every(s => s.placed);
           if (allPlaced) {
             if (this.isKintsugiMode) {
               this.hasKintsugiMastery = true;
-              Storage.addKintsugiLacquer(-1); // Списываем 1 флакон на весь этап
+              Storage.addKintsugiLacquer(-1);
             }
 
             this.time.delayedCall(400, () => {
@@ -1116,7 +1102,6 @@ export class RestoreScene extends Phaser.Scene {
             this.toolWarning.setText(`Отлично! Осталось установить осколков: ${left}`);
           }
         } else {
-          // Если пытаются поставить в чужое гнездо или мимо — возвращаем осколок обратно
           this.toolWarning.setText('⚠️ Этот осколок не подходит сюда — ищите его родное место!');
           this.tweens.add({
             targets: pieceContainer,
