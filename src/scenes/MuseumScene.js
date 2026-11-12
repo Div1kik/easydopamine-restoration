@@ -8,7 +8,7 @@ export class MuseumScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-   this.dpr = 2;
+    this.dpr = 2;
 
     const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
