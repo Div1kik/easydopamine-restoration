@@ -186,7 +186,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     createBtn(startY + 60, '🧭  ЭКСПЕДИЦИИ', false, () => {
-      this.scene.start('WorldMapScene');
+      this.scene.start('EraSelectScene');
     });
 
     createBtn(startY + 120, '🕯  ЛАВКА МАСТЕРА', false, () => {
@@ -272,7 +272,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     if (availablePool.length === 0) {
-      this.scene.start('WorldMapScene');
+      this.scene.start('EraSelectScene');
       return;
     }
 
