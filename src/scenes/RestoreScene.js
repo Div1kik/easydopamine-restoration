@@ -64,7 +64,7 @@ export class RestoreScene extends Phaser.Scene {
     this.mistakesCount = 0;
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
-    this.glueApplied = false;
+    this.shardsList = [];
 
     this.isMobileDevice = true;
     this.generateDetailedToolTextures();
@@ -219,7 +219,7 @@ export class RestoreScene extends Phaser.Scene {
 
     artInfoCont.add([badgeTxt, this.artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
 
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (СТРОГО ПО ФИГУРЕ ЧЕРЕЗ BITMAP MASK)
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
     this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.88, 38, 0x000000, 0.14).setDepth(6);
     this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.65, 24, 0x000000, 0.22).setDepth(6);
 
@@ -228,7 +228,7 @@ export class RestoreScene extends Phaser.Scene {
       .setDisplaySize(this.artW, this.artH)
       .setDepth(7);
 
-    this.breakHoleGfx = this.add.graphics().setDepth(7).setVisible(false);
+    this.breakHoleGfx = this.add.graphics().setDepth(9).setVisible(false);
 
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0)
@@ -245,7 +245,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.createRestorationFX();
 
-    // Начальный инструмент
     const firstTask = this.artifactData.tasks[0];
     this.activeTool = firstTask.requiredTool || 'tool_scraper';
 
@@ -270,7 +269,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНАЯ ПРОГРЕССИВНАЯ ОЧИСТКА (ТИРЫ 1..4)
+    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (ОБЛЕГЧЁННАЯ ОЧИСТКА ТОНКИХ ДЕТАЛЕЙ)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit) return;
@@ -302,7 +301,7 @@ export class RestoreScene extends Phaser.Scene {
 
       if (this.lastCleanPos) {
         const dist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
-        if (dist < 7) return;
+        if (dist < 6) return;
       }
       this.lastCleanPos = { x: pointer.x, y: pointer.y };
 
@@ -311,21 +310,21 @@ export class RestoreScene extends Phaser.Scene {
 
       if (localX < 0 || localX > this.artW || localY < 0 || localY > this.artH) return;
 
-      // Параметры прогрессии текущего тира инструмента:
-      // Тир 1: 3 прохода, базовый радиус
-      // Тир 2: 3 прохода, радиус +4px (больше область охвата)
-      // Тир 3: 2 прохода, радиус +7px (больше глубина прочистки)
-      // Тир 4: 1 проход, радиус +11px (вычищает с первого раза по максимуму)
+      // Комфортный баланс:
+      // Тир 1: 2 прохода, базовый радиус
+      // Тир 2: 2 прохода, радиус +6px (больше площадь)
+      // Тир 3: 1 проход с полупрозрачным шлейфом + радиус +10px
+      // Тир 4: 1 проход с мгновенной чистотой + радиус +15px
       const tier = this.getToolTier(this.activeTool);
-      const requiredPasses = tier >= 4 ? 1 : (tier === 3 ? 2 : 3);
+      const requiredPasses = tier >= 3 ? 1 : 2;
       const maskKey = this.getEraseMaskForTier(this.activeTool, tier);
 
       this.dirtLayer.erase(maskKey, localX, localY);
       this.emitToolFX(pointer.x, pointer.y);
 
-      const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 27 : 24);
-      const tierRadiusBonus = [0, 0, 4, 7, 11][tier] || 0;
-      const countRadius = (baseRadius + tierRadiusBonus) * 0.68;
+      const baseRadius = (this.activeTool === 'tool_scraper') ? 26 : ((this.activeTool === 'tool_brush') ? 32 : 28);
+      const tierRadiusBonus = [0, 0, 6, 10, 15][tier] || 0;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.85;
 
       const cellW = this.artW / this.gridCols;
       const cellH = this.artH / this.gridRows;
@@ -357,7 +356,8 @@ export class RestoreScene extends Phaser.Scene {
       const ratio = Math.min(1, this.cleanedScore / maxScore);
       this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * ratio;
 
-      if (ratio >= 0.94 && !this.isTaskTransition) {
+      // Порог 88% — тонкие узоры и ручки не заставляют мучиться по минуте
+      if (ratio >= 0.88 && !this.isTaskTransition) {
         this.isTaskTransition = true;
         this.dirtLayer.clear();
         this.completeTaskTransition();
@@ -383,9 +383,6 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // =========================================================================
-  // ТИРЫ ИНСТРУМЕНТОВ, МАСКИ ГЛУБИНЫ И СВЯЗЬ С ЛАВКОЙ
-  // =========================================================================
   getToolTier(toolKey) {
     const rawKey = toolKey.replace('tool_', '');
     if (localStorage.getItem(`tool_upg_${rawKey}_4`) === 'true') return 4;
@@ -436,21 +433,19 @@ export class RestoreScene extends Phaser.Scene {
       cvs.refresh();
     };
 
-    // Генерация масок стирания под каждый инструмент и каждый тир (1..4)
-    // Размер и глубина (прозрачность) растут от Тира 1 к Тиру 4
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
-    const baseRadii = { scraper: 22, brush: 27, solvent: 24, polish: 24 };
-    const tierRadiusBonus = [0, 0, 5, 9, 14];
-    const tierCenterAlpha = [0, 0.44, 0.48, 0.66, 1.0];
+    const baseRadii = { scraper: 26, brush: 32, solvent: 28, polish: 28 };
+    const tierRadiusBonus = [0, 0, 6, 10, 15];
+    const tierCenterAlpha = [0, 0.62, 0.72, 0.90, 1.0];
 
     toolTypes.forEach((raw) => {
       [1, 2, 3, 4].forEach((tier) => {
         const rad = baseRadii[raw] + tierRadiusBonus[tier];
         const alpha = tierCenterAlpha[tier];
         generateTex(`mask_${raw}_t${tier}`, (ctx) => {
-          const g = ctx.createRadialGradient(64, 64, rad * 0.25, 64, 64, rad);
+          const g = ctx.createRadialGradient(64, 64, rad * 0.35, 64, 64, rad);
           g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-          g.addColorStop(0.65, `rgba(255,255,255,${alpha * 0.55})`);
+          g.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.75})`);
           g.addColorStop(1, 'rgba(255,255,255,0)');
           ctx.fillStyle = g;
           ctx.beginPath();
@@ -460,7 +455,6 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    // Текстура тюбика клея для этапа сборки осколка
     generateTex('tex_hd_tool_glue', (ctx) => {
       ctx.fillStyle = '#0284c7';
       ctx.beginPath();
@@ -860,7 +854,7 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ОРИГИНАЛЬНАЯ МЕХАНИКА СКЛЕЙКИ (КЛЕЙ + ВЫРЕЗАННЫЙ ФРАГМЕНТ АРТЕФАКТА)
+  // МНОГООСКОЛОЧНАЯ СКЛЕЙКА (1–3 СЛУЧАЙНЫХ СКОЛА + 1 КИНЦУГИ НА ВЕСЬ ЭТАП)
   // =========================================================================
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
@@ -871,33 +865,96 @@ export class RestoreScene extends Phaser.Scene {
     this.toolSprite.setPosition(pointer.x, pointer.y - 12);
     this.toolSprite.setAlpha(1);
 
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY + 15;
-    const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, targetX, targetY);
+    if (!this.shardsList || this.shardsList.length === 0) return;
 
-    if (d < 40 && !this.glueApplied) {
-      this.glueApplied = true;
-      const fillColor = this.isKintsugiMode ? 0xfacc15 : 0x38bdf8;
+    let newlyGlued = false;
 
-      this.breakHoleGfx.fillStyle(fillColor, 0.85);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 26);
+    this.shardsList.forEach((s) => {
+      if (s.glued) return;
+      const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, s.targetX, s.targetY);
+      if (d < 36) {
+        s.glued = true;
+        newlyGlued = true;
+        const fillColor = this.isKintsugiMode ? 0xfacc15 : 0x38bdf8;
 
-      if (this.isKintsugiMode) {
-        this.breakHoleGfx.lineStyle(3, 0xfffbeb, 0.95);
-        this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
+        this.breakHoleGfx.fillStyle(fillColor, 0.85);
+        this.breakHoleGfx.fillCircle(s.targetX, s.targetY, 24);
+
+        if (this.isKintsugiMode) {
+          this.breakHoleGfx.lineStyle(2.5, 0xfffbeb, 0.95);
+          this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, 24);
+        }
+
+        this.particles.setParticleTint(fillColor);
+        this.particles.emitParticleAt(s.targetX, s.targetY, 6);
       }
+    });
 
-      this.particles.setParticleTint(fillColor);
-      this.particles.emitParticleAt(targetX, targetY, 8);
-
+    if (newlyGlued) {
       if (AudioManager.playRub) AudioManager.playRub();
-      this.toolWarning.setText(
-        this.isKintsugiMode
-          ? '✨ Золотой лак нанесён! Перетащите осколок на место'
-          : '✅ Клей нанесён! Перетащите осколок на место'
-      );
-      this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * 0.5;
+      const gluedCount = this.shardsList.filter(s => s.glued).length;
+      const total = this.shardsList.length;
+
+      this.updateAssemblyProgress();
+
+      if (gluedCount < total) {
+        this.toolWarning.setText(`Клей нанесён (${gluedCount}/${total}). Промажьте остальные сколы!`);
+      } else {
+        this.toolWarning.setText(
+          this.isKintsugiMode
+            ? '✨ Все места промазаны золотом! Перетащите осколки на свои места'
+            : '✅ Все сколы проклеены! Перетащите каждый осколок на своё место'
+        );
+      }
     }
+  }
+
+  updateAssemblyProgress() {
+    if (!this.shardsList || this.shardsList.length === 0) return;
+    const total = this.shardsList.length;
+    const glued = this.shardsList.filter(s => s.glued).length;
+    const placed = this.shardsList.filter(s => s.placed).length;
+
+    const progress = (glued * 0.4 + placed * 0.6) / total;
+    this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * progress;
+  }
+
+  getRandomValidBreakPoints(count) {
+    const candidates = [];
+    const cellW = this.artW / this.gridCols;
+    const cellH = this.artH / this.gridRows;
+
+    // Берём только внутренние непрозрачные пиксели фигуры (отступ от края 3 клетки)
+    for (let gy = 3; gy < this.gridRows - 3; gy++) {
+      for (let gx = 3; gx < this.gridCols - 3; gx++) {
+        const idx = gy * this.gridCols + gx;
+        if (this.validCellsMask[idx] === 1) {
+          candidates.push({
+            x: Math.floor(this.topLeftX + (gx + 0.5) * cellW),
+            y: Math.floor(this.topLeftY + (gy + 0.5) * cellH)
+          });
+        }
+      }
+    }
+
+    Phaser.Utils.Array.Shuffle(candidates);
+
+    const chosen = [];
+    const minDistance = 68; // Чтобы осколки не накладывались друг на друга
+
+    for (let i = 0; i < candidates.length && chosen.length < count; i++) {
+      const pt = candidates[i];
+      const tooClose = chosen.some(c => Phaser.Math.Distance.Between(pt.x, pt.y, c.x, c.y) < minDistance);
+      if (!tooClose) {
+        chosen.push(pt);
+      }
+    }
+
+    if (chosen.length === 0) {
+      chosen.push({ x: this.centerX, y: this.centerY });
+    }
+
+    return chosen;
   }
 
   setupBreakAndAssembleStage(task) {
@@ -906,117 +963,184 @@ export class RestoreScene extends Phaser.Scene {
 
     this.assemblyContainer.removeAll(true);
     this.assemblyContainer.setVisible(true);
-    this.glueApplied = false;
     this.progressBarFill.width = 0;
+    this.shardsList = [];
 
     const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : this.artifactData.textureKey;
-    const targetX = this.centerX + 35;
-    const targetY = this.centerY + 15;
+
+    // Случайное количество осколков от 1 до 3 в разных частях артефакта
+    const shardCount = Phaser.Math.Between(1, 3);
+    const points = this.getRandomValidBreakPoints(shardCount);
+
+    this.taskNotice.setText(
+      `ШАГ ${this.currentTaskIndex + 1}/${this.artifactData.tasks.length}: Склейка фрагментов (${points.length} шт.)`
+    );
 
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
-    this.breakHoleGfx.fillStyle(0x0b0f17, 0.92);
-    this.breakHoleGfx.fillCircle(targetX, targetY, 28);
-    this.breakHoleGfx.lineStyle(2, 0xeab308, 0.75);
-    this.breakHoleGfx.strokeCircle(targetX, targetY, 28);
 
-    const pieceContainer = this.add.container(0, 0).setDepth(25);
-    const pieceImg = this.add.image(this.centerX, this.centerY, shardTex)
-      .setDisplaySize(this.artW, this.artH);
-
-    const shardMaskShape = this.make.graphics({ add: false });
-    shardMaskShape.fillStyle(0xffffff);
-    shardMaskShape.fillCircle(targetX, targetY, 26);
-
-    const shardMask = shardMaskShape.createGeometryMask();
-    pieceContainer.setMask(shardMask);
-
-    const pieceBorder = this.add.graphics();
-    pieceBorder.lineStyle(2, 0xfacc15, 0.9);
-    pieceBorder.strokeCircle(targetX, targetY, 26);
-
-    const hitZone = this.add.circle(targetX, targetY, 36, 0xffffff, 0)
-      .setInteractive({ draggable: true, useHandCursor: true });
-
-    pieceContainer.add([pieceImg, pieceBorder, hitZone]);
-    this.input.setDraggable(hitZone);
+    // Позиции для разброса осколков внизу рабочей зоны (чтобы не перекрывались)
+    const scatterOffsets = [
+      { dx: -85, dy: 105 },
+      { dx: 0, dy: 125 },
+      { dx: 85, dy: 105 }
+    ];
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+
+    points.forEach((pt, idx) => {
+      const targetX = pt.x;
+      const targetY = pt.y;
+
+      // Рисуем гнездо скола на артефакте
+      this.breakHoleGfx.fillStyle(0x0b0f17, 0.92);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 25);
+      this.breakHoleGfx.lineStyle(2, 0xeab308, 0.75);
+      this.breakHoleGfx.strokeCircle(targetX, targetY, 25);
+
+      const pieceContainer = this.add.container(0, 0).setDepth(25 + idx);
+      const pieceImg = this.add.image(this.centerX, this.centerY, shardTex)
+        .setDisplaySize(this.artW, this.artH);
+
+      const shardMaskShape = this.make.graphics({ add: false });
+      shardMaskShape.fillStyle(0xffffff);
+      shardMaskShape.fillCircle(targetX, targetY, 24);
+
+      const shardMask = shardMaskShape.createGeometryMask();
+      pieceContainer.setMask(shardMask);
+
+      const pieceBorder = this.add.graphics();
+      pieceBorder.lineStyle(2, 0xfacc15, 0.9);
+      pieceBorder.strokeCircle(targetX, targetY, 24);
+
+      const hitZone = this.add.circle(targetX, targetY, 34, 0xffffff, 0)
+        .setInteractive({ draggable: true, useHandCursor: true });
+
+      pieceContainer.add([pieceImg, pieceBorder, hitZone]);
+      this.input.setDraggable(hitZone);
+      this.assemblyContainer.add(pieceContainer);
+
+      const scatter = scatterOffsets[idx % scatterOffsets.length];
+      const restOffsetX = (this.centerX + scatter.dx) - targetX;
+      const restOffsetY = (this.centerY + scatter.dy) - targetY;
+
+      const shardObj = {
+        id: idx,
+        targetX,
+        targetY,
+        restOffsetX,
+        restOffsetY,
+        container: pieceContainer,
+        maskShape: shardMaskShape,
+        border: pieceBorder,
+        hitZone,
+        glued: false,
+        placed: false
+      };
+      this.shardsList.push(shardObj);
+
+      // Отлетание фрагмента в сторону
+      this.tweens.add({
+        targets: pieceContainer,
+        x: restOffsetX,
+        y: restOffsetY,
+        duration: 380 + idx * 60,
+        ease: 'Bounce.easeOut',
+        onComplete: () => {
+          shardMaskShape.setPosition(targetX + restOffsetX, targetY + restOffsetY);
+          if (idx === 0) {
+            this.selectTool('tool_glue', 'tex_hd_tool_glue', true);
+            this.toolWarning.setText(`Нанесите Клей на все места сколов (${points.length} шт.)!`);
+          }
+        }
+      });
+
+      hitZone.on('drag', (pointer) => {
+        if (shardObj.placed) return;
+        if (!shardObj.glued) {
+          this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
+          return;
+        }
+        const dx = pointer.x - targetX;
+        const dy = pointer.y - targetY;
+        pieceContainer.x = dx;
+        pieceContainer.y = dy;
+        shardMaskShape.setPosition(targetX + dx, targetY + dy);
+      });
+
+      hitZone.on('dragend', () => {
+        if (shardObj.placed || !shardObj.glued) return;
+
+        // Проверка попадания строго в СВОЁ родное место (расстояние от смещения (0,0))
+        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, 0, 0);
+        if (dist < 38) {
+          shardObj.placed = true;
+          pieceContainer.x = 0;
+          pieceContainer.y = 0;
+          shardMaskShape.setPosition(targetX, targetY);
+          hitZone.disableInteractive();
+          pieceBorder.clear();
+
+          if (this.isKintsugiMode) {
+            pieceBorder.lineStyle(3, 0xfacc15, 0.95);
+            pieceBorder.strokeCircle(targetX, targetY, 24);
+            if (AudioManager.playShine) AudioManager.playShine();
+          } else {
+            pieceBorder.lineStyle(1, 0x334155, 0.35);
+            pieceBorder.strokeCircle(targetX, targetY, 24);
+            if (AudioManager.playCoin) AudioManager.playCoin();
+          }
+
+          this.updateAssemblyProgress();
+
+          // Проверяем, все ли осколки встали на свои места
+          const allPlaced = this.shardsList.every(s => s.placed);
+          if (allPlaced) {
+            if (this.isKintsugiMode) {
+              this.hasKintsugiMastery = true;
+              Storage.addKintsugiLacquer(-1); // Списываем 1 флакон на весь этап
+            }
+
+            this.time.delayedCall(400, () => {
+              this.breakHoleGfx.setVisible(false);
+              this.assemblyContainer.setVisible(false);
+              if (this.kintsugiBanner) {
+                this.kintsugiBanner.destroy();
+                this.kintsugiBanner = null;
+              }
+              this.completeTaskTransition();
+            });
+          } else {
+            const left = this.shardsList.filter(s => !s.placed).length;
+            this.toolWarning.setText(`Отлично! Осталось установить осколков: ${left}`);
+          }
+        } else {
+          // Если пытаются поставить в чужое гнездо или мимо — возвращаем осколок обратно
+          this.toolWarning.setText('⚠️ Этот осколок не подходит сюда — ищите его родное место!');
+          this.tweens.add({
+            targets: pieceContainer,
+            x: restOffsetX,
+            y: restOffsetY,
+            duration: 200,
+            ease: 'Back.easeOut',
+            onUpdate: () => {
+              shardMaskShape.setPosition(targetX + pieceContainer.x, targetY + pieceContainer.y);
+            }
+          });
+        }
+      });
+    });
 
     const lacquer = Storage.getKintsugiLacquer ? Storage.getKintsugiLacquer() : 0;
     if (lacquer > 0) {
       this.showKintsugiBanner(width, dpr);
     }
-
-    this.tweens.add({
-      targets: pieceContainer,
-      x: -75,
-      y: 95,
-      duration: 380,
-      ease: 'Bounce.easeOut',
-      onComplete: () => {
-        shardMaskShape.setPosition(targetX - 75, targetY + 95);
-        this.selectTool('tool_glue', 'tex_hd_tool_glue', true);
-        this.toolWarning.setText('Сначала нанесите Клей в место скола!');
-      }
-    });
-
-    hitZone.on('drag', (pointer) => {
-      if (!this.glueApplied) {
-        this.toolWarning.setText('⚠️ Сначала нанесите Клей в зону скола!');
-        return;
-      }
-      const dx = pointer.x - targetX;
-      const dy = pointer.y - targetY;
-      pieceContainer.x = dx;
-      pieceContainer.y = dy;
-      shardMaskShape.setPosition(targetX + dx, targetY + dy);
-    });
-
-    hitZone.on('dragend', () => {
-      if (!this.glueApplied) return;
-      const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, 0, 0);
-      if (dist < 40) {
-        pieceContainer.x = 0;
-        pieceContainer.y = 0;
-        shardMaskShape.setPosition(targetX, targetY);
-        hitZone.disableInteractive();
-
-        if (this.isKintsugiMode) {
-          this.hasKintsugiMastery = true;
-          Storage.addKintsugiLacquer(-1);
-          this.breakHoleGfx.clear();
-          this.breakHoleGfx.lineStyle(3, 0xfacc15, 0.95);
-          this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
-          if (AudioManager.playShine) AudioManager.playShine();
-        } else {
-          this.breakHoleGfx.clear();
-          this.breakHoleGfx.lineStyle(1, 0x334155, 0.35);
-          this.breakHoleGfx.strokeCircle(targetX, targetY, 26);
-          if (AudioManager.playCoin) AudioManager.playCoin();
-        }
-
-        this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280);
-
-        this.time.delayedCall(400, () => {
-          this.breakHoleGfx.setVisible(false);
-          this.assemblyContainer.setVisible(false);
-          if (this.kintsugiBanner) {
-            this.kintsugiBanner.destroy();
-            this.kintsugiBanner = null;
-          }
-          this.completeTaskTransition();
-        });
-      }
-    });
-
-    this.assemblyContainer.add(pieceContainer);
   }
 
   showKintsugiBanner(width, dpr) {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
-    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 145).setDepth(30);
+    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(30);
     const bannerBg = this.add.rectangle(0, 0, width * 0.88, 44, 0x0f172a, 0.96)
       .setStrokeStyle(1.5, 0xe2b35b, 0.85);
 
@@ -1032,8 +1156,8 @@ export class RestoreScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5);
 
-    const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов: +60% к цене', {
-      fontSize: '11px',
+    const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов (1 лак на все): +60%', {
+      fontSize: '10.5px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
       color: '#facc15',
       fontStyle: 'bold',
@@ -1044,7 +1168,7 @@ export class RestoreScene extends Phaser.Scene {
       this.isKintsugiMode = !this.isKintsugiMode;
       kintsugiBtn.setFillStyle(this.isKintsugiMode ? 0x22c55e : 0xfde047);
       kintsugiTxt.setText(this.isKintsugiMode ? 'ВЫБРАНО ✓' : '✨ КИНЦУГИ');
-      infoTxt.setText(this.isKintsugiMode ? 'Мастерское золото активно!' : 'Золотой шов: +60% к цене');
+      infoTxt.setText(this.isKintsugiMode ? 'Золото активно на все сколы!' : 'Золотой шов (1 лак на все): +60%');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
