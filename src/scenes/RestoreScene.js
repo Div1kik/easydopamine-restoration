@@ -1,4 +1,4 @@
-import * as ArtifactsModule from '../data/artifacts.js';
+import { ArtifactModels } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 
@@ -9,13 +9,17 @@ export class RestoreScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = 2;
+    this.dpr = dpr;
+
+    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    this.FONT_UI = FONT_UI;
 
     // 1. ДАННЫЕ И СЕССИЯ
     this.activeContract = (data && data.contract) ? data.contract : null;
 
     const history = Storage.getRestoreHistory ? Storage.getRestoreHistory() : [];
-    let reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
+    const reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
     let reqTemplateId = (data && data.templateId) ? data.templateId : null;
 
     if (!reqTemplateId) {
@@ -26,15 +30,15 @@ export class RestoreScene extends Phaser.Scene {
       }
     }
 
-    if (typeof ArtifactsModule.generateArtifactOrder === 'function') {
-      this.artifactData = ArtifactsModule.generateArtifactOrder(reqRegion, history, reqTemplateId);
+    if (typeof ArtifactModels.generateArtifactOrder === 'function') {
+      this.artifactData = ArtifactModels.generateArtifactOrder(reqRegion, history, reqTemplateId);
     } else {
-      const templates = ArtifactsModule.ARTIFACT_TEMPLATES || [];
-      const found = templates.find(t => t.id === reqTemplateId) || templates[0];
+      const templates = ArtifactModels.ARTIFACT_TEMPLATES || [];
+      const found = templates.find((t) => t.id === reqTemplateId) || templates[0];
       this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
     }
 
-    this.isDuplicate = history.some(item => item.templateId === this.artifactData.id);
+    this.isDuplicate = history.some((item) => item.templateId === this.artifactData.id);
     if (this.isDuplicate && this.activeContract) {
       this.isDuplicate = false;
     }
@@ -42,14 +46,11 @@ export class RestoreScene extends Phaser.Scene {
     if (this.activeContract) {
       this.artifactData.marketValue = this.activeContract.rewardCoins;
     } else if (this.isDuplicate) {
-      this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.45);
+      this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.65);
     }
 
     if (Storage.setActiveSession) {
-      Storage.setActiveSession({
-        regionId: this.artifactData.regionId || reqRegion,
-        templateId: this.artifactData.id
-      });
+      Storage.setActiveSession(this.artifactData.regionId || reqRegion, this.artifactData.id);
     }
 
     if (AudioManager.playEraMusic) {
@@ -58,7 +59,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.currentTaskIndex = 0;
     this.lastTouchPos = null;
-    this.lastCleanPos = null;
+    this.lastDustPos = null;
     this.activeTool = null;
     this.isTaskTransition = false;
     this.mistakesCount = 0;
@@ -72,51 +73,60 @@ export class RestoreScene extends Phaser.Scene {
     // 2. БЕЗОПАСНАЯ ГЕОМЕТРИЯ ЭКРАНА
     const systemTopPad = 42;
     const topBarHeight = 46;
-    const infoPanelHeight = 96;
-    const headerTotalHeight = systemTopPad + topBarHeight + infoPanelHeight;
+    const infoPanelHeight = 84;
+    const workspaceTop = systemTopPad + topBarHeight + infoPanelHeight;
 
     const trayHeight = 90;
     const trayY = height - trayHeight / 2 - 14;
-    const trayTopLimit = height - trayHeight - 24;
+    const trayTopLimit = trayY - trayHeight / 2;
 
-    const workspaceAvailableHeight = trayTopLimit - headerTotalHeight;
+    const workspaceAvailableHeight = trayTopLimit - workspaceTop;
     this.centerX = Math.floor(width / 2);
-    this.centerY = Math.floor(headerTotalHeight + workspaceAvailableHeight / 2);
+    this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
 
-    this.artW = Math.floor(Math.min(width * 0.78, 350));
-    this.artH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 480));
+    this.artW = Math.floor(Math.min(width * 0.78, 300));
+    this.artH = Math.floor(Math.min(workspaceAvailableHeight * 0.74, 290));
     this.topLeftX = Math.floor(this.centerX - this.artW / 2);
     this.topLeftY = Math.floor(this.centerY - this.artH / 2);
 
-    this.renderWorkbenchWorkshop(width, height, headerTotalHeight, trayTopLimit);
+    this.renderWorkbenchBackdrop(width, height, workspaceTop, trayTopLimit);
 
-    // 3. ВЕРХНИЙ БАР
-    this.add.rectangle(width / 2, systemTopPad + 23, width, 46, 0x07090e, 0.92).setDepth(20);
+    // 3. ВЕРХНИЙ БАР (АНТИКВАРНО-БРОНЗОВЫЙ)
+    const topBarGfx = this.add.graphics().setDepth(200);
+    topBarGfx.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
+    topBarGfx.fillRect(0, systemTopPad, width, topBarHeight);
+    topBarGfx.lineStyle(1, 0xc89d54, 0.55);
+    topBarGfx.lineBetween(0, systemTopPad + topBarHeight, width, systemTopPad + topBarHeight);
 
     const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.coinsText = this.add.text(width * 0.06, systemTopPad + 23, `🪙 ${coins}`, {
+    this.coinsText = this.add.text(16, systemTopPad + 23, `${coins} 🪙`, {
       fontSize: '13px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+      fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0, 0.5).setDepth(22);
+    }).setOrigin(0, 0.5).setDepth(205);
 
     const btnSize = 34;
     const rightMargin = 14;
 
-    const menuBtn = this.add.rectangle(width - rightMargin - 26, systemTopPad + 23, 52, 28, 0x141a24)
-      .setStrokeStyle(1.5, 0x334155, 0.9)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(21);
+    const menuBtnGfx = this.add.graphics().setDepth(204);
+    menuBtnGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
+    menuBtnGfx.fillRoundedRect(width - rightMargin - 64, systemTopPad + 6, 64, btnSize, 8);
+    menuBtnGfx.lineStyle(1.2, 0xc89d54, 0.9);
+    menuBtnGfx.strokeRoundedRect(width - rightMargin - 64, systemTopPad + 6, 64, btnSize, 8);
 
-    this.add.text(width - rightMargin - 26, systemTopPad + 23, 'Меню', {
-      fontSize: '11px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: '#ffffff',
+    const menuBtn = this.add.zone(width - rightMargin - 32, systemTopPad + 23, 64, btnSize)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(206);
+
+    this.add.text(width - rightMargin - 32, systemTopPad + 23, 'Меню', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0.5).setDepth(22);
+    }).setOrigin(0.5).setDepth(205);
 
     menuBtn.on('pointerdown', () => {
       if (AudioManager.stopMusic) AudioManager.stopMusic();
@@ -124,44 +134,55 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    const musicX = width - rightMargin - 52 - 10 - btnSize / 2;
-    const musicBtn = this.add.circle(musicX, systemTopPad + 23, 14, 0x141a24)
-      .setStrokeStyle(1.5, 0x334155, 0.9)
+    const musicX = width - rightMargin - 64 - 8 - btnSize / 2;
+    const musicBtn = this.add.circle(musicX, systemTopPad + 23, 16, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.3, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
-      .setDepth(21);
+      .setDepth(205);
 
     const musicIcon = this.add.text(musicX, systemTopPad + 23, AudioManager.isMusicOn() ? '🎵' : '🔇', {
-      fontSize: '12px',
+      fontSize: '13px',
       resolution: dpr
-    }).setOrigin(0.5).setDepth(22);
+    }).setOrigin(0.5).setDepth(206);
 
     musicBtn.on('pointerdown', (p, lx, ly, ev) => {
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const state = AudioManager.toggleMusic();
+      musicBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      musicBtn.setStrokeStyle(1.3, state ? 0xc89d54 : 0x7f1d1d, 0.9);
       musicIcon.setText(state ? '🎵' : '🔇');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
     const sfxX = musicX - btnSize - 6;
-    const sfxBtn = this.add.circle(sfxX, systemTopPad + 23, 14, 0x141a24)
-      .setStrokeStyle(1.5, 0x334155, 0.9)
+    const sfxBtn = this.add.circle(sfxX, systemTopPad + 23, 16, AudioManager.isSfxOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.3, AudioManager.isSfxOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
-      .setDepth(21);
+      .setDepth(205);
 
     const sfxIcon = this.add.text(sfxX, systemTopPad + 23, AudioManager.isSfxOn() ? '🔊' : '🔈', {
-      fontSize: '12px',
+      fontSize: '13px',
       resolution: dpr
-    }).setOrigin(0.5).setDepth(22);
+    }).setOrigin(0.5).setDepth(206);
 
     sfxBtn.on('pointerdown', (p, lx, ly, ev) => {
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const state = AudioManager.toggleSfx();
+      sfxBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      sfxBtn.setStrokeStyle(1.3, state ? 0xc89d54 : 0x7f1d1d, 0.9);
       sfxIcon.setText(state ? '🔊' : '🔈');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    // 4. ИНФОРМАЦИОННАЯ ПЛАШКА
-    const artInfoCont = this.add.container(0, systemTopPad + 46).setDepth(15);
+    // 4. ИНФОРМАЦИОННАЯ ПЛАШКА ЭТАПА
+    const artInfoCont = this.add.container(0, systemTopPad + 46).setDepth(190);
+
+    const infoPanelGfx = this.add.graphics();
+    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.94);
+    infoPanelGfx.fillRect(0, 0, width, infoPanelHeight);
+    infoPanelGfx.lineStyle(1.2, 0xc89d54, 0.55);
+    infoPanelGfx.lineBetween(0, infoPanelHeight, width, infoPanelHeight);
+    artInfoCont.add(infoPanelGfx);
 
     const regionNamesMap = {
       egypt: 'Древний Египет',
@@ -172,63 +193,70 @@ export class RestoreScene extends Phaser.Scene {
       vikings: 'Викинги',
       renaissance: 'Ренессанс'
     };
+    const currentRegionName = regionNamesMap[this.artifactData.regionId] || this.artifactData.regionName || '';
 
-    const currentRegionName = regionNamesMap[this.artifactData.regionId] || this.artifactData.regionName || 'Экспедиция';
-    let badgeText = currentRegionName;
-    if (this.activeContract) {
-      badgeText = '📜 СРОЧНЫЙ КОНТРАКТ';
-    } else if (this.isDuplicate) {
-      badgeText = 'ПОВТОРНЫЙ ОБРАЗЕЦ (-55%)';
-    }
+    let badgeText = currentRegionName.toUpperCase();
+    if (this.activeContract) badgeText = '📜 СРОЧНЫЙ КОНТРАКТ';
+    else if (this.isDuplicate) badgeText = 'ПОВТОРНАЯ НАХОДКА (-35%)';
 
-    const badgeTxt = this.add.text(width / 2, 8, badgeText, {
-      fontSize: '10px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: this.isDuplicate ? '#94a3b8' : '#facc15',
+    const badgeTxt = this.add.text(width / 2, 10, badgeText, {
+      fontSize: '9.5px',
+      fontFamily: FONT_UI,
+      color: this.isDuplicate ? '#fda4af' : '#e2b866',
       fontStyle: 'bold',
-      letterSpacing: 1,
+      letterSpacing: 1.2,
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
 
-    this.artTitle = this.add.text(width / 2, 26, this.artifactData.name || 'Артефакт', {
-      fontSize: '16px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: '#ffffff',
+    const artTitle = this.add.text(width / 2, 24, this.artifactData.name || 'Артефакт', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
 
-    this.taskNotice = this.add.text(width / 2, 46, '', {
+    this.taskNotice = this.add.text(width / 2, 43, '', {
       fontSize: '11px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: '#38bdf8',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
 
     const barW = Math.min(width * 0.78, 280);
-    this.progressBarBg = this.add.rectangle(width / 2, 64, barW, 6, 0x1e293b);
-    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 64, 0, 6, 0x10b981).setOrigin(0, 0.5);
+    const progressBarBg = this.add.graphics();
+    progressBarBg.fillStyle(0x0d0805, 0.95);
+    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
+    progressBarBg.lineStyle(1, 0x5c3d22, 0.8);
+    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
 
-    this.toolWarning = this.add.text(width / 2, 80, '', {
+    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 63, 6, 4, 0xfacc15)
+      .setOrigin(0, 0.5);
+
+    this.toolWarning = this.add.text(width / 2, 69, '', {
       fontSize: '10.5px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: '#ef4444',
+      fontFamily: FONT_UI,
+      color: '#fde047',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
 
-    artInfoCont.add([badgeTxt, this.artTitle, this.taskNotice, this.progressBarBg, this.progressBarFill, this.toolWarning]);
+    artInfoCont.add([badgeTxt, artTitle, this.taskNotice, progressBarBg, this.progressBarFill, this.toolWarning]);
 
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (СТРОГО ПО ФИГУРЕ ЧЕРЕЗ BITMAP MASK)
-    this.contactShadow1 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.88, 38, 0x000000, 0.14).setDepth(6);
-    this.contactShadow2 = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.14, this.artW * 0.65, 24, 0x000000, 0.22).setDepth(6);
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
+    this.artifactShadow = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.44, this.artW * 0.82, 26, 0x000000, 0.5)
+      .setDepth(5);
+
+    this.artifactPedestal = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.43, this.artW * 0.68, 20, 0x2b1d12, 0.9)
+      .setStrokeStyle(1.5, 0xc89d54, 0.75)
+      .setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
       .setDisplaySize(this.artW, this.artH)
       .setDepth(7);
 
-    this.breakHoleGfx = this.add.graphics().setDepth(9).setVisible(false);
+    this.breakHoleGfx = this.add.graphics().setDepth(7.5);
 
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0)
@@ -243,33 +271,34 @@ export class RestoreScene extends Phaser.Scene {
     maskImage.setDisplaySize(this.artW, this.artH);
     this.dirtLayer.setMask(new Phaser.Display.Masks.BitmapMask(this, maskImage));
 
-    this.createRestorationFX();
+    this.createDustParticles();
 
     const firstTask = this.artifactData.tasks[0];
-    this.activeTool = firstTask.requiredTool || 'tool_scraper';
+    const initialTool = firstTask.requiredTool || 'tool_scraper';
 
-    this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(this.activeTool))
-      .setOrigin(0.5, 0.90)
-      .setScale(0.62)
+    this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(initialTool))
+      .setOrigin(0.5, 0.88)
+      .setScale(0.75)
       .setAlpha(0)
-      .setDepth(35);
+      .setDepth(100);
 
-    this.assemblyContainer = this.add.container(0, 0).setDepth(18).setVisible(false);
+    this.assemblyContainer = this.add.container(0, 0).setDepth(25).setVisible(false);
 
     // 6. НИЖНИЙ ТРЕЙ ИНСТРУМЕНТОВ
-    this.createToolsTray(trayY, width, dpr);
+    this.createToolTray(trayY, width, dpr);
 
     this.gridCols = 32;
     this.gridRows = 40;
     this.totalCells = this.gridCols * this.gridRows;
     this.cleanedGrid = new Uint8Array(this.totalCells);
     this.validCellsMask = new Uint8Array(this.totalCells);
-    this.buildValidCellsMask(texKey);
+    this.targetValidCells = this.totalCells;
 
+    this.buildValidCellsMask(texKey);
     this.startTask(0);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (УВЕЛИЧЕННЫЕ РАДИУСЫ + ПОРОГ 94%)
+    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit) return;
@@ -283,27 +312,28 @@ export class RestoreScene extends Phaser.Scene {
       }
 
       this.toolSprite.setPosition(pointer.x, pointer.y - 12);
-      this.toolSprite.setAlpha(1);
       this.animateToolUnderFinger(pointer);
 
       if (this.activeTool !== currentTask.requiredTool) {
-        this.toolWarning.setText(`⚠️ ОШИБКА: Нужен ${this.getToolName(currentTask.requiredTool)}!`);
+        this.toolWarning.setText(`⚠️ Нужен: ${this.getToolName(currentTask.requiredTool)}!`);
         if (!this.lastWarnTime || this.time.now - this.lastWarnTime > 700) {
           this.lastWarnTime = this.time.now;
           this.mistakesCount++;
           if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
-          this.cameras.main.shake(90, 0.004);
+          this.cameras.main.shake(80, 0.004);
         }
         return;
       }
 
       this.toolWarning.setText('');
 
-      if (this.lastCleanPos) {
-        const dist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
-        if (dist < 6) return;
+      if (!this.lastCleanPos) {
+        this.lastCleanPos = new Phaser.Math.Vector2(pointer.x, pointer.y);
       }
-      this.lastCleanPos = { x: pointer.x, y: pointer.y };
+      const dist = Phaser.Math.Distance.Between(this.lastCleanPos.x, this.lastCleanPos.y, pointer.x, pointer.y);
+      if (dist > 6) {
+        this.lastCleanPos.set(pointer.x, pointer.y);
+      }
 
       const localX = pointer.x - this.topLeftX;
       const localY = pointer.y - this.topLeftY;
@@ -312,34 +342,35 @@ export class RestoreScene extends Phaser.Scene {
 
       const tier = this.getToolTier(this.activeTool);
       const requiredPasses = tier >= 3 ? 1 : 2;
-      const maskKey = this.getEraseMaskForTier(this.activeTool, tier);
 
-      this.dirtLayer.erase(maskKey, localX, localY);
-      this.emitToolFX(pointer.x, pointer.y);
+      const dabObj = this.textures.getFrame(this.activeTool, null);
+      this.dirtLayer.erase(this.activeTool, localX, localY);
+      this.emitDustFX(pointer.x, pointer.y);
 
-      const baseRadius = (this.activeTool === 'tool_scraper') ? 32 : ((this.activeTool === 'tool_brush') ? 38 : 34);
+      const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
       const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
-      const countRadius = (baseRadius + tierRadiusBonus) * 0.78;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.72;
 
-      const cellW = this.artW / this.gridCols;
-      const cellH = this.artH / this.gridRows;
-      const centerCol = Math.floor(localX / cellW);
-      const centerRow = Math.floor(localY / cellH);
-      const colRad = Math.ceil(countRadius / cellW);
-      const rowRad = Math.ceil(countRadius / cellH);
+      const col2 = this.artW / this.gridCols;
+      const row2 = this.artH / this.gridRows;
 
-      for (let cr = -colRad; cr <= colRad; cr++) {
-        for (let rr = -rowRad; rr <= rowRad; rr++) {
-          const gx = centerCol + cr;
-          const gy = centerRow + rr;
-          if (gx >= 0 && gx < this.gridCols && gy >= 0 && gy < this.gridRows) {
-            const cellPxX = (gx + 0.5) * cellW;
-            const cellPxY = (gy + 0.5) * cellH;
-            const dist = Phaser.Math.Distance.Between(localX, localY, cellPxX, cellPxY);
-            if (dist <= countRadius) {
-              const idx = gy * this.gridCols + gx;
-              if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] < requiredPasses) {
-                this.cleanedGrid[idx]++;
+      const centerCol = Math.floor(localX / col2);
+      const centerRow = Math.floor(localY / row2);
+      const colRad = Math.ceil(countRadius / col2);
+      const rowRad = Math.ceil(countRadius / row2);
+
+      for (let rr = centerRow - rowRad; rr <= centerRow + rowRad; rr++) {
+        if (rr < 0 || rr >= this.gridRows) continue;
+        for (let cc = centerCol - colRad; cc <= centerCol + colRad; cc++) {
+          if (cc < 0 || cc >= this.gridCols) continue;
+          const gx = (cc + 0.5) * col2;
+          const gy = (rr + 0.5) * row2;
+          const distCell = Phaser.Math.Distance.Between(localX, localY, gx, gy);
+          if (distCell <= countRadius) {
+            const idx = rr * this.gridCols + cc;
+            if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] < requiredPasses) {
+              this.cleanedGrid[idx]++;
+              if (this.cleanedGrid[idx] >= requiredPasses) {
                 this.cleanedScore++;
               }
             }
@@ -347,9 +378,10 @@ export class RestoreScene extends Phaser.Scene {
         }
       }
 
-      const maxScore = Math.max(1, this.targetValidCells * requiredPasses);
+      const maxScore = Math.max(1, this.targetValidCells);
       const ratio = Math.min(1, this.cleanedScore / maxScore);
-      this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * ratio;
+      const maxBarW = Math.min(this.scale.width * 0.78, 280);
+      this.progressBarFill.width = Math.max(6, maxBarW * ratio);
 
       if (ratio >= 0.94 && !this.isTaskTransition) {
         this.isTaskTransition = true;
@@ -359,16 +391,21 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     this.input.on('pointerdown', (p) => {
-      this.lastCleanPos = null;
+      if (p.y > trayTopLimit) return;
       this.lastTouchPos = { x: p.x, y: p.y };
+      this.lastCleanPos = null;
+      this.toolSprite.setAlpha(1);
       processInteraction(p);
     });
+
     this.input.on('pointermove', (p) => {
-      if (p.isDown) processInteraction(p);
+      if (!p.isDown) return;
+      processInteraction(p);
     });
+
     this.input.on('pointerup', () => {
-      this.lastCleanPos = null;
       this.lastTouchPos = null;
+      this.lastCleanPos = null;
       this.tweens.add({
         targets: this.toolSprite,
         alpha: 0,
@@ -388,13 +425,13 @@ export class RestoreScene extends Phaser.Scene {
   getToolTextureForTier(toolId) {
     const tier = this.getToolTier(toolId);
     const key = `tex_hd_${toolId}_t${tier}`;
-    return this.textures.exists(key) ? key : `tex_hd_${toolId}_t1`;
+    return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
   }
 
-  getEraseMaskForTier(toolId, tier) {
+  getFrameForToolTier(toolId, tier) {
     const raw = toolId.replace('tool_', '');
-    const key = `mask_${raw}_t${tier}`;
-    return this.textures.exists(key) ? key : `mask_${raw}_t1`;
+    const key = `tex_hd_tool_${raw}_t${tier}`;
+    return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
   }
 
   animateToolUnderFinger(pointer) {
@@ -403,24 +440,25 @@ export class RestoreScene extends Phaser.Scene {
       return;
     }
     const dx = pointer.x - this.lastTouchPos.x;
-    this.lastTouchPos = { x: pointer.x, y: pointer.y };
+    this.lastTouchPos.x = pointer.x;
+    this.lastTouchPos.y = pointer.y;
 
     if (this.activeTool === 'tool_scraper') {
-      const targetAngle = Phaser.Math.Clamp(dx * 1.8, -34, 16);
+      const targetAngle = Phaser.Math.Clamp(dx * 1.4, -34, 16);
       this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.35);
     } else if (this.activeTool === 'tool_brush') {
       const targetAngle = Phaser.Math.Clamp(dx * 2.2, -32, 32);
-      this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.35);
+      this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.3);
     } else {
       this.toolSprite.angle = 0;
     }
   }
 
   generateDetailedToolTextures() {
-    const generateTex = (key, drawFn) => {
+    const makeTex = (key, drawFn) => {
       if (this.textures.exists(key)) return;
       const cvs = this.textures.createCanvas(key, 128, 128);
-      const ctx = cvs.context;
+      const ctx = cvs.getContext();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       drawFn(ctx);
@@ -428,20 +466,20 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
-    const baseRadii = { scraper: 32, brush: 38, solvent: 34, polish: 34 };
+    const baseRadii = { scraper: 22, brush: 28, solvent: 24, polish: 26 };
     const tierRadiusBonus = [0, 0, 6, 11, 16];
-    const tierCenterAlpha = [0, 0.62, 0.72, 0.90, 1.0];
+    const tierCenterAlpha = [0, 0.62, 0.72, 0.85, 1.0];
 
-    toolTypes.forEach((raw) => {
+    toolTypes.forEach((type) => {
       [1, 2, 3, 4].forEach((tier) => {
-        const rad = baseRadii[raw] + tierRadiusBonus[tier];
+        const rad = baseRadii[type] + tierRadiusBonus[tier];
         const alpha = tierCenterAlpha[tier];
-        generateTex(`mask_${raw}_t${tier}`, (ctx) => {
-          const g = ctx.createRadialGradient(64, 64, rad * 0.35, 64, 64, rad);
-          g.addColorStop(0, `rgba(255,255,255,${alpha})`);
-          g.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.75})`);
-          g.addColorStop(1, 'rgba(255,255,255,0)');
-          ctx.fillStyle = g;
+        makeTex(`tool_${type}`, (ctx) => {
+          const grad = ctx.createRadialGradient(64, 64, rad * 0.25, 64, 64, rad);
+          grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+          grad.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.75})`);
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = grad;
           ctx.beginPath();
           ctx.arc(64, 64, rad, 0, Math.PI * 2);
           ctx.fill();
@@ -449,185 +487,228 @@ export class RestoreScene extends Phaser.Scene {
       });
     });
 
-    generateTex('tex_hd_tool_glue', (ctx) => {
-      ctx.fillStyle = '#0284c7';
+    // Кисточка для клея
+    makeTex('tex_hd_tool_glue', (ctx) => {
+      ctx.fillStyle = '#78350f';
       ctx.beginPath();
-      ctx.roundRect(46, 36, 36, 74, 8);
+      ctx.roundRect(58, 36, 12, 74, 6);
       ctx.fill();
-      ctx.fillStyle = '#facc15';
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(56, 26, 16, 12);
+      ctx.fillStyle = '#38bdf8';
       ctx.beginPath();
-      ctx.moveTo(64, 10); ctx.lineTo(54, 36); ctx.lineTo(74, 36); ctx.closePath();
+      ctx.moveTo(56, 26);
+      ctx.lineTo(72, 26);
+      ctx.lineTo(64, 6);
+      ctx.closePath();
       ctx.fill();
     });
 
-    // 1. СКРЕБОК (Тир 1..4)
+    // 1. СКРЕБОК (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
-      generateTex(`tex_hd_tool_scraper_t${tier}`, (ctx) => {
-        const hGrad = ctx.createLinearGradient(54, 60, 74, 60);
-        if (tier === 1) { hGrad.addColorStop(0, '#5c3317'); hGrad.addColorStop(0.5, '#8b4513'); hGrad.addColorStop(1, '#3e1f08'); }
-        else if (tier === 2) { hGrad.addColorStop(0, '#78350f'); hGrad.addColorStop(0.5, '#b45309'); hGrad.addColorStop(1, '#451a03'); }
-        else if (tier === 3) { hGrad.addColorStop(0, '#1e293b'); hGrad.addColorStop(0.5, '#475569'); hGrad.addColorStop(1, '#0f172a'); }
-        else { hGrad.addColorStop(0, '#090d16'); hGrad.addColorStop(0.5, '#1e293b'); hGrad.addColorStop(1, '#000000'); }
+      makeTex(`tex_hd_tool_scraper_t${tier}`, (ctx) => {
+        const hGrad = ctx.createLinearGradient(56, 60, 72, 60);
+        if (tier === 1) {
+          hGrad.addColorStop(0, '#5c3a21');
+          hGrad.addColorStop(1, '#855832');
+        } else if (tier === 2) {
+          hGrad.addColorStop(0, '#92400e');
+          hGrad.addColorStop(1, '#d97706');
+        } else if (tier === 3) {
+          hGrad.addColorStop(0, '#334155');
+          hGrad.addColorStop(1, '#94a3b8');
+        } else {
+          hGrad.addColorStop(0, '#1e293b');
+          hGrad.addColorStop(1, '#38bdf8');
+        }
         ctx.fillStyle = hGrad;
-        ctx.fillRect(54, 58, 20, 62);
+        ctx.beginPath();
+        ctx.roundRect(57, 52, 14, 62, 5);
+        ctx.fill();
 
-        ctx.fillStyle = tier >= 4 ? '#facc15' : (tier === 3 ? '#38bdf8' : '#d97706');
-        ctx.fillRect(50, 50, 28, 10);
+        ctx.fillStyle = tier >= 3 ? '#facc15' : '#94a3b8';
+        ctx.fillRect(55, 46, 18, 8);
 
         if (tier === 4) {
-          ctx.fillStyle = '#0ea5e9';
-          ctx.beginPath();
-          ctx.moveTo(64, 8); ctx.lineTo(48, 50); ctx.lineTo(80, 50); ctx.closePath();
-          ctx.fill();
           ctx.fillStyle = '#e0f2fe';
           ctx.beginPath();
-          ctx.moveTo(64, 14); ctx.lineTo(58, 50); ctx.lineTo(70, 50); ctx.closePath();
+          ctx.moveTo(64, 6);
+          ctx.lineTo(44, 46);
+          ctx.lineTo(84, 46);
+          ctx.closePath();
           ctx.fill();
-        } else if (tier === 3) {
-          ctx.fillStyle = '#e2e8f0';
-          ctx.beginPath();
-          ctx.moveTo(64, 10); ctx.lineTo(82, 50); ctx.lineTo(64, 50); ctx.closePath();
-          ctx.fill();
-        } else {
-          const bGrad = ctx.createLinearGradient(36, 15, 92, 50);
-          if (tier === 2) { bGrad.addColorStop(0, '#fde047'); bGrad.addColorStop(1, '#ca8a04'); }
-          else { bGrad.addColorStop(0, '#cbd5e1'); bGrad.addColorStop(1, '#64748b'); }
-          ctx.fillStyle = bGrad;
-          ctx.beginPath();
-          ctx.moveTo(64, 12); ctx.lineTo(36, 50); ctx.lineTo(92, 50); ctx.closePath();
-          ctx.fill();
-        }
-      });
-    });
-
-    // 2. КИСТЬ (Тир 1..4)
-    [1, 2, 3, 4].forEach((tier) => {
-      generateTex(`tex_hd_tool_brush_t${tier}`, (ctx) => {
-        ctx.fillStyle = tier >= 3 ? '#1e293b' : '#78350f';
-        ctx.fillRect(58, 56, 12, 64);
-
-        ctx.fillStyle = tier >= 4 ? '#facc15' : '#94a3b8';
-        ctx.fillRect(54, 46, 20, 12);
-
-        if (tier === 4) {
-          ctx.strokeStyle = '#a855f7';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.arc(64, 28, 22, Math.PI, 0);
-          ctx.stroke();
           ctx.fillStyle = '#38bdf8';
           ctx.beginPath();
-          ctx.arc(64, 34, 12, 0, Math.PI * 2);
+          ctx.moveTo(64, 14);
+          ctx.lineTo(54, 46);
+          ctx.lineTo(74, 46);
+          ctx.closePath();
           ctx.fill();
         } else if (tier === 3) {
           ctx.fillStyle = '#f8fafc';
           ctx.beginPath();
-          ctx.moveTo(54, 46); ctx.lineTo(24, 16); ctx.lineTo(104, 16); ctx.lineTo(74, 46); ctx.closePath();
+          ctx.moveTo(64, 8);
+          ctx.lineTo(48, 46);
+          ctx.lineTo(80, 46);
+          ctx.closePath();
           ctx.fill();
         } else {
-          ctx.fillStyle = tier === 2 ? '#d97706' : '#a16207';
+          ctx.fillStyle = tier === 2 ? '#fbbf24' : '#cbd5e1';
           ctx.beginPath();
-          ctx.arc(64, 28, 20, 0, Math.PI * 2);
+          ctx.moveTo(46, 14);
+          ctx.lineTo(82, 14);
+          ctx.lineTo(74, 46);
+          ctx.lineTo(54, 46);
+          ctx.closePath();
           ctx.fill();
         }
       });
     });
 
-    // 3. РЕАКТИВ (Тир 1..4)
+    // 2. КИСТЬ (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
-      generateTex(`tex_hd_tool_solvent_t${tier}`, (ctx) => {
-        ctx.fillStyle = tier === 4 ? '#38bdf8' : (tier === 3 ? '#a855f7' : (tier === 2 ? '#10b981' : '#059669'));
+      makeTex(`tex_hd_tool_brush_t${tier}`, (ctx) => {
+        ctx.fillStyle = tier >= 3 ? '#1e293b' : '#78350f';
         ctx.beginPath();
-        ctx.roundRect(42, 42, 44, 70, 10);
+        ctx.roundRect(58, 56, 12, 58, 5);
         ctx.fill();
 
-        ctx.fillStyle = tier >= 3 ? '#facc15' : '#d97706';
-        ctx.fillRect(56, 22, 16, 20);
-        ctx.fillRect(56, 18, 28, 8);
+        ctx.fillStyle = tier >= 2 ? '#facc15' : '#94a3b8';
+        ctx.fillRect(54, 44, 20, 13);
+
+        if (tier === 4) {
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(64, 28, 22, Math.PI, 0);
+          ctx.stroke();
+          ctx.fillStyle = '#e0f2fe';
+          ctx.beginPath();
+          ctx.arc(64, 34, 14, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (tier === 3) {
+          ctx.fillStyle = '#fef3c7';
+          ctx.beginPath();
+          ctx.moveTo(54, 44);
+          ctx.lineTo(74, 44);
+          ctx.lineTo(96, 14);
+          ctx.lineTo(64, 8);
+          ctx.lineTo(32, 14);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = tier === 2 ? '#fde68a' : '#d6d3d1';
+          ctx.beginPath();
+          ctx.arc(64, 28, 20, Math.PI, 0);
+          ctx.fillRect(44, 28, 40, 16);
+          ctx.fill();
+        }
       });
     });
 
-    // 4. ЗАМША / ПОЛИРОЛЬ (Тир 1..4)
+    // 3. РЕАГЕНТ (Tier 1..4)
     [1, 2, 3, 4].forEach((tier) => {
-      generateTex(`tex_hd_tool_polish_t${tier}`, (ctx) => {
+      makeTex(`tex_hd_tool_solvent_t${tier}`, (ctx) => {
+        ctx.fillStyle = tier === 4 ? '#6366f1' : (tier === 3 ? '#0d9488' : (tier === 2 ? '#0284c7' : '#38bdf8'));
+        ctx.beginPath();
+        ctx.roundRect(42, 42, 44, 68, 12);
+        ctx.fill();
+
+        ctx.fillStyle = tier >= 3 ? '#facc15' : '#d97706';
+        ctx.fillRect(55, 24, 18, 18);
+        ctx.fillRect(52, 16, 24, 9);
+      });
+    });
+
+    // 4. ПОЛИРОВКА (Tier 1..4)
+    [1, 2, 3, 4].forEach((tier) => {
+      makeTex(`tex_hd_tool_polish_t${tier}`, (ctx) => {
         if (tier === 4) {
-          ctx.fillStyle = '#0284c7';
+          ctx.fillStyle = '#eab308';
           ctx.beginPath();
-          ctx.roundRect(38, 38, 52, 52, 12);
-          ctx.fill();
-          ctx.fillStyle = '#facc15';
-          ctx.beginPath();
-          ctx.moveTo(64, 20); ctx.lineTo(84, 40); ctx.lineTo(64, 60); ctx.lineTo(44, 40); ctx.closePath();
-          ctx.fill();
-        } else if (tier === 3) {
-          ctx.fillStyle = '#15803d';
-          ctx.beginPath();
-          ctx.roundRect(34, 44, 60, 44, 8);
+          ctx.roundRect(38, 52, 52, 52, 12);
           ctx.fill();
           ctx.fillStyle = '#38bdf8';
           ctx.beginPath();
-          ctx.arc(64, 44, 22, Math.PI, 0);
+          ctx.moveTo(64, 14);
+          ctx.lineTo(80, 34);
+          ctx.lineTo(64, 52);
+          ctx.lineTo(48, 34);
+          ctx.closePath();
+          ctx.fill();
+        } else if (tier === 3) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.roundRect(36, 48, 56, 56, 14);
+          ctx.fill();
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.arc(64, 34, 16, Math.PI, 0);
           ctx.fill();
         } else {
-          ctx.fillStyle = tier === 2 ? '#f59e0b' : '#d97706';
+          ctx.fillStyle = tier === 2 ? '#d97706' : '#a16207';
           ctx.beginPath();
-          ctx.roundRect(34, 42, 60, 46, 14);
+          ctx.roundRect(34, 46, 60, 56, 16);
           ctx.fill();
           ctx.strokeStyle = '#fef08a';
           ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.arc(54, 65, 14, 0.3, Math.PI * 1.6);
+          ctx.arc(64, 38, 22, Math.PI * 1.1, Math.PI * 1.9);
           ctx.stroke();
         }
       });
     });
   }
 
-  createRestorationFX() {
-    this.particles = this.add.particles(0, 0, 'mask_scraper_t1', {
+  createDustParticles() {
+    this.particles = this.add.particles(0, 0, 'tool_scraper', {
       lifespan: { min: 200, max: 350 },
-      speed: { min: 40, max: 90 },
-      scale: { start: 0.35, end: 0 },
+      speed: { min: 40, max: 95 },
+      scale: { start: 0.28, end: 0 },
+      alpha: { start: 0.85, end: 0 },
       emitting: false
-    }).setDepth(24);
+    }).setDepth(16);
   }
 
-  emitToolFX(x, y) {
+  emitDustFX(x, y) {
     if (this.activeTool === 'tool_scraper') {
       const tier = this.getToolTier('tool_scraper');
-      if (AudioManager.playScrub) AudioManager.playScrub(tier);
-      this.particles.setParticleTint(tier >= 4 ? 0x06b6d4 : (tier === 3 ? 0x38bdf8 : 0x8d6e63));
-      this.particles.emitParticleAt(x, y, tier >= 4 ? 4 : 2);
+      if (AudioManager.playScrape) AudioManager.playScrape(tier);
+      this.particles.setParticleTint(tier === 4 ? 0x38bdf8 : (tier === 3 ? 0xfacc15 : 0xd6d3d1));
+      this.particles.emitParticleAt(x, y, tier >= 3 ? 3 : 2);
     } else if (this.activeTool === 'tool_brush') {
       const tier = this.getToolTier('tool_brush');
       if (AudioManager.playBrush) AudioManager.playBrush(tier);
-      this.particles.setParticleTint(tier >= 4 ? 0xa855f7 : 0xe0f2f1);
-      this.particles.emitParticleAt(x, y, 3);
+      this.particles.setParticleTint(tier === 4 ? 0x38bdf8 : 0xfef3c7);
+      this.particles.emitParticleAt(x, y, 2);
     } else if (this.activeTool === 'tool_solvent') {
       const tier = this.getToolTier('tool_solvent');
       if (AudioManager.playSpray) AudioManager.playSpray(tier);
-      this.particles.setParticleTint(tier >= 4 ? 0x38bdf8 : 0x34d399);
+      this.particles.setParticleTint(tier === 4 ? 0x818cf8 : 0x38bdf8);
       this.particles.emitParticleAt(x, y, 3);
     } else if (this.activeTool === 'tool_polish') {
       const tier = this.getToolTier('tool_polish');
       if (AudioManager.playCloth) AudioManager.playCloth(tier);
-      this.particles.setParticleTint(tier >= 4 ? 0xfacc15 : 0xffffff);
+      this.particles.setParticleTint(tier >= 3 ? 0xfef08a : 0xffffff);
       this.particles.emitParticleAt(x, y, 2);
     }
   }
 
-  createToolsTray(trayY, width, dpr) {
+  createToolTray(trayY, width, dpr) {
     const tools = [
       { id: 'tool_scraper', icon: this.getToolTextureForTier('tool_scraper'), label: 'Скребок' },
       { id: 'tool_brush', icon: this.getToolTextureForTier('tool_brush'), label: 'Кисть' },
-      { id: 'tool_solvent', icon: this.getToolTextureForTier('tool_solvent'), label: 'Спрей' },
+      { id: 'tool_solvent', icon: this.getToolTextureForTier('tool_solvent'), label: 'Реагент' },
       { id: 'tool_glue', icon: 'tex_hd_tool_glue', label: 'Клей' },
-      { id: 'tool_polish', icon: this.getToolTextureForTier('tool_polish'), label: 'Замша' }
+      { id: 'tool_polish', icon: this.getToolTextureForTier('tool_polish'), label: 'Блеск' }
     ];
 
-    this.add.rectangle(width / 2, trayY, width * 0.94, 82, 0x0e131d, 0.95)
-      .setStrokeStyle(1.5, 0x273142, 0.9)
-      .setDepth(19);
+    // Нижняя деревянно-бронзовая плашка трея
+    const trayBgGfx = this.add.graphics().setDepth(180);
+    trayBgGfx.fillGradientStyle(0x24180f, 0x24180f, 0x120b07, 0x120b07, 0.96);
+    trayBgGfx.fillRect(0, trayY - 52, width, 114);
+    trayBgGfx.lineStyle(1.5, 0xc89d54, 0.65);
+    trayBgGfx.lineBetween(0, trayY - 52, width, trayY - 52);
 
     const stepX = (width * 0.90) / tools.length;
     const startX = width * 0.05 + stepX / 2;
@@ -638,60 +719,73 @@ export class RestoreScene extends Phaser.Scene {
       const slotX = startX + i * stepX;
       const isSelected = (t.id === this.activeTool);
 
-      const slotCont = this.add.container(slotX, trayY).setDepth(20);
-      const slotWall = this.add.rectangle(0, 0, 56, 68, 0x0b0f17).setDepth(19);
+      const slotCont = this.add.container(slotX, trayY).setDepth(185);
 
-      const slotBg = this.add.rectangle(0, 0, 52, 64, isSelected ? 0x1e293b : 0x141a24, 0.96)
-        .setStrokeStyle(1.5, isSelected ? 0x22c55e : 0x334155, 0.9)
+      const slotGfx = this.add.graphics();
+      const drawSlot = (selected) => {
+        slotGfx.clear();
+        slotGfx.fillGradientStyle(
+          selected ? 0x452d18 : 0x261a10,
+          selected ? 0x452d18 : 0x261a10,
+          selected ? 0x2b1b0e : 0x170f09,
+          selected ? 0x2b1b0e : 0x170f09,
+          1
+        );
+        slotGfx.fillRoundedRect(-29, -34, 58, 68, 10);
+        slotGfx.lineStyle(selected ? 2 : 1.2, selected ? 0xfacc15 : 0x8c6239, 0.95);
+        slotGfx.strokeRoundedRect(-29, -34, 58, 68, 10);
+      };
+      drawSlot(isSelected);
+
+      const slotZone = this.add.zone(0, 0, 58, 68)
         .setInteractive({ useHandCursor: true });
 
       const iconImg = this.add.image(0, -8, t.icon).setScale(0.42);
 
-      const lbl = this.add.text(0, 21, t.label, {
-        fontSize: '9px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-        color: isSelected ? '#facc15' : '#94a3b8',
+      const lbl = this.add.text(0, 22, t.label, {
+        fontSize: '9.5px',
+        fontFamily: this.FONT_UI,
+        color: isSelected ? '#facc15' : '#e6d5bc',
         fontStyle: 'bold',
         resolution: dpr
       }).setOrigin(0.5);
 
-      slotCont.add([slotWall, slotBg, iconImg, lbl]);
+      slotCont.add([slotGfx, iconImg, lbl, slotZone]);
 
-      slotBg.on('pointerdown', () => {
-        this.selectTool(t.id, t.icon, false);
+      slotZone.on('pointerdown', () => {
+        this.selectTool(t.id, t.icon, true);
       });
 
       this.traySlots.push({
         id: t.id,
         cont: slotCont,
-        bg: slotBg,
+        drawSlot,
         label: lbl,
         baseY: trayY
       });
     });
   }
 
-  selectTool(toolId, iconKey, isSilent = false) {
+  selectTool(toolId, iconKey, isUser = false) {
     this.activeTool = toolId;
 
     if (this.textures.exists(iconKey)) {
       this.toolSprite.setTexture(iconKey);
     }
 
-    if (!isSilent && AudioManager.playClick) {
+    if (isUser && AudioManager.playClick) {
       AudioManager.playClick();
     }
 
     this.traySlots.forEach((slot) => {
       const active = (slot.id === toolId);
-      slot.bg.setStrokeStyle(1.5, active ? 0x22c55e : 0x334155, 0.9);
-      slot.bg.setFillStyle(active ? 0x1e293b : 0x141a24, 0.96);
-      slot.label.setColor(active ? '#facc15' : '#94a3b8');
+      slot.drawSlot(active);
+      slot.label.setColor(active ? '#facc15' : '#e6d5bc');
 
       this.tweens.add({
         targets: slot.cont,
-        y: active ? (slot.baseY - 4) : slot.baseY,
-        duration: 100,
+        y: active ? (slot.baseY - 6) : slot.baseY,
+        duration: 120,
         ease: 'Back.easeOut'
       });
     });
@@ -706,15 +800,15 @@ export class RestoreScene extends Phaser.Scene {
     this.isTaskTransition = true;
     this.cleanArt.setAlpha(0);
     this.dirtLayer.setAlpha(0);
-    this.contactShadow1.setAlpha(0);
-    this.contactShadow2.setAlpha(0);
+    this.artifactPedestal.setAlpha(0);
+    this.artifactShadow.setAlpha(0);
 
-    if (AudioManager.playCloth) AudioManager.playCloth(1);
+    if (AudioManager.playCloth) AudioManager.playCloth();
 
     this.tweens.add({
       targets: [this.cleanArt, this.dirtLayer],
       alpha: 1,
-      duration: 320,
+      duration: 380,
       ease: 'Quad.easeOut',
       onComplete: () => {
         this.isTaskTransition = false;
@@ -722,9 +816,9 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.tweens.add({
-      targets: [this.contactShadow1, this.contactShadow2],
-      alpha: { from: 0, to: 0.22 },
-      duration: 300
+      targets: [this.artifactPedestal, this.artifactShadow],
+      alpha: 0.85,
+      duration: 350
     });
   }
 
@@ -732,9 +826,9 @@ export class RestoreScene extends Phaser.Scene {
     const map = {
       tool_scraper: 'Скребок',
       tool_brush: 'Кисть',
-      tool_solvent: 'Спрей',
+      tool_solvent: 'Реагент',
       tool_glue: 'Клей',
-      tool_polish: 'Замша'
+      tool_polish: 'Блеск'
     };
     return map[toolId] || 'инструмент';
   }
@@ -752,19 +846,17 @@ export class RestoreScene extends Phaser.Scene {
     }
 
     if (srcCanvas && srcCanvas.getContext) {
-      const ctx = srcCanvas.getContext('2d');
       const w = srcCanvas.width;
       const h = srcCanvas.height;
-      const imgData = ctx.getImageData(0, 0, w, h).data;
+      const imgData = srcCanvas.getContext('2d').getImageData(0, 0, w, h).data;
 
       for (let gy = 0; gy < this.gridRows; gy++) {
         for (let gx = 0; gx < this.gridCols; gx++) {
           const sampleX = Math.floor(((gx + 0.5) / this.gridCols) * w);
           const sampleY = Math.floor(((gy + 0.5) / this.gridRows) * h);
           const alpha = imgData[(sampleY * w + sampleX) * 4 + 3];
-
           const idx = gy * this.gridCols + gx;
-          if (alpha > 30) {
+          if (alpha > 40) {
             this.validCellsMask[idx] = 1;
             this.targetValidCells++;
           }
@@ -777,18 +869,17 @@ export class RestoreScene extends Phaser.Scene {
       this.targetValidCells = this.totalCells;
     }
   }
-
-  renderWorkbenchWorkshop(width, height, topBound, botBound) {
+  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const bg = this.add.graphics().setDepth(1);
-    bg.fillStyle(0x07090e, 1);
+    bg.fillStyle(0x0d0805, 1);
     bg.fillRect(0, 0, width, height);
 
     const matPadX = 16;
     const matTop = topBound + 6;
-    const matBot = botBound - 14;
-    const matH = matBot - matTop;
+    const matBottom = bottomBound - 10;
     const matW = width - matPadX * 2;
+    const matH = matBottom - matTop;
     const matCenterY = matTop + matH / 2;
 
     this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
@@ -797,20 +888,21 @@ export class RestoreScene extends Phaser.Scene {
     const halfW = matW / 2;
     const halfH = matH / 2;
 
-    const palette = {
-      1: { fill: 0x0f172a, border: 0x334155, line: 0x1e293b },
-      2: { fill: 0x1c1917, border: 0x78350f, line: 0x292524 },
-      3: { fill: 0x064e3b, border: 0xd97706, line: 0x047857 },
-      4: { fill: 0x090d16, border: 0xfacc15, line: 0x1e293b }
-    }[tier] || { fill: 0x0f172a, border: 0x334155, line: 0x1e293b };
+    const palettes = {
+      1: { fill: 0x261a11, border: 0x6e472b, line: 0x8c5a37 },
+      2: { fill: 0x3b2615, border: 0x9c663a, line: 0xc2864e },
+      3: { fill: 0x16382b, border: 0xc89d54, line: 0xe2b866 },
+      4: { fill: 0x291d14, border: 0xfacc15, line: 0xfef08a }
+    };
+    const palette = palettes[tier] || palettes[1];
 
     matGfx.fillStyle(palette.fill, 1);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(2.5, palette.border, 0.85);
+    matGfx.lineStyle(2.5, palette.border, 0.9);
     matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(1, palette.border, 0.35);
+    matGfx.lineStyle(1, palette.line, 0.35);
     matGfx.strokeRoundedRect(-halfW + 6, -halfH + 6, matW - 12, matH - 12, 12);
 
     const rivets = [
@@ -819,37 +911,34 @@ export class RestoreScene extends Phaser.Scene {
       { x: -halfW + 12, y: halfH - 12 },
       { x: halfW - 12, y: halfH - 12 }
     ];
-    rivets.forEach(r => {
-      matGfx.fillStyle(palette.border, 0.8);
+    rivets.forEach((r) => {
+      matGfx.fillStyle(palette.border, 0.9);
       matGfx.fillCircle(r.x, r.y, 3);
     });
 
     const grid = this.add.graphics();
-    grid.lineStyle(1, palette.line, 0.35);
+    grid.lineStyle(1, palette.line, 0.08);
     const step = 36;
-    for (let x = -halfW + 36; x < halfW - 20; x += step) {
+    for (let x = -halfW + 36; x <= halfW - 36; x += step) {
       grid.lineBetween(x, -halfH + 12, x, halfH - 12);
     }
-    for (let y = -halfH + 36; y < halfH - 20; y += step) {
+    for (let y = -halfH + 36; y <= halfH - 36; y += step) {
       grid.lineBetween(-halfW + 12, y, halfW - 12, y);
     }
 
     this.matContainer.add([matGfx, grid]);
-
-    this.matContainer.setScale(1, 0.06);
-    this.matContainer.setAlpha(0.3);
+    this.matContainer.setScale(0.95);
+    this.matContainer.setAlpha(0);
     this.tweens.add({
       targets: this.matContainer,
+      scaleX: 1,
       scaleY: 1,
       alpha: 1,
-      duration: 420,
+      duration: 320,
       ease: 'Cubic.easeOut'
     });
   }
 
-  // =========================================================================
-  // МНОГООСКОЛОЧНАЯ СКЛЕЙКА (1–3 СЛУЧАЙНЫХ СКОЛА + 1 КИНЦУГИ НА ВЕСЬ ЭТАП)
-  // =========================================================================
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
@@ -864,41 +953,39 @@ export class RestoreScene extends Phaser.Scene {
     let newlyGlued = false;
 
     this.shardsList.forEach((s) => {
-      if (s.glued) return;
-      const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, s.targetX, s.targetY);
-      if (d < 36) {
-        s.glued = true;
-        newlyGlued = true;
-        const fillColor = this.isKintsugiMode ? 0xfacc15 : 0x38bdf8;
+      if (!s.glued) {
+        const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, s.targetX, s.targetY);
+        if (d < 42) {
+          s.glued = true;
+          newlyGlued = true;
+          s.border.clear();
+          s.border.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
+          s.border.strokeCircle(s.targetX, s.targetY, 24);
 
-        this.breakHoleGfx.fillStyle(fillColor, 0.85);
-        this.breakHoleGfx.fillCircle(s.targetX, s.targetY, 24);
+          this.breakHoleGfx.fillStyle(0x0d0805, 0.85);
+          this.breakHoleGfx.fillCircle(s.targetX, s.targetY, 24);
 
-        if (this.isKintsugiMode) {
-          this.breakHoleGfx.lineStyle(2.5, 0xfffbeb, 0.95);
-          this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, 24);
+          if (this.isKintsugiMode) {
+            this.breakHoleGfx.lineStyle(2.5, 0xfacc15, 0.95);
+            this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, 24);
+          }
+
+          this.particles.setParticleTint(this.isKintsugiMode ? 0xfacc15 : 0x38bdf8);
+          this.particles.emitParticleAt(s.targetX, s.targetY, 6);
         }
-
-        this.particles.setParticleTint(fillColor);
-        this.particles.emitParticleAt(s.targetX, s.targetY, 6);
       }
     });
 
     if (newlyGlued) {
       if (AudioManager.playRub) AudioManager.playRub();
-      const gluedCount = this.shardsList.filter(s => s.glued).length;
+      const gluedCount = this.shardsList.filter((s) => s.glued).length;
       const total = this.shardsList.length;
-
       this.updateAssemblyProgress();
 
       if (gluedCount < total) {
         this.toolWarning.setText(`Клей нанесён (${gluedCount}/${total}). Промажьте остальные сколы!`);
       } else {
-        this.toolWarning.setText(
-          this.isKintsugiMode
-            ? '✨ Все места промазаны золотом! Перетащите осколки на свои места'
-            : '✅ Все сколы проклеены! Перетащите каждый осколок на своё место'
-        );
+        this.toolWarning.setText('✨ Все места промазаны! Перетащите каждый осколок на своё место!');
       }
     }
   }
@@ -906,40 +993,41 @@ export class RestoreScene extends Phaser.Scene {
   updateAssemblyProgress() {
     if (!this.shardsList || this.shardsList.length === 0) return;
     const total = this.shardsList.length;
-    const glued = this.shardsList.filter(s => s.glued).length;
-    const placed = this.shardsList.filter(s => s.placed).length;
+    const glued = this.shardsList.filter((s) => s.glued).length;
+    const placed = this.shardsList.filter((s) => s.placed).length;
 
     const progress = (glued * 0.4 + placed * 0.6) / total;
-    this.progressBarFill.width = Math.min(this.scale.width * 0.78, 280) * progress;
+    const maxBarW = Math.min(this.scale.width * 0.78, 280);
+    this.progressBarFill.width = Math.max(6, maxBarW * progress);
   }
 
-  getRandomValidBreakPoints(count) {
+  getRandomValidPointsOnArt(count) {
     const candidates = [];
-    const cellW = this.artW / this.gridCols;
-    const cellH = this.artH / this.gridRows;
+    const colW = this.artW / this.gridCols;
+    const rowH = this.artH / this.gridRows;
 
     for (let gy = 3; gy < this.gridRows - 3; gy++) {
       for (let gx = 3; gx < this.gridCols - 3; gx++) {
         const idx = gy * this.gridCols + gx;
         if (this.validCellsMask[idx] === 1) {
           candidates.push({
-            x: Math.floor(this.topLeftX + (gx + 0.5) * cellW),
-            y: Math.floor(this.topLeftY + (gy + 0.5) * cellH)
+            x: Math.floor(this.topLeftX + (gx + 0.5) * colW),
+            y: Math.floor(this.topLeftY + (gy + 0.5) * rowH)
           });
         }
       }
     }
 
     Phaser.Utils.Array.Shuffle(candidates);
-
     const chosen = [];
-    const minDistance = 68;
+    const minDistance = 64;
 
-    for (let i = 0; i < candidates.length && chosen.length < count; i++) {
+    for (let i = 0; i < candidates.length; i++) {
       const pt = candidates[i];
-      const tooClose = chosen.some(c => Phaser.Math.Distance.Between(pt.x, pt.y, c.x, c.y) < minDistance);
+      const tooClose = chosen.some((c) => Phaser.Math.Distance.Between(pt.x, pt.y, c.x, c.y) < minDistance);
       if (!tooClose) {
         chosen.push(pt);
+        if (chosen.length >= count) break;
       }
     }
 
@@ -952,47 +1040,48 @@ export class RestoreScene extends Phaser.Scene {
 
   setupBreakAndAssembleStage(task) {
     const { width } = this.scale;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = this.dpr;
 
     this.assemblyContainer.removeAll(true);
     this.assemblyContainer.setVisible(true);
-    this.progressBarFill.width = 0;
+
+    this.progressBarFill.width = 6;
     this.shardsList = [];
 
-    const shardTex = this.textures.exists(task.shardTexture) ? task.shardTexture : this.artifactData.textureKey;
+    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
 
-    const shardCount = Phaser.Math.Between(1, 3);
-    const points = this.getRandomValidBreakPoints(shardCount);
-
-    this.taskNotice.setText(
-      `ШАГ ${this.currentTaskIndex + 1}/${this.artifactData.tasks.length}: Склейка фрагментов (${points.length} шт.)`
-    );
+    const shardCount = Phaser.Math.Clamp(task.shardCount || 2, 2, 3);
+    const points = this.getRandomValidPointsOnArt(shardCount);
+    this.taskNotice.setText(`ЭТАП ${this.currentTaskIndex + 1}/${this.artifactData.tasks.length}: Склейте сколы (${points.length} шт.)`);
 
     this.breakHoleGfx.clear();
     this.breakHoleGfx.setVisible(true);
 
     const scatterOffsets = [
-      { dx: -85, dy: 105 },
-      { dx: 0, dy: 125 },
-      { dx: 85, dy: 105 }
+      { dx: -115, dy: -65 },
+      { dx: 115, dy: -65 },
+      { dx: -95, dy: 105 },
+      { dx: 95, dy: 105 }
     ];
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+    this.cameras.main.shake(140, 0.008);
 
     points.forEach((pt, idx) => {
       const targetX = pt.x;
       const targetY = pt.y;
 
-      this.breakHoleGfx.fillStyle(0x0b0f17, 0.92);
-      this.breakHoleGfx.fillCircle(targetX, targetY, 25);
-      this.breakHoleGfx.lineStyle(2, 0xeab308, 0.75);
-      this.breakHoleGfx.strokeCircle(targetX, targetY, 25);
+      this.breakHoleGfx.fillStyle(0x0d0805, 0.92);
+      this.breakHoleGfx.fillCircle(targetX, targetY, 24);
+      this.breakHoleGfx.lineStyle(2, 0xef4444, 0.85);
+      this.breakHoleGfx.strokeCircle(targetX, targetY, 24);
 
-      const pieceContainer = this.add.container(0, 0).setDepth(25 + idx);
-      const pieceImg = this.add.image(this.centerX, this.centerY, shardTex)
+      const pieceContainer = this.add.container(0, 0);
+
+      const pieceImg = this.add.image(this.centerX, this.centerY, texKey)
         .setDisplaySize(this.artW, this.artH);
 
-      const shardMaskShape = this.make.graphics({ add: false });
+      const shardMaskShape = this.make.graphics({ x: 0, y: 0, add: false });
       shardMaskShape.fillStyle(0xffffff);
       shardMaskShape.fillCircle(targetX, targetY, 24);
 
@@ -1074,14 +1163,14 @@ export class RestoreScene extends Phaser.Scene {
             pieceBorder.strokeCircle(targetX, targetY, 24);
             if (AudioManager.playShine) AudioManager.playShine();
           } else {
-            pieceBorder.lineStyle(1, 0x334155, 0.35);
+            pieceBorder.lineStyle(1, 0x4ade80, 0.45);
             pieceBorder.strokeCircle(targetX, targetY, 24);
             if (AudioManager.playCoin) AudioManager.playCoin();
           }
 
           this.updateAssemblyProgress();
 
-          const allPlaced = this.shardsList.every(s => s.placed);
+          const allPlaced = this.shardsList.every((s) => s.placed);
           if (allPlaced) {
             if (this.isKintsugiMode) {
               this.hasKintsugiMastery = true;
@@ -1098,7 +1187,7 @@ export class RestoreScene extends Phaser.Scene {
               this.completeTaskTransition();
             });
           } else {
-            const left = this.shardsList.filter(s => !s.placed).length;
+            const left = this.shardsList.filter((s) => !s.placed).length;
             this.toolWarning.setText(`Отлично! Осталось установить осколков: ${left}`);
           }
         } else {
@@ -1127,38 +1216,55 @@ export class RestoreScene extends Phaser.Scene {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
     this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(30);
-    const bannerBg = this.add.rectangle(0, 0, width * 0.88, 44, 0x0f172a, 0.96)
-      .setStrokeStyle(1.5, 0xe2b35b, 0.85);
+    const bannerW = width * 0.88;
+    const bannerH = 44;
 
-    const kintsugiBtn = this.add.rectangle(width * 0.44 - 52, 0, 90, 26, 0xfde047)
-      .setStrokeStyle(1, 0xfde047)
+    const bannerGfx = this.add.graphics();
+    bannerGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.96);
+    bannerGfx.fillRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
+    bannerGfx.lineStyle(1.5, 0xc89d54, 0.9);
+    bannerGfx.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
+
+    const btnX = width * 0.44 - 52;
+    const btnGfx = this.add.graphics();
+    const drawBtn = (active) => {
+      btnGfx.clear();
+      btnGfx.fillStyle(active ? 0x16a34a : 0xd99b26, 1);
+      btnGfx.fillRoundedRect(btnX - 45, -14, 90, 28, 7);
+      btnGfx.lineStyle(1, active ? 0x86efac : 0xfef08a, 0.95);
+      btnGfx.strokeRoundedRect(btnX - 45, -14, 90, 28, 7);
+    };
+    drawBtn(false);
+
+    const kintsugiZone = this.add.zone(btnX, 0, 90, 28)
       .setInteractive({ useHandCursor: true });
 
-    const kintsugiTxt = this.add.text(width * 0.44 - 52, 0, '✨ КИНЦУГИ', {
+    const kintsugiTxt = this.add.text(btnX, 0, '✨ КИНЦУГИ', {
       fontSize: '10.5px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
-      color: '#000000',
+      fontFamily: this.FONT_UI,
+      color: '#1a1004',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
     const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов (1 лак на все): +60%', {
       fontSize: '10.5px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif',
+      fontFamily: this.FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0, 0.5);
 
-    kintsugiBtn.on('pointerdown', () => {
+    kintsugiZone.on('pointerdown', () => {
       this.isKintsugiMode = !this.isKintsugiMode;
-      kintsugiBtn.setFillStyle(this.isKintsugiMode ? 0x22c55e : 0xfde047);
-      kintsugiTxt.setText(this.isKintsugiMode ? 'ВЫБРАНО ✓' : '✨ КИНЦУГИ');
+      drawBtn(this.isKintsugiMode);
+      kintsugiTxt.setColor(this.isKintsugiMode ? '#ffffff' : '#1a1004');
+      kintsugiTxt.setText(this.isKintsugiMode ? '✓ ВЫБРАНО' : '✨ КИНЦУГИ');
       infoTxt.setText(this.isKintsugiMode ? 'Золото активно на все сколы!' : 'Золотой шов (1 лак на все): +60%');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    this.kintsugiBanner.add([bannerBg, infoTxt, kintsugiBtn, kintsugiTxt]);
+    this.kintsugiBanner.add([bannerGfx, infoTxt, btnGfx, kintsugiTxt, kintsugiZone]);
   }
 
   startTask(taskIdx) {
@@ -1166,7 +1272,7 @@ export class RestoreScene extends Phaser.Scene {
     this.isTaskTransition = false;
     this.cleanedGrid.fill(0);
     this.cleanedScore = 0;
-    this.progressBarFill.width = 0;
+    this.progressBarFill.width = 6;
     this.toolWarning.setText('');
 
     const task = this.artifactData.tasks[taskIdx];
@@ -1197,34 +1303,34 @@ export class RestoreScene extends Phaser.Scene {
     const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
 
     if (reqTool === 'tool_scraper') {
-      dirtGfx.fillStyle(0x6e4e25, 0.98);
+      dirtGfx.fillStyle(0x5c4a35, 0.90);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x422e12, 0.92);
+      dirtGfx.fillStyle(0x42321f, 0.92);
       for (let i = 0; i < 34; i++) {
         dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(12, 30));
       }
-      dirtGfx.fillStyle(0x8a6233, 0.65);
-      for (let i = 0; i < 28; i++) {
+      dirtGfx.fillStyle(0x8a6d4b, 0.65);
+      for (let i = 0; i < 20; i++) {
         dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(6, 16));
       }
     } else if (reqTool === 'tool_brush') {
-      dirtGfx.fillStyle(0xa89f81, 0.94);
+      dirtGfx.fillStyle(0xa89f91, 0.84);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x736c56, 0.75);
+      dirtGfx.fillStyle(0x78716c, 0.75);
       for (let i = 0; i < 32; i++) {
         dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(8, 24));
       }
     } else if (reqTool === 'tool_solvent') {
-      dirtGfx.fillStyle(0x234d35, 0.94);
+      dirtGfx.fillStyle(0x234d45, 0.84);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x367053, 0.80);
+      dirtGfx.fillStyle(0x367063, 0.80);
       for (let i = 0; i < 28; i++) {
         dirtGfx.fillEllipse(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(18, 38), Phaser.Math.Between(10, 22));
       }
     } else {
-      dirtGfx.fillStyle(0x141414, 0.65);
+      dirtGfx.fillStyle(0x41413a, 0.65);
       dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x282828, 0.50);
+      dirtGfx.fillStyle(0x282824, 0.50);
       for (let i = 0; i < 24; i++) {
         dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(14, 32));
       }
@@ -1237,7 +1343,8 @@ export class RestoreScene extends Phaser.Scene {
   completeTaskTransition() {
     if (AudioManager.playCoin) AudioManager.playCoin();
 
-    const flash = this.add.rectangle(this.cleanArt.x, this.cleanArt.y, this.cleanArt.width, this.cleanArt.height, 0xffffff, 0.85).setDepth(25);
+    const flash = this.add.rectangle(this.cleanArt.x, this.cleanArt.y, this.cleanArt.width, this.cleanArt.height, 0xfffbeb, 0.7)
+      .setDepth(25);
     flash.setBlendMode(Phaser.BlendModes.ADD);
 
     this.tweens.add({
