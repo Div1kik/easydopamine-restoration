@@ -9,7 +9,6 @@
   <meta name="theme-color" content="#0d0805" />
   <title>Артефакты Времени — Мастерская реставратора</title>
 
-  <!-- Чёткие кириллические шрифты для заголовков и интерфейса -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -17,10 +16,7 @@
     rel="stylesheet"
   />
 
-  <!-- SDK Яндекс Игр -->
   <script src="https://yandex.ru/games/sdk/v2"></script>
-
-  <!-- Phaser 3 -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 
   <style>
@@ -42,7 +38,6 @@
       background-color: #0d0805;
       touch-action: none;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
     }
 
@@ -50,15 +45,17 @@
       width: 100%;
       height: 100%;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       overflow: hidden;
     }
 
     canvas {
       display: block;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
       touch-action: none;
-      image-rendering: -webkit-optimize-contrast;
     }
   </style>
 </head>
@@ -71,14 +68,13 @@
     });
   </script>
 
-  <!-- Ждём загрузку веб-шрифтов перед стартом Phaser, чтобы не было скачков и мыла при первом рендере -->
   <script type="module">
     const startApp = async () => {
       try {
         if (document.fonts && document.fonts.ready) {
           await Promise.race([
             document.fonts.ready,
-            new Promise((resolve) => setTimeout(resolve, 1200))
+            new Promise((resolve) => setTimeout(resolve, 1000))
           ]);
         }
       } catch {}
