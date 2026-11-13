@@ -1,8 +1,8 @@
 export const TOOL_SKINS = [
   {
     id: 'default',
-    name: 'Классика (Орех и сталь)',
-    desc: 'Традиционный набор реставратора из тёмного ореха',
+    name: 'Набор: Классика (Орех)',
+    desc: 'Традиционный комплект из 5 приборов из тёмного ореха и стали',
     priceCoins: 0,
     adsRequired: 0,
     palette: {
@@ -17,8 +17,8 @@ export const TOOL_SKINS = [
   },
   {
     id: 'gold',
-    name: 'Императорское золото',
-    desc: 'Литые позолоченные рукояти с хрустальным звоном',
+    name: 'Набор: Императорское золото',
+    desc: 'Все 5 инструментов из литого золота с хрустальным звоном',
     priceCoins: 1500,
     adsRequired: 0,
     palette: {
@@ -33,8 +33,8 @@ export const TOOL_SKINS = [
   },
   {
     id: 'jade',
-    name: 'Нефритовый мастер',
-    desc: 'Резной императорский нефрит с мягким шелестом',
+    name: 'Набор: Нефритовый мастер',
+    desc: 'Все 5 инструментов из резного нефрита с мягким шелестом',
     priceCoins: 2200,
     adsRequired: 2,
     palette: {
@@ -49,8 +49,8 @@ export const TOOL_SKINS = [
   },
   {
     id: 'damascus',
-    name: 'Дамасский сапфир',
-    desc: 'Воронёная узорчатая сталь с сапфировой инкрустацией',
+    name: 'Набор: Дамасский сапфир',
+    desc: 'Все 5 инструментов из воронёной стали с сапфирами',
     priceCoins: 3000,
     adsRequired: 0,
     palette: {
@@ -65,8 +65,8 @@ export const TOOL_SKINS = [
   },
   {
     id: 'ruby',
-    name: 'Рубиновый алхимик',
-    desc: 'Багровый обсидиан и рубины (доступно за рекламу)',
+    name: 'Набор: Рубиновый алхимик',
+    desc: 'Все 5 инструментов из обсидиана и рубинов (за рекламу)',
     priceCoins: null,
     adsRequired: 3,
     palette: {
@@ -86,7 +86,7 @@ export function getSkinPalette(skinId) {
   return found.palette;
 }
 
-export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'default', size = 128) {
+export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'default', size = 192) {
   const p = getSkinPalette(skinId);
   const s = size / 128;
   ctx.save();
@@ -99,7 +99,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
   };
 
   if (toolType === 'scraper') {
-    // Рукоять с объёмным градиентом и заклёпками
     const hGrad = ctx.createLinearGradient(54, 0, 74, 0);
     hGrad.addColorStop(0, p.woodDark);
     hGrad.addColorStop(0.45, p.woodLight);
@@ -111,7 +110,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Заклёпки на рукояти
     ctx.fillStyle = p.accent;
     [68, 86, 104].forEach((ry) => {
       ctx.beginPath();
@@ -119,7 +117,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
       ctx.fill();
     });
 
-    // Металлическая муфта (больстер)
     const mGrad = ctx.createLinearGradient(51, 0, 77, 0);
     mGrad.addColorStop(0, p.metalDark);
     mGrad.addColorStop(0.5, p.metalLight);
@@ -128,7 +125,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     roundRect(52, 44, 24, 10, 3);
     ctx.fill();
 
-    // Лезвие в зависимости от уровня (Tier 1..4)
     const bladeGrad = ctx.createLinearGradient(42, 10, 86, 44);
     bladeGrad.addColorStop(0, p.metalLight);
     bladeGrad.addColorStop(0.5, tier >= 3 ? '#f8fafc' : p.metalDark);
@@ -137,26 +133,22 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
 
     ctx.beginPath();
     if (tier === 1) {
-      // Прямой шпатель-скребок
       ctx.moveTo(46, 14);
       ctx.lineTo(82, 14);
       ctx.lineTo(74, 44);
       ctx.lineTo(54, 44);
     } else if (tier === 2) {
-      // Широкий трапециевидный латунный скребок
       ctx.moveTo(40, 12);
       ctx.lineTo(88, 12);
       ctx.lineTo(76, 44);
       ctx.lineTo(52, 44);
     } else if (tier === 3) {
-      // Острый хирургический скальпель
       ctx.moveTo(64, 6);
       ctx.lineTo(82, 34);
       ctx.lineTo(74, 44);
       ctx.lineTo(54, 44);
       ctx.lineTo(46, 34);
     } else {
-      // Прецизионный микро-резец с энергетической кромкой
       ctx.moveTo(64, 4);
       ctx.lineTo(86, 38);
       ctx.lineTo(74, 44);
@@ -166,7 +158,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.closePath();
     ctx.fill();
 
-    // Световой блик по режущей кромке
     ctx.strokeStyle = tier === 4 ? '#38bdf8' : '#ffffff';
     ctx.lineWidth = tier === 4 ? 3 : 2;
     ctx.beginPath();
@@ -179,7 +170,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     }
     ctx.stroke();
   } else if (toolType === 'brush') {
-    // Ручка кисти
     const hGrad = ctx.createLinearGradient(56, 0, 72, 0);
     hGrad.addColorStop(0, p.woodDark);
     hGrad.addColorStop(0.5, p.woodLight);
@@ -188,7 +178,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     roundRect(57, 56, 14, 62, 6);
     ctx.fill();
 
-    // Ободок с рёбрами жёсткости
     const mGrad = ctx.createLinearGradient(52, 0, 76, 0);
     mGrad.addColorStop(0, p.metalDark);
     mGrad.addColorStop(0.5, p.metalLight);
@@ -196,16 +185,7 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.fillStyle = mGrad;
     roundRect(52, 42, 24, 15, 3);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(53, 47);
-    ctx.lineTo(75, 47);
-    ctx.moveTo(53, 52);
-    ctx.lineTo(75, 52);
-    ctx.stroke();
 
-    // Пучок ворса
     const hairGrad = ctx.createLinearGradient(64, 8, 64, 42);
     if (tier === 4) {
       hairGrad.addColorStop(0, '#e0f2fe');
@@ -224,13 +204,11 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
 
     ctx.beginPath();
     if (tier >= 3) {
-      // Веерная широкая кисть
       ctx.moveTo(52, 42);
       ctx.lineTo(76, 42);
       ctx.lineTo(96, 16);
       ctx.quadraticCurveTo(64, 6, 32, 16);
     } else {
-      // Пышная круглая кисть
       ctx.moveTo(52, 42);
       ctx.lineTo(76, 42);
       ctx.bezierCurveTo(84, 24, 78, 10, 64, 8);
@@ -238,18 +216,7 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     }
     ctx.closePath();
     ctx.fill();
-
-    // Прорисовка отдельных ворсинок
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 1.2;
-    [-10, -4, 4, 10].forEach((dx) => {
-      ctx.beginPath();
-      ctx.moveTo(64 + dx * 0.6, 40);
-      ctx.lineTo(64 + dx * 1.4, 14);
-      ctx.stroke();
-    });
   } else if (toolType === 'solvent') {
-    // Стеклянный корпус флакона
     const glassGrad = ctx.createLinearGradient(38, 0, 90, 0);
     glassGrad.addColorStop(0, 'rgba(148,163,184,0.45)');
     glassGrad.addColorStop(0.35, 'rgba(255,255,255,0.75)');
@@ -262,37 +229,22 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Светящийся реагент внутри колбы
     ctx.fillStyle = tier === 4 ? '#818cf8' : p.liquid;
     roundRect(44, 58, 40, 52, 9);
     ctx.fill();
 
-    // Мениск жидкости и пузырьки
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath();
-    ctx.ellipse(64, 58, 19, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(54, 82, 2.5, 0, Math.PI * 2);
-    ctx.arc(70, 94, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Стеклянный вертикальный блик
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     roundRect(46, 44, 5, 62, 2.5);
     ctx.fill();
 
-    // Горлышко и распылитель
     ctx.fillStyle = p.metalDark;
     roundRect(54, 24, 20, 14, 3);
     ctx.fill();
     ctx.fillStyle = p.accent;
     roundRect(48, 14, 32, 10, 4);
     ctx.fill();
-    // Носик спрея
     ctx.fillRect(76, 16, 10, 6);
   } else if (toolType === 'glue') {
-    // Тюбик реставрационного клея
     const tubeGrad = ctx.createLinearGradient(42, 0, 86, 0);
     tubeGrad.addColorStop(0, p.woodDark);
     tubeGrad.addColorStop(0.5, p.woodLight);
@@ -304,12 +256,10 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Этикетка на тюбике
     ctx.fillStyle = p.accent;
     roundRect(50, 58, 28, 36, 5);
     ctx.fill();
 
-    // Колпачок и тонкий носик-дозатор
     ctx.fillStyle = p.metalLight;
     roundRect(54, 28, 20, 14, 3);
     ctx.fill();
@@ -321,13 +271,11 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.closePath();
     ctx.fill();
 
-    // Капля клея на кончике
     ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
     ctx.arc(64, 7, 3.5, 0, Math.PI * 2);
     ctx.fill();
   } else if (toolType === 'polish') {
-    // Объёмная полировочная подушечка / футляр с воском
     const padGrad = ctx.createRadialGradient(54, 52, 8, 64, 66, 44);
     padGrad.addColorStop(0, p.metalLight);
     padGrad.addColorStop(0.55, p.woodLight);
@@ -339,7 +287,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Декоративная прострочка по периметру бархотки
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 1.5;
@@ -347,7 +294,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Блик / кристалл полировки сверху
     if (tier >= 3) {
       ctx.fillStyle = tier === 4 ? '#38bdf8' : '#fef08a';
       ctx.beginPath();
@@ -368,4 +314,33 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
   }
 
   ctx.restore();
+}
+
+// Рисует сразу полный комплект из 5 инструментов в ряд для витрины стилей
+export function drawFullToolSetPreview(ctx, skinId = 'default', width = 360, height = 84) {
+  ctx.clearRect(0, 0, width, height);
+  const items = [
+    { type: 'scraper', tier: 3 },
+    { type: 'brush', tier: 3 },
+    { type: 'solvent', tier: 2 },
+    { type: 'glue', tier: 1 },
+    { type: 'polish', tier: 3 }
+  ];
+
+  const slotW = width / items.length;
+  const iconSize = Math.min(slotW - 4, height - 4);
+
+  items.forEach((it, idx) => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 192;
+    tempCanvas.height = 192;
+    const tCtx = tempCanvas.getContext('2d');
+    tCtx.imageSmoothingEnabled = true;
+    tCtx.imageSmoothingQuality = 'high';
+    drawDetailedToolCanvas(tCtx, it.type, it.tier, skinId, 192);
+
+    const drawX = idx * slotW + (slotW - iconSize) / 2;
+    const drawY = (height - iconSize) / 2;
+    ctx.drawImage(tempCanvas, drawX, drawY, iconSize, iconSize);
+  });
 }
