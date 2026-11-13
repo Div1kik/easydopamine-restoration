@@ -313,6 +313,7 @@ export class RestoreScene extends Phaser.Scene {
     this.playMaterializeSequence();
 
     // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
+    // Примечание: в main.js this.input.on('pointer...') уже оборачивает pointer в wrapLogicalPointer (делит на RETINA_MULT = 3)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
@@ -832,7 +833,7 @@ export class RestoreScene extends Phaser.Scene {
     this.shardsList.forEach((s) => {
       if (!s.glued) {
         const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, s.targetX, s.targetY);
-        if (d < 42) {
+        if (d < 46) {
           s.glued = true;
           newlyGlued = true;
           s.border.clear();
@@ -995,7 +996,7 @@ export class RestoreScene extends Phaser.Scene {
       pieceBorder.lineStyle(2.5, 0xfacc15, 0.95);
       pieceBorder.strokeCircle(0, 0, radius);
 
-      const hitZone = this.add.circle(0, 0, 38, 0xfacc15, 0.05)
+      const hitZone = this.add.circle(0, 0, 42, 0xfacc15, 0.05)
         .setInteractive({ draggable: true, useHandCursor: true });
 
       pieceContainer.add([pieceImg, pieceBorder, hitZone]);
@@ -1036,21 +1037,28 @@ export class RestoreScene extends Phaser.Scene {
         }
       });
 
+      // В main.js камера имеет zoom = RETINA_MULT (3), поэтому для событий объекта используем pointer.worldX / worldY
       hitZone.on('drag', (pointer) => {
         if (shardObj.placed) return;
         if (!shardObj.glued) {
           this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
           return;
         }
-        pieceContainer.x = pointer.x;
-        pieceContainer.y = pointer.y;
+        const wx = (pointer.worldX !== undefined) ? pointer.worldX : (pointer.x / 3);
+        const wy = (pointer.worldY !== undefined) ? pointer.worldY : (pointer.y / 3);
+        pieceContainer.x = wx;
+        pieceContainer.y = wy;
+
+        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
+        pieceContainer.setScale(dist < 65 ? 1.08 : 1.0);
       });
 
       hitZone.on('dragend', () => {
         if (shardObj.placed || !shardObj.glued) return;
+        pieceContainer.setScale(1.0);
 
         const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
-        if (dist < 42) {
+        if (dist < 65) {
           shardObj.placed = true;
           pieceContainer.x = targetX;
           pieceContainer.y = targetY;
@@ -1091,7 +1099,7 @@ export class RestoreScene extends Phaser.Scene {
             this.toolWarning.setText(`Отлично! Осталось осколков: ${left}`);
           }
         } else {
-          this.toolWarning.setText('⚠️ Этот осколок не подходит сюда!');
+          this.toolWarning.setText('⚠️ Поднесите осколок точнее к месту скола!');
           this.tweens.add({
             targets: pieceContainer,
             x: restX,
