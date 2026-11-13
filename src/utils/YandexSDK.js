@@ -6,25 +6,44 @@ class YandexSDKManager {
     this.restorationsSinceAd = 0;
   }
 
+  isYandexEnvironment() {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.self !== window.top && Boolean(window.YaGames);
+    } catch {
+      return Boolean(window.YaGames);
+    }
+  }
+
   async init() {
     if (this.initialized) return this.ysdk;
-    if (typeof window !== 'undefined' && window.YaGames) {
-      try {
-        this.ysdk = await window.YaGames.init();
-        this.initialized = true;
-        if (this.ysdk.features && this.ysdk.features.LoadingAPI) {
-          this.ysdk.features.LoadingAPI.ready();
-        }
-      } catch (e) {
-        console.warn('YaGames init fallback:', e);
-      }
+
+    if (!this.isYandexEnvironment()) {
+      this.initialized = true;
+      return null;
     }
+
+    try {
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('YaGames init timeout')), 3000)
+      );
+      this.ysdk = await Promise.race([window.YaGames.init(), timeout]);
+      this.initialized = true;
+
+      if (this.ysdk?.features?.LoadingAPI) {
+        this.ysdk.features.LoadingAPI.ready();
+      }
+    } catch (e) {
+      this.initialized = true;
+      console.warn('YaGames init fallback:', e);
+    }
+
     return this.ysdk;
   }
 
   notifyGameplayStart() {
     try {
-      if (this.ysdk && this.ysdk.features && this.ysdk.features.GameplayAPI) {
+      if (this.ysdk?.features?.GameplayAPI) {
         this.ysdk.features.GameplayAPI.start();
       }
     } catch {}
@@ -32,18 +51,20 @@ class YandexSDKManager {
 
   notifyGameplayStop() {
     try {
-      if (this.ysdk && this.ysdk.features && this.ysdk.features.GameplayAPI) {
+      if (this.ysdk?.features?.GameplayAPI) {
         this.ysdk.features.GameplayAPI.stop();
       }
     } catch {}
   }
 
   showRewarded(onReward, onClose = null) {
-    if (this.ysdk && this.ysdk.adv && this.ysdk.adv.showRewardedVideo) {
+    if (this.ysdk?.adv?.showRewardedVideo) {
       let rewarded = false;
-      this.notifyGameplayStop();
       this.ysdk.adv.showRewardedVideo({
         callbacks: {
+          onOpen: () => {
+            this.notifyGameplayStop();
+          },
           onRewarded: () => {
             rewarded = true;
           },
@@ -60,7 +81,6 @@ class YandexSDKManager {
         }
       });
     } else {
-      // Локальный / GitHub Pages фолбэк для тестирования награждаемой рекламы
       if (typeof onReward === 'function') onReward();
       if (typeof onClose === 'function') onClose(true);
     }
@@ -69,17 +89,18 @@ class YandexSDKManager {
   onRestorationCompleted() {
     this.restorationsSinceAd++;
     const now = Date.now();
-    // Показываем межстраничную рекламу не чаще 1 раза в 3 реставрации и не чаще 1 раза в 180 сек
     if (this.restorationsSinceAd >= 3 && now - this.lastInterstitialTime > 180000) {
       this.showInterstitial();
     }
   }
 
   showInterstitial() {
-    if (this.ysdk && this.ysdk.adv && this.ysdk.adv.showFullscreenAdv) {
-      this.notifyGameplayStop();
+    if (this.ysdk?.adv?.showFullscreenAdv) {
       this.ysdk.adv.showFullscreenAdv({
         callbacks: {
+          onOpen: () => {
+            this.notifyGameplayStop();
+          },
           onClose: () => {
             this.lastInterstitialTime = Date.now();
             this.restorationsSinceAd = 0;
