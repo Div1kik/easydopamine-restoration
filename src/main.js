@@ -55,6 +55,28 @@ const aspect = (window.innerHeight && window.innerWidth)
   : (800 / 480);
 const LOGICAL_HEIGHT = Phaser.Math.Clamp(Math.round(BASE_WIDTH * aspect), 780, 960);
 
+function wrapLogicalPointer(pointer) {
+  if (!pointer || typeof pointer !== 'object') return pointer;
+  return new Proxy(pointer, {
+    get(target, prop) {
+      if (prop === 'x') return target.x / RETINA_MULT;
+      if (prop === 'y') return target.y / RETINA_MULT;
+      if (prop === 'downX') return target.downX / RETINA_MULT;
+      if (prop === 'downY') return target.downY / RETINA_MULT;
+      if (prop === 'worldX') return target.x / RETINA_MULT;
+      if (prop === 'worldY') return target.y / RETINA_MULT;
+      if (prop === 'prevPosition' && target.prevPosition) {
+        return {
+          x: target.prevPosition.x / RETINA_MULT,
+          y: target.prevPosition.y / RETINA_MULT
+        };
+      }
+      const val = target[prop];
+      return typeof val === 'function' ? val.bind(target) : val;
+    }
+  });
+}
+
 function makeRetinaScene(SceneClass) {
   return class extends SceneClass {
     init(data) {
@@ -65,58 +87,17 @@ function makeRetinaScene(SceneClass) {
       }
 
       if (this.input) {
-        // Не блокируем скролл сцены, если палец коснулся интерактивной карточки или кнопки
         this.input.setTopOnly(false);
 
-        const patchPointer = (p) => {
-          if (!p || p.__retinaPatched) return p;
-          p.__retinaPatched = true;
-
-          const rawDescX = Object.getOwnPropertyDescriptor(Phaser.Input.Pointer.prototype, 'x') ||
-            Object.getOwnPropertyDescriptor(p, 'x');
-          const rawDescY = Object.getOwnPropertyDescriptor(Phaser.Input.Pointer.prototype, 'y') ||
-            Object.getOwnPropertyDescriptor(p, 'y');
-
-          Object.defineProperties(p, {
-            x: {
-              get() {
-                const raw = rawDescX && rawDescX.get ? rawDescX.get.call(this) : this.position.x;
-                return raw / RETINA_MULT;
-              },
-              set(v) {
-                if (rawDescX && rawDescX.set) rawDescX.set.call(this, v * RETINA_MULT);
-                else this.position.x = v * RETINA_MULT;
-              }
-            },
-            y: {
-              get() {
-                const raw = rawDescY && rawDescY.get ? rawDescY.get.call(this) : this.position.y;
-                return raw / RETINA_MULT;
-              },
-              set(v) {
-                if (rawDescY && rawDescY.set) rawDescY.set.call(this, v * RETINA_MULT);
-                else this.position.y = v * RETINA_MULT;
-              }
-            },
-            worldX: {
-              get() {
-                return this.position.x / RETINA_MULT;
-              }
-            },
-            worldY: {
-              get() {
-                return this.position.y / RETINA_MULT;
-              }
-            }
-          });
-          return p;
-        };
-
-        const origEmit = this.input.emit.bind(this.input);
-        this.input.emit = (event, a1, a2, a3, a4) => {
-          if (a1 && typeof a1 === 'object' && 'position' in a1) patchPointer(a1);
-          if (a2 && typeof a2 === 'object' && 'position' in a2) patchPointer(a2);
-          return origEmit(event, a1, a2, a3, a4);
+        const origOn = this.input.on.bind(this.input);
+        this.input.on = (event, fn, context) => {
+          if (typeof event === 'string' && event.startsWith('pointer')) {
+            const safeFn = function (p, ...rest) {
+              return fn.call(context || this, wrapLogicalPointer(p), ...rest);
+            };
+            return origOn(event, safeFn, context);
+          }
+          return origOn(event, fn, context);
         };
       }
 
