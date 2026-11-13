@@ -1,5 +1,6 @@
 import { AudioManager } from '../utils/AudioManager.js';
 import { Storage } from '../utils/Storage.js';
+import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class VictoryScene extends Phaser.Scene {
   constructor() {
@@ -8,6 +9,10 @@ export class VictoryScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
+    const dpr = 2.5;
+    const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
+    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
     const artifact = (data && data.artifact)
       ? data.artifact
       : { name: 'Артефакт', marketValue: 100 };
@@ -16,22 +21,31 @@ export class VictoryScene extends Phaser.Scene {
     const isContract = !!(data && data.isContract);
     const isKintsugi = !!(data && data.isKintsugi);
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x07090e).setDepth(0);
+    YandexSDK.onRestorationCompleted();
+
+    if (this.textures.exists('victory_bg')) {
+      const bg = this.add.image(width / 2, height / 2, 'victory_bg').setDepth(0);
+      bg.setScale(Math.max(width / bg.width, height / bg.height));
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.52).setDepth(0);
+    } else {
+      this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
+    }
 
     // Заголовок победы
-    const title = this.add.text(width / 2, height * 0.10, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
+    const title = this.add.text(width / 2, height * 0.09, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
       fontSize: '20px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#e2b35b',
+      fontFamily: FONT_TITLE,
+      color: '#fdf6e3',
       fontStyle: 'bold',
-      letterSpacing: 2
-    }).setOrigin(0.5).setAlpha(0).setDepth(10);
+      letterSpacing: 1.5,
+      resolution: dpr
+    }).setOrigin(0.5).setAlpha(0).setDepth(10).setShadow(0, 2, '#000000', 6, false, true);
 
     this.tweens.add({
       targets: title,
       alpha: 1,
-      y: height * 0.10 - 4,
-      duration: 600,
+      y: height * 0.09 - 4,
+      duration: 550,
       ease: 'Quad.easeOut'
     });
 
@@ -43,7 +57,7 @@ export class VictoryScene extends Phaser.Scene {
       const isFilled = (i < starsCount);
       const starKey = isFilled ? 'icon_star' : 'icon_star_empty';
       const posX = starStartX + i * starSpacing;
-      const posY = height * 0.17;
+      const posY = height * 0.16;
 
       const star = this.add.image(posX, posY, starKey)
         .setScale(0)
@@ -54,7 +68,7 @@ export class VictoryScene extends Phaser.Scene {
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(9);
 
-      this.time.delayedCall(250 + i * 200, () => {
+      this.time.delayedCall(220 + i * 180, () => {
         if (isFilled && AudioManager.playStarChime) {
           AudioManager.playStarChime(i);
         }
@@ -63,7 +77,7 @@ export class VictoryScene extends Phaser.Scene {
           targets: star,
           scale: 0.95,
           alpha: 1,
-          duration: 400,
+          duration: 380,
           ease: 'Back.easeOut',
           onComplete: () => {
             this.tweens.add({
@@ -94,13 +108,12 @@ export class VictoryScene extends Phaser.Scene {
       ? artifact.textureKey
       : 'art_egypt_scarab';
 
-    const artImg = this.add.image(width / 2, height * 0.38, tex)
+    const artImg = this.add.image(width / 2, height * 0.35, tex)
       .setScale(0)
       .setDepth(10);
 
-    // Свечение Кинцуги
     if (isKintsugi) {
-      const glow = this.add.ellipse(width / 2, height * 0.38, 220, 260, 0xfacc15, 0.22)
+      const glow = this.add.ellipse(width / 2, height * 0.35, 220, 260, 0xfacc15, 0.25)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(9);
 
@@ -108,7 +121,7 @@ export class VictoryScene extends Phaser.Scene {
         targets: glow,
         scaleX: 1.08,
         scaleY: 1.08,
-        alpha: 0.35,
+        alpha: 0.38,
         duration: 1400,
         yoyo: true,
         repeat: -1,
@@ -118,15 +131,15 @@ export class VictoryScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: artImg,
-      scale: 0.78,
-      duration: 600,
-      delay: 450,
+      scale: 0.72,
+      duration: 550,
+      delay: 400,
       ease: 'Back.easeOut',
       onComplete: () => {
         this.tweens.add({
           targets: artImg,
-          scaleX: 0.81,
-          scaleY: 0.81,
+          scaleX: 0.75,
+          scaleY: 0.75,
           duration: 1800,
           yoyo: true,
           repeat: -1,
@@ -136,116 +149,158 @@ export class VictoryScene extends Phaser.Scene {
     });
 
     // Название
-    this.add.text(width / 2, height * 0.54, artifact.name, {
+    this.add.text(width / 2, height * 0.505, artifact.name, {
       fontSize: '20px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(10);
 
     // Оценка и бейдж
-    let valueDesc = `Музейная оценка: +${artifact.marketValue || 100} 🪙`;
-    if (isKintsugi) {
-      valueDesc += ' (✨ Шедевр Кинцуги: +60%)';
-    } else if (isContract) {
-      valueDesc += ' (Премия гильдии)';
-    } else if (isDuplicate) {
-      valueDesc += ' (Дубликат: -55%)';
-    } else if (starsCount === 1) {
-      valueDesc += ' (Сколы: -40%)';
-    }
+    const baseVal = artifact.marketValue || 100;
+    let valueDesc = `Музейная оценка: +${baseVal} 🪙`;
+    if (isKintsugi) valueDesc += ' (✨ Кинцуги +60%)';
+    else if (isContract) valueDesc += ' (Премия гильдии)';
+    else if (isDuplicate) valueDesc += ' (Повтор -35%)';
 
-    this.add.text(width / 2, height * 0.585, valueDesc, {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: isKintsugi ? '#facc15' : ((starsCount === 1 || isDuplicate) ? '#94a3b8' : '#22c55e'),
-      fontStyle: 'bold'
+    const valTxt = this.add.text(width / 2, height * 0.545, valueDesc, {
+      fontSize: '13.5px',
+      fontFamily: FONT_UI,
+      color: isKintsugi ? '#facc15' : '#86efac',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(10);
 
-    // Прогресс Опыта
-    this.createExperienceBar(width, height, isContract, starsCount, isKintsugi);
+    // Кнопка Удвоить оценку экспоната за рекламу
+    let doubled = false;
+    const adBtnY = height * 0.605;
+    const adBtnW = width * 0.84;
+    const adBtnH = 42;
 
-    // Кнопка: В главное меню
-    const menuBtn = this.add.rectangle(
-      width / 2,
-      height * 0.79,
-      width * 0.84,
-      46,
-      0x161e2c
-    )
-      .setStrokeStyle(1.5, 0x475569, 0.9)
+    const adGfx = this.add.graphics().setDepth(20);
+    adGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    adGfx.fillRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
+    adGfx.lineStyle(1.5, 0xfef08a, 0.95);
+    adGfx.strokeRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
+
+    const adZone = this.add.zone(width / 2, adBtnY, adBtnW, adBtnH)
       .setInteractive({ useHandCursor: true })
-      .setDepth(20);
+      .setDepth(22);
 
-    this.add.text(width / 2, height * 0.79, '🗂️ В главное меню', {
-      fontSize: '15px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
+    const adTxt = this.add.text(width / 2, adBtnY, `🎬 УДВОИТЬ ОЦЕНКУ (+${baseVal} 🪙 В КАЗНУ)`, {
+      fontSize: '13.5px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(21);
 
-    menuBtn.on('pointerdown', () => {
+    adZone.on('pointerdown', () => {
+      if (doubled) return;
+      YandexSDK.showRewarded(() => {
+        doubled = true;
+        Storage.addCoins(baseVal);
+        if (AudioManager.playCoin) AudioManager.playCoin();
+        adGfx.clear();
+        adGfx.fillStyle(0x1e3322, 0.95);
+        adGfx.fillRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
+        adGfx.lineStyle(1.2, 0x4ade80, 0.9);
+        adGfx.strokeRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
+        adTxt.setColor('#86efac');
+        adTxt.setText(`✓ ПОЛУЧЕНО +${baseVal} 🪙 В КАЗНУ!`);
+        valTxt.setText(`Итоговая ценность: ${baseVal * 2} 🪙`);
+      });
+    });
+
+    // Прогресс Опыта
+    this.createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI);
+
+    // Кнопка: В главное меню
+    const menuBtnY = height * 0.805;
+    const menuGfx = this.add.graphics().setDepth(20);
+    menuGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
+    menuGfx.fillRoundedRect(width / 2 - adBtnW / 2, menuBtnY - 22, adBtnW, 44, 11);
+    menuGfx.lineStyle(1.5, 0xc89d54, 0.9);
+    menuGfx.strokeRoundedRect(width / 2 - adBtnW / 2, menuBtnY - 22, adBtnW, 44, 11);
+
+    const menuZone = this.add.zone(width / 2, menuBtnY, adBtnW, 44)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(22);
+
+    this.add.text(width / 2, menuBtnY, '🗂️ В главное меню', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(21);
+
+    menuZone.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
 
     // Кнопка: Следующий артефакт
-    const nextBtn = this.add.rectangle(
-      width / 2,
-      height * 0.87,
-      width * 0.84,
-      48,
-      0x10b981
-    )
-      .setStrokeStyle(1.5, 0x34d399, 0.9)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(20);
+    const nextBtnY = height * 0.885;
+    const nextGfx = this.add.graphics().setDepth(20);
+    nextGfx.fillGradientStyle(0x15803d, 0x15803d, 0x14532d, 0x14532d, 1);
+    nextGfx.fillRoundedRect(width / 2 - adBtnW / 2, nextBtnY - 23, adBtnW, 46, 11);
+    nextGfx.lineStyle(1.5, 0x4ade80, 0.95);
+    nextGfx.strokeRoundedRect(width / 2 - adBtnW / 2, nextBtnY - 23, adBtnW, 46, 11);
 
-    this.add.text(width / 2, height * 0.87, '▶ К следующему артефакту', {
+    const nextZone = this.add.zone(width / 2, nextBtnY, adBtnW, 46)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(22);
+
+    this.add.text(width / 2, nextBtnY, '▶ К следующему артефакту', {
       fontSize: '15px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontFamily: FONT_UI,
       color: '#ffffff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5).setDepth(21);
 
-    nextBtn.on('pointerdown', () => {
+    nextZone.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('EraSelectScene');
     });
   }
 
-  createExperienceBar(width, height, isContract, starsCount, isKintsugi) {
-    const xpBoxY = height * 0.67;
-    const barW = width * 0.78;
+  createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI) {
+    const xpBoxY = height * 0.695;
+    const barW = width * 0.82;
 
     let baseXp = 100;
     if (starsCount === 2) baseXp = 70;
-    else if (starsCount === 1) baseXp = 40;
+    else if (starsCount === 1) baseXp = 45;
 
-    let xpAward = isContract ? (baseXp + 80) : baseXp;
+    let xpAward = isContract ? (baseXp + 85) : baseXp;
     if (isKintsugi) xpAward += 50;
 
     const initialLvl = Storage.getLevelData();
 
-    this.add.text(width / 2 - barW / 2, xpBoxY - 14, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
-      fontSize: '11.5px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#cbd5e1',
-      fontStyle: 'bold'
+    this.add.text(width / 2 - barW / 2, xpBoxY - 16, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
+      fontSize: '13px',
+      fontFamily: FONT_UI,
+      color: '#f5e6c8',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setDepth(15);
 
-    this.add.text(width / 2 + barW / 2, xpBoxY - 14, `+${xpAward} XP`, {
-      fontSize: '12px',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+    this.add.text(width / 2 + barW / 2, xpBoxY - 16, `+${xpAward} XP`, {
+      fontSize: '13px',
+      fontFamily: FONT_UI,
       color: '#38bdf8',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(1, 0).setDepth(15);
 
-    this.add.rectangle(width / 2, xpBoxY + 4, barW, 8, 0x111827).setDepth(14);
-    const xpFill = this.add.rectangle(width / 2 - barW / 2, xpBoxY + 4, barW * initialLvl.progressRatio, 8, 0x38bdf8)
+    this.add.rectangle(width / 2, xpBoxY + 5, barW, 8, 0x0d0805).setDepth(14);
+    const xpFill = this.add.rectangle(width / 2 - barW / 2, xpBoxY + 5, barW * initialLvl.progressRatio, 8, 0x38bdf8)
       .setOrigin(0, 0.5).setDepth(15);
 
-    this.time.delayedCall(700, () => {
+    this.time.delayedCall(650, () => {
       const result = Storage.addXP(xpAward);
       const updatedLvl = Storage.getLevelData();
 
@@ -256,66 +311,81 @@ export class VictoryScene extends Phaser.Scene {
         ease: 'Cubic.easeOut',
         onComplete: () => {
           if (result.leveledUp) {
-            Storage.addCoins(150);
-            this.showLevelUpModal(width, height, result.newLevel, result.newTitle);
+            this.showLevelUpModal(width, height, result.newLevel, result.newTitle, result.bonusCoins, result.lacquerBonus, dpr, FONT_UI);
           }
         }
       });
     });
   }
 
-  showLevelUpModal(width, height, level, title) {
+  showLevelUpModal(width, height, level, title, bonusCoins, lacquerBonus, dpr, FONT_UI) {
     if (AudioManager.playShine) AudioManager.playShine();
 
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.8)
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.85)
       .setInteractive().setDepth(50);
 
     const card = this.add.container(width / 2, height / 2).setDepth(51).setScale(0);
 
-    const cardBg = this.add.rectangle(0, 0, width * 0.84, 210, 0x111622)
-      .setStrokeStyle(2, 0xe2b35b, 0.95);
+    const cardBg = this.add.graphics();
+    cardBg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.98);
+    cardBg.fillRoundedRect(-(width * 0.84) / 2, -115, width * 0.84, 230, 14);
+    cardBg.lineStyle(2, 0xfacc15, 0.95);
+    cardBg.strokeRoundedRect(-(width * 0.84) / 2, -115, width * 0.84, 230, 14);
 
-    const badge = this.add.text(0, -65, '⭐ НОВЫЙ РАНГ! ⭐', {
-      fontSize: '16px',
-      fontFamily: 'sans-serif',
+    const badge = this.add.text(0, -78, '⭐ НОВЫЙ РАНГ МАСТЕРА! ⭐', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
-      letterSpacing: 2
+      letterSpacing: 1.5,
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const rankText = this.add.text(0, -32, `УРОВЕНЬ ${level}`, {
-      fontSize: '22px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
+    const rankText = this.add.text(0, -44, `УРОВЕНЬ ${level}`, {
+      fontSize: '23px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const titleText = this.add.text(0, -5, `«${title}»`, {
-      fontSize: '14px',
-      fontFamily: 'sans-serif',
-      color: '#94a3b8'
+    const titleText = this.add.text(0, -14, `«${title}»`, {
+      fontSize: '14.5px',
+      fontFamily: FONT_UI,
+      color: '#e2b866',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const rewardText = this.add.text(0, 26, `Награда: +150 🪙 казны\nРасширена вместимость музея!`, {
-      fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#22c55e',
+    let rewLine = `Награда: +${bonusCoins} 🪙 в казну`;
+    if (lacquerBonus > 0) rewLine += `\n+ ${lacquerBonus} ✨ Золотой лак Кинцуги`;
+
+    const rewardText = this.add.text(0, 26, rewLine, {
+      fontSize: '13.5px',
+      fontFamily: FONT_UI,
+      color: '#86efac',
       align: 'center',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    const okBtn = this.add.rectangle(0, 72, width * 0.60, 36, 0x16241a)
-      .setStrokeStyle(1.5, 0x22c55e, 0.9)
+    const okGfx = this.add.graphics();
+    okGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    okGfx.fillRoundedRect(-(width * 0.62) / 2, 62, width * 0.62, 38, 10);
+    okGfx.lineStyle(1, 0xfef08a, 0.95);
+    okGfx.strokeRoundedRect(-(width * 0.62) / 2, 62, width * 0.62, 38, 10);
+
+    const okBtn = this.add.zone(0, 81, width * 0.62, 38)
       .setInteractive({ useHandCursor: true });
 
-    const okTxt = this.add.text(0, 72, 'ЗАБРАТЬ НАГРАДУ', {
-      fontSize: '12px',
-      fontFamily: 'sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold'
+    const okTxt = this.add.text(0, 81, 'ЗАБРАТЬ НАГРАДУ', {
+      fontSize: '13.5px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: dpr
     }).setOrigin(0.5);
 
-    card.add([cardBg, badge, rankText, titleText, rewardText, okBtn, okTxt]);
+    card.add([cardBg, badge, rankText, titleText, rewardText, okGfx, okBtn, okTxt]);
 
     this.tweens.add({
       targets: card,
