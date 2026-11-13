@@ -1,5 +1,6 @@
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -8,17 +9,16 @@ export class ShopScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    this.dpr = 2;
+    this.dpr = 2.5;
 
     const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
     this.FONT_UI = FONT_UI;
 
-    // 1. Фон Лавки мастера
     if (this.textures.exists('shop_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'shop_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.24).setDepth(0);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.28).setDepth(0);
     } else {
       const bg = this.add.graphics().setDepth(0);
       bg.fillGradientStyle(0x21160d, 0x21160d, 0x0d0805, 0x0d0805, 1);
@@ -32,7 +32,7 @@ export class ShopScene extends Phaser.Scene {
 
     // Верхняя шапка лавки
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.84);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.88);
     headerBg.fillRect(0, 0, width, 108);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 108, width, 108);
@@ -47,7 +47,7 @@ export class ShopScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
 
     this.coinsText = this.add.text(width / 2, 44, '', {
-      fontSize: '13px',
+      fontSize: '13.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -65,7 +65,7 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabToolsTxt = this.add.text(startX, tabY, 'Инструменты', {
-      fontSize: '11px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       fontStyle: 'bold',
       resolution: this.dpr
@@ -75,7 +75,7 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabWorkshopTxt = this.add.text(startX + tabW, tabY, 'Верстак', {
-      fontSize: '11px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       fontStyle: 'bold',
       resolution: this.dpr
@@ -85,7 +85,7 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(20);
     this.tabMuseumTxt = this.add.text(startX + tabW * 2, tabY, 'Музей', {
-      fontSize: '11px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       fontStyle: 'bold',
       resolution: this.dpr
@@ -129,7 +129,7 @@ export class ShopScene extends Phaser.Scene {
 
     // Нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.88);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.90);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -139,7 +139,7 @@ export class ShopScene extends Phaser.Scene {
     const btnY = height - 33;
 
     const backGfx = this.add.graphics().setDepth(31);
-    backGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 0.94);
+    backGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 0.96);
     backGfx.fillRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 11);
     backGfx.lineStyle(1.5, 0xc89d54, 0.9);
     backGfx.strokeRoundedRect(width / 2 - btnW / 2, btnY - btnH / 2, btnW, btnH, 11);
@@ -150,7 +150,7 @@ export class ShopScene extends Phaser.Scene {
 
     const backLabel = this.returnToRestore ? 'Вернуться к артефакту' : 'В главное меню';
     this.add.text(width / 2, btnY, backLabel, {
-      fontSize: '14px',
+      fontSize: '15px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -169,7 +169,6 @@ export class ShopScene extends Phaser.Scene {
 
   generateHDToolVariants() {
     const s = 96;
-
     const drawIcon = (key, drawFn) => {
       if (this.textures.exists(key)) return;
       const gfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -183,119 +182,60 @@ export class ShopScene extends Phaser.Scene {
       g.fillRoundedRect(s * 0.44, s * 0.48, s * 0.12, s * 0.42, 4);
       g.fillStyle(0xd97706, 1);
       g.fillTriangle(s * 0.5, s * 0.12, s * 0.18, s * 0.48, s * 0.82, s * 0.48);
-      g.fillStyle(0xfef08a, 1);
-      g.fillTriangle(s * 0.5, s * 0.12, s * 0.46, s * 0.48, s * 0.52, s * 0.48);
     });
-
     drawIcon('hd_scraper_3', (g, s) => {
       g.fillStyle(0x94a3b8, 1);
       g.fillRoundedRect(s * 0.45, s * 0.46, s * 0.10, s * 0.44, 3);
-      g.fillStyle(0x475569, 1);
-      g.beginPath();
-      g.moveTo(s * 0.45, s * 0.58);
-      g.lineTo(s * 0.55, s * 0.58);
-      g.lineTo(s * 0.5, s * 0.86);
-      g.closePath();
-      g.fillPath();
       g.lineStyle(3.5, 0x38bdf8, 0.9);
       g.strokeLineShape(new Phaser.Geom.Line(s * 0.5, s * 0.08, s * 0.72, s * 0.38));
     });
-
     drawIcon('hd_scraper_4', (g, s) => {
       g.fillStyle(0x0f172a, 1);
       g.fillRoundedRect(s * 0.38, s * 0.36, s * 0.24, s * 0.48, 5);
       g.fillStyle(0x38bdf8, 1);
       g.fillRoundedRect(s * 0.42, s * 0.28, s * 0.16, s * 0.12, 3);
-      g.fillStyle(0xfacc15, 1);
-      g.fillCircle(s * 0.5, s * 0.06, s * 0.05);
-      g.lineStyle(2, 0xfacc15, 0.8);
-      g.strokeLineShape(new Phaser.Geom.Line(s * 0.5, s * 0.06, s * 0.5, s * 0.28));
     });
-
     drawIcon('hd_brush_2', (g, s) => {
       g.fillStyle(0x78350f, 1);
       g.fillRoundedRect(s * 0.45, s * 0.52, s * 0.10, s * 0.38, 4);
-      g.fillStyle(0xd97706, 1);
-      g.fillRect(s * 0.41, s * 0.38, s * 0.18, s * 0.14);
       g.fillStyle(0xfef3c7, 1);
       g.fillRoundedRect(s * 0.28, s * 0.10, s * 0.44, s * 0.28, 6);
     });
-
     drawIcon('hd_brush_3', (g, s) => {
       g.fillStyle(0x1e293b, 1);
       g.fillRoundedRect(s * 0.46, s * 0.54, s * 0.08, s * 0.36, 4);
-      g.fillStyle(0xeab308, 1);
-      g.fillRect(s * 0.42, s * 0.38, s * 0.16, s * 0.16);
       g.fillStyle(0xfdf8f6, 0.96);
-      g.beginPath();
-      g.moveTo(s * 0.42, s * 0.38);
-      g.lineTo(s * 0.58, s * 0.38);
-      g.lineTo(s * 0.86, s * 0.14);
-      g.lineTo(s * 0.50, s * 0.08);
-      g.lineTo(s * 0.14, s * 0.14);
-      g.closePath();
-      g.fillPath();
+      g.fillCircle(s * 0.5, s * 0.24, s * 0.2);
     });
-
     drawIcon('hd_brush_4', (g, s) => {
       g.fillStyle(0x1e293b, 1);
       g.fillRoundedRect(s * 0.44, s * 0.42, s * 0.12, s * 0.48, 5);
       g.fillStyle(0x38bdf8, 1);
       g.fillCircle(s * 0.5, s * 0.26, s * 0.14);
-      g.lineStyle(2, 0x38bdf8, 0.7);
-      g.strokeCircle(s * 0.5, s * 0.26, s * 0.22);
     });
-
     drawIcon('hd_solvent_2', (g, s) => {
       g.fillStyle(0x0284c7, 0.88);
       g.fillRoundedRect(s * 0.32, s * 0.34, s * 0.36, s * 0.52, 8);
-      g.fillStyle(0x38bdf8, 1);
-      g.fillRect(s * 0.44, s * 0.18, s * 0.12, s * 0.16);
-      g.fillStyle(0xd97706, 1);
-      g.fillRoundedRect(s * 0.42, s * 0.12, s * 0.16, s * 0.06, 2);
     });
-
     drawIcon('hd_solvent_3', (g, s) => {
       g.fillStyle(0x0d9488, 0.9);
-      g.beginPath();
-      g.moveTo(s * 0.44, s * 0.32);
-      g.lineTo(s * 0.56, s * 0.32);
-      g.lineTo(s * 0.76, s * 0.84);
-      g.lineTo(s * 0.24, s * 0.84);
-      g.closePath();
-      g.fillPath();
-      g.fillStyle(0xfacc15, 1);
-      g.fillCircle(s * 0.5, s * 0.18, s * 0.06);
+      g.fillRoundedRect(s * 0.3, s * 0.34, s * 0.4, s * 0.52, 10);
     });
-
     drawIcon('hd_solvent_4', (g, s) => {
-      g.fillStyle(0x1e293b, 1);
-      g.fillRoundedRect(s * 0.28, s * 0.48, s * 0.44, s * 0.38, 6);
       g.fillStyle(0x6366f1, 1);
-      g.fillCircle(s * 0.5, s * 0.34, s * 0.12);
-      g.lineStyle(2, 0x818cf8, 0.8);
-      g.strokeCircle(s * 0.5, s * 0.34, s * 0.22);
+      g.fillRoundedRect(s * 0.28, s * 0.44, s * 0.44, s * 0.42, 8);
     });
-
     drawIcon('hd_polish_2', (g, s) => {
       g.fillStyle(0xd97706, 1);
       g.fillRoundedRect(s * 0.26, s * 0.46, s * 0.48, s * 0.36, 10);
-      g.fillStyle(0xfef08a, 1);
-      g.fillRoundedRect(s * 0.36, s * 0.32, s * 0.28, s * 0.14, 4);
     });
-
     drawIcon('hd_polish_3', (g, s) => {
       g.fillStyle(0xf59e0b, 1);
       g.fillCircle(s * 0.5, s * 0.58, s * 0.26);
-      g.fillStyle(0xfde047, 1);
-      g.fillTriangle(s * 0.5, s * 0.12, s * 0.44, s * 0.28, s * 0.56, s * 0.28);
     });
-
     drawIcon('hd_polish_4', (g, s) => {
       g.fillStyle(0xeab308, 1);
       g.fillRoundedRect(s * 0.26, s * 0.48, s * 0.48, s * 0.34, 8);
-      g.fillStyle(0x38bdf8, 1);
-      g.fillCircle(s * 0.5, s * 0.36, s * 0.12);
     });
   }
 
@@ -329,8 +269,9 @@ export class ShopScene extends Phaser.Scene {
   }
 
   updateCoinsDisplay() {
-    const coins = Storage.getCoins ? Storage.getCoins() : 0;
-    this.coinsText.setText(`Казна: ${coins} 🪙`);
+    const coins = Storage.getCoins();
+    const lacquer = Storage.getKintsugiLacquer();
+    this.coinsText.setText(`Казна: ${coins} 🪙   |   Лак Кинцуги: ${lacquer} ✨`);
   }
 
   refreshTabs() {
@@ -362,7 +303,205 @@ export class ShopScene extends Phaser.Scene {
   renderToolsUpgrades(width) {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
+    const cardH = 82;
+    const cardW = width * 0.90;
+    let cardIdx = 0;
 
+    // 1. СУНДУК ИНСТРУМЕНТОВ ЗА ЗОЛОТО (с кастомными скинами инструментов и лаком)
+    {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
+      const boxCont = this.add.container(width / 2, cardY);
+
+      const boxBg = this.add.graphics();
+      boxBg.fillGradientStyle(0x1e293b, 0x1e293b, 0x0f172a, 0x0f172a, 0.88);
+      boxBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      boxBg.lineStyle(2, 0x38bdf8, 0.95);
+      boxBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+
+      const chestIcon = this.add.image(-cardW / 2 + 38, 0, 'toolbox_chest').setDisplaySize(50, 50);
+
+      const title = this.add.text(-cardW / 2 + 74, -22, '🧰 ЛАРЬ МАСТЕРА (СКИНЫ ИНСТРУМЕНТОВ)', {
+        fontSize: '12.5px',
+        fontFamily: FONT_UI,
+        color: '#38bdf8',
+        fontStyle: 'bold',
+        resolution: dpr
+      });
+
+      const desc = this.add.text(-cardW / 2 + 74, 4, 'Шанс: Позолоченный, Нефритовый или\nДамасский набор инструментов + лак Кинцуги', {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: '#e2e8f0',
+        resolution: dpr
+      });
+
+      const boxPrice = 1200;
+      const openBtn = this.add.container(cardW / 2 - 48, 0);
+      const openGfx = this.add.graphics();
+      openGfx.fillGradientStyle(0x0284c7, 0x0284c7, 0x0369a1, 0x0369a1, 1);
+      openGfx.fillRoundedRect(-40, -16, 80, 32, 8);
+      openGfx.lineStyle(1, 0x7dd3fc, 0.95);
+      openGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
+
+      const openZone = this.add.zone(0, 0, 80, 32).setInteractive({ useHandCursor: true });
+      const openTxt = this.add.text(0, 0, `${boxPrice} 🪙`, {
+        fontSize: '12.5px',
+        fontFamily: FONT_UI,
+        color: '#ffffff',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      openBtn.add([openGfx, openTxt, openZone]);
+
+      openZone.on('pointerdown', () => {
+        if (this.isDragging) return;
+        const coins = Storage.getCoins();
+        if (coins < boxPrice) {
+          if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+          return;
+        }
+        Storage.addCoins(-boxPrice);
+        const res = this.rollToolLootbox();
+        if (AudioManager.playShine) AudioManager.playShine();
+        this.showRewardPopup(width, res.title, res.subtitle, res.isRare);
+      });
+
+      boxCont.add([boxBg, chestIcon, title, desc, openBtn]);
+      this.itemsContainer.add(boxCont);
+      cardIdx++;
+    }
+
+    // 2. БЕСПЛАТНЫЙ СУНДУК ЗА РЕКЛАМУ (1 раз в 15 минут)
+    {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
+      const adCont = this.add.container(width / 2, cardY);
+
+      const adBg = this.add.graphics();
+      adBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.78);
+      adBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      adBg.lineStyle(1.5, 0xfacc15, 0.85);
+      adBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+
+      const title = this.add.text(-cardW / 2 + 16, -18, '🎬 ДАРЫ ГИЛЬДИИ ЗА ПРОСМОТР', {
+        fontSize: '13px',
+        fontFamily: FONT_UI,
+        color: '#facc15',
+        fontStyle: 'bold',
+        resolution: dpr
+      });
+
+      const desc = this.add.text(-cardW / 2 + 16, 6, 'Бесплатно: 250–450 🪙 или 1 Золотой лак Кинцуги', {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: '#f5e6c8',
+        resolution: dpr
+      });
+
+      const btnX = cardW / 2 - 48;
+      const btnGfx = this.add.graphics();
+      btnGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+      btnGfx.fillRoundedRect(btnX - 40, -16, 80, 32, 8);
+      btnGfx.lineStyle(1, 0xfef08a, 0.95);
+      btnGfx.strokeRoundedRect(btnX - 40, -16, 80, 32, 8);
+
+      const btnZone = this.add.zone(btnX, 0, 80, 32).setInteractive({ useHandCursor: true });
+      const btnTxt = this.add.text(btnX, 0, 'ЗАБРАТЬ', {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: '#1a1004',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      btnZone.on('pointerdown', () => {
+        if (this.isDragging) return;
+        YandexSDK.showRewarded(() => {
+          if (Math.random() < 0.35) {
+            Storage.addKintsugiLacquer(1);
+            this.showRewardPopup(width, '✨ ЗОЛОТОЙ ЛАК КИНЦУГИ', 'Добавлен 1 флакон для золотых швов!', true);
+          } else {
+            const gold = Math.round((250 + Math.random() * 200) / 10) * 10;
+            Storage.addCoins(gold);
+            this.showRewardPopup(width, `🪙 +${gold} МОНЕТ`, 'Награда гильдии зачислена в казну!', false);
+          }
+          if (AudioManager.playCoin) AudioManager.playCoin();
+        });
+      });
+
+      adCont.add([adBg, title, desc, btnGfx, btnZone, btnTxt]);
+      this.itemsContainer.add(adCont);
+      cardIdx++;
+    }
+
+    // 3. ВЫБОР КАСТОМНОГО СКИНА ИНСТРУМЕНТОВ
+    const toolSkins = [
+      { id: 'default', name: 'Классика (Орех и сталь)', desc: 'Стандартный набор реставратора' },
+      { id: 'gold', name: '★ Императорское золото', desc: 'Позолоченные рукояти (из Ларя мастера)' },
+      { id: 'jade', name: '★ Нефритовый мастер', desc: 'Изумрудный нефрит (из Ларя мастера)' },
+      { id: 'damascus', name: '★ Дамасский сапфир', desc: 'Воронёная сталь и сапфир (из Ларя мастера)' }
+    ];
+    const ownedToolSkins = Storage.getOwnedToolSkins();
+    const activeToolSkin = Storage.getActiveToolSkin();
+
+    toolSkins.forEach((skin) => {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
+      const isOwned = ownedToolSkins.includes(skin.id);
+      const isActive = activeToolSkin === skin.id;
+
+      const card = this.add.container(width / 2, cardY);
+      const cardBg = this.add.graphics();
+      cardBg.fillGradientStyle(isActive ? 0x3b2614 : 0x261a10, isActive ? 0x3b2614 : 0x261a10, 0x170f09, 0x170f09, 0.66);
+      cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      cardBg.lineStyle(1.4, isActive ? 0xfacc15 : (isOwned ? 0x4ade80 : 0x64748b), 0.85);
+      cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+
+      const title = this.add.text(-cardW / 2 + 16, -18, skin.name, {
+        fontSize: '13.5px',
+        fontFamily: FONT_UI,
+        color: isOwned ? '#fdf6e3' : '#94a3b8',
+        fontStyle: 'bold',
+        resolution: dpr
+      });
+
+      const desc = this.add.text(-cardW / 2 + 16, 6, skin.desc, {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: '#e6d5bc',
+        resolution: dpr
+      });
+
+      const btnX = cardW / 2 - 48;
+      const btnGfx = this.add.graphics();
+      btnGfx.fillStyle(isActive ? 0x3b2614 : (isOwned ? 0x1e3322 : 0x1e293b), 0.95);
+      btnGfx.fillRoundedRect(btnX - 40, -16, 80, 32, 8);
+      btnGfx.lineStyle(1, isActive ? 0xfacc15 : (isOwned ? 0x4ade80 : 0x64748b), 0.95);
+      btnGfx.strokeRoundedRect(btnX - 40, -16, 80, 32, 8);
+
+      const btnZone = this.add.zone(btnX, 0, 80, 32);
+      if (isOwned && !isActive) btnZone.setInteractive({ useHandCursor: true });
+
+      const btnTxt = this.add.text(btnX, 0, isActive ? 'ВЫБРАНО' : (isOwned ? 'НАДЕТЬ' : 'В ЛАРЕ'), {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: isActive ? '#facc15' : (isOwned ? '#86efac' : '#94a3b8'),
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      btnZone.on('pointerdown', () => {
+        if (this.isDragging || !isOwned || isActive) return;
+        Storage.setActiveToolSkin(skin.id);
+        if (AudioManager.playClick) AudioManager.playClick();
+        this.renderContent();
+      });
+
+      card.add([cardBg, title, desc, btnGfx, btnZone, btnTxt]);
+      this.itemsContainer.add(card);
+      cardIdx++;
+    });
+
+    // 4. ПРОКАЧКА УРОВНЕЙ ИНСТРУМЕНТОВ (Tier II..IV)
     const tools = [
       { id: 'scraper_2', name: 'Латунный скребок II', desc: '+20% к радиусу очистки слоя грязи', price: 200, icon: 'hd_scraper_2' },
       { id: 'scraper_3', name: 'Хирургический скальпель III', desc: '+40% к радиусу очистки, быстрый срез корки', price: 650, icon: 'hd_scraper_3' },
@@ -378,17 +517,14 @@ export class ShopScene extends Phaser.Scene {
       { id: 'polish_4', name: 'Алмазная эмульсия IV', desc: 'Зеркальный блеск высшей музейной пробы', price: 2000, icon: 'hd_polish_4' }
     ];
 
-    const cardH = 76;
-    const cardW = width * 0.90;
-
-    tools.forEach((tool, i) => {
-      const cardY = i * (cardH + 8) + cardH / 2;
+    tools.forEach((tool) => {
+      const cardY = cardIdx * (cardH + 8) + cardH / 2;
       const isBought = localStorage.getItem(`tool_upg_${tool.id}`) === 'true';
 
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.56);
+      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.62);
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
       cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
@@ -398,36 +534,36 @@ export class ShopScene extends Phaser.Scene {
 
       const icon = this.add.image(-cardW / 2 + 38, 0, tool.icon).setDisplaySize(48, 48);
 
-      const title = this.add.text(-cardW / 2 + 74, -18, tool.name, {
-        fontSize: '12.5px',
+      const title = this.add.text(-cardW / 2 + 74, -20, tool.name, {
+        fontSize: '13.5px',
         fontFamily: FONT_UI,
         color: '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 74, 2, tool.desc, {
-        fontSize: '10px',
+      const desc = this.add.text(-cardW / 2 + 74, 4, tool.desc, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
-        wordWrap: { width: cardW - 165 },
+        wordWrap: { width: cardW - 172 },
         resolution: dpr
       }).setShadow(0, 1, '#000000', 3, false, true);
 
-      const actionBtn = this.add.container(cardW / 2 - 45, 0);
+      const actionBtn = this.add.container(cardW / 2 - 48, 0);
       const actionGfx = this.add.graphics();
       actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
-      actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
       actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
-      actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
 
-      const actionZone = this.add.zone(0, 0, 74, 30);
+      const actionZone = this.add.zone(0, 0, 80, 32);
       if (!isBought) {
         actionZone.setInteractive({ useHandCursor: true });
       }
 
       const actionTxt = this.add.text(0, 0, isBought ? 'КУПЛЕНО' : `${tool.price} 🪙`, {
-        fontSize: '10.5px',
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isBought ? '#a89074' : '#1a1004',
         fontStyle: 'bold',
@@ -439,7 +575,7 @@ export class ShopScene extends Phaser.Scene {
       if (!isBought) {
         actionZone.on('pointerdown', () => {
           if (this.isDragging) return;
-          const coins = Storage.getCoins ? Storage.getCoins() : 0;
+          const coins = Storage.getCoins();
           if (coins >= tool.price) {
             Storage.addCoins(-tool.price);
             localStorage.setItem(`tool_upg_${tool.id}`, 'true');
@@ -454,99 +590,187 @@ export class ShopScene extends Phaser.Scene {
 
       card.add([cardBg, icon, title, desc, actionBtn]);
       this.itemsContainer.add(card);
+      cardIdx++;
     });
 
-    const totalH = tools.length * (cardH + 8) + 20;
+    const totalH = cardIdx * (cardH + 8) + 20;
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
+  }
+
+  rollToolLootbox() {
+    const skins = [
+      { id: 'gold', name: '★ Императорское золото' },
+      { id: 'jade', name: '★ Нефритовый мастер' },
+      { id: 'damascus', name: '★ Дамасский сапфир' }
+    ];
+    const owned = Storage.getOwnedToolSkins();
+    const unowned = skins.filter((s) => !owned.includes(s.id));
+
+    let pity = parseInt(localStorage.getItem(Storage.KEYS.TOOL_BOX_PITY) || '0', 10) + 1;
+    if ((pity >= 5 || Math.random() < 0.25) && unowned.length > 0) {
+      const win = unowned[Math.floor(Math.random() * unowned.length)];
+      Storage.unlockToolSkin(win.id);
+      Storage.setActiveToolSkin(win.id);
+      localStorage.setItem(Storage.KEYS.TOOL_BOX_PITY, '0');
+      return {
+        isRare: true,
+        title: `✨ ${win.name}`,
+        subtitle: 'Новый стиль инструментов надет автоматически!'
+      };
+    }
+
+    localStorage.setItem(Storage.KEYS.TOOL_BOX_PITY, String(pity));
+    if (Math.random() < 0.45) {
+      Storage.addKintsugiLacquer(1);
+      return {
+        isRare: true,
+        title: '✨ ЗОЛОТОЙ ЛАК КИНЦУГИ (+1)',
+        subtitle: 'Добавлен в вашу мастерскую!'
+      };
+    }
+
+    const gold = Math.round((450 + Math.random() * 400) / 10) * 10;
+    Storage.addCoins(gold);
+    return {
+      isRare: false,
+      title: `🪙 +${gold} МОНЕТ`,
+      subtitle: 'Утешительная награда зачислена в казну!'
+    };
+  }
+
+  showRewardPopup(width, titleStr, subStr, isRare) {
+    const dpr = this.dpr;
+    const FONT_UI = this.FONT_UI;
+    const winModal = this.add.container(0, 0).setDepth(200);
+    const overlay = this.add.rectangle(width / 2, this.scale.height / 2, width, this.scale.height, 0x080503, 0.85)
+      .setInteractive();
+
+    const modalBg = this.add.graphics();
+    modalBg.fillGradientStyle(isRare ? 0x3b1f0e : 0x2d180c, isRare ? 0x3b1f0e : 0x2d180c, 0x140a04, 0x140a04, 0.98);
+    modalBg.fillRoundedRect(width / 2 - 140, this.scale.height / 2 - 84, 280, 168, 14);
+    modalBg.lineStyle(2, isRare ? 0x38bdf8 : 0xeab308, 0.95);
+    modalBg.strokeRoundedRect(width / 2 - 140, this.scale.height / 2 - 84, 280, 168, 14);
+
+    const modalTitle = this.add.text(width / 2, this.scale.height / 2 - 52, isRare ? '✨ РЕДКАЯ НАХОДКА!' : '📦 НАГРАДА!', {
+      fontSize: '14px',
+      fontFamily: FONT_UI,
+      color: isRare ? '#38bdf8' : '#fde047',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const rewardTxt = this.add.text(width / 2, this.scale.height / 2 - 12, titleStr, {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: 250 },
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const tipTxt = this.add.text(width / 2, this.scale.height / 2 + 22, subStr, {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
+      align: 'center',
+      wordWrap: { width: 250 },
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const closeGfx = this.add.graphics();
+    closeGfx.fillStyle(0x452a18, 1);
+    closeGfx.fillRoundedRect(width / 2 - 54, this.scale.height / 2 + 44, 108, 30, 8);
+    closeGfx.lineStyle(1, 0xc89d54, 0.9);
+    closeGfx.strokeRoundedRect(width / 2 - 54, this.scale.height / 2 + 44, 108, 30, 8);
+
+    const closeZone = this.add.zone(width / 2, this.scale.height / 2 + 59, 108, 30).setInteractive({ useHandCursor: true });
+    const closeTxt = this.add.text(width / 2, this.scale.height / 2 + 59, 'ЗАБРАТЬ', {
+      fontSize: '12.5px',
+      fontFamily: FONT_UI,
+      color: '#fef08a',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    closeZone.on('pointerdown', () => {
+      winModal.destroy();
+      this.updateCoinsDisplay();
+      this.renderContent();
+    });
+
+    winModal.add([overlay, modalBg, modalTitle, rewardTxt, tipTxt, closeGfx, closeTxt, closeZone]);
   }
 
   renderWorkshopTiers(width) {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
-    const currentTier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = localStorage.getItem('active_workbench_skin') || `workbench_bg_${currentTier}`;
-    const ownedSkins = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
+    const currentTier = Storage.getWorkshopTier();
+    const activeSkin = Storage.getActiveWorkbenchSkin();
+    const ownedSkins = Storage.getOwnedWorkbenchSkins();
     const pityCount = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10);
 
     const tiers = [
-      // Базовые улучшения мастерской (Tier 1..4)
       { id: 'workbench_bg_1', type: 'base', tier: 1, name: 'Сырой подвал', desc: 'Рабочий стол с тусклой свечой и тисками', price: 0 },
       { id: 'workbench_bg_2', type: 'base', tier: 2, name: 'Чердак антиквара', desc: 'Уютный дубовый стол с керосиновой лампой', price: 600 },
       { id: 'workbench_bg_3', type: 'base', tier: 3, name: 'Кабинет реставратора', desc: 'Стол из красного дерева с латунными приборами', price: 1800 },
       { id: 'workbench_bg_4', type: 'base', tier: 4, name: 'Ювелирная мастерская', desc: 'Прецизионная мастерская с мрамором и золотом', price: 4500 },
-
-      // Эпохальные верстаки (7 500 🪙 или 5% из сундука)
       { id: 'workbench_bg_9', type: 'era', name: 'Эпоха: Древний Египет', desc: 'Верстак из песчаника с амулетами и папирусами', price: 7500 },
       { id: 'workbench_bg_10', type: 'era', name: 'Эпоха: Античность', desc: 'Мраморная плита с амфорами и оливковыми ветвями', price: 7500 },
-      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековая Европа', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 7500 },
+      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековье', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 7500 },
       { id: 'workbench_bg_12', type: 'era', name: 'Эпоха: Япония', desc: 'Лакированный стол с тушью и бамбуком', price: 7500 },
       { id: 'workbench_bg_13', type: 'era', name: 'Эпоха: Ацтеки', desc: 'Массивное тропическое дерево с обсидианом и масками', price: 7500 },
       { id: 'workbench_bg_14', type: 'era', name: 'Эпоха: Викинги', desc: 'Северный дуб с мехами, рунами и щитами', price: 7500 },
       { id: 'workbench_bg_15', type: 'era', name: 'Эпоха: Ренессанс', desc: 'Полированный орех с чертежами и масляными красками', price: 7500 },
-
-      // Легендарные эксклюзивные верстаки (ТОЛЬКО ИЗ СУНДУКА ИСКАТЕЛЯ)
       { id: 'workbench_bg_5', type: 'legendary', name: '★ Эксклюзив: Алхимия', desc: 'Тайная каменная плита со светящимися зельями', price: null },
       { id: 'workbench_bg_6', type: 'legendary', name: '★ Эксклюзив: Киберпанк', desc: 'Лаборатория будущего с неонами и платами', price: null },
       { id: 'workbench_bg_7', type: 'legendary', name: '★ Эксклюзив: Батискаф', desc: 'Подводная станция с иллюминаторами и трубами', price: null },
       { id: 'workbench_bg_8', type: 'legendary', name: '★ Эксклюзив: Космос', desc: 'Орбитальная станция с панорамным видом на звёзды', price: null }
     ];
 
-    const cardH = 78;
+    const cardH = 84;
     const cardW = width * 0.90;
     let cardIdx = 0;
 
-    // 1. Карточка Сундука-Лутбокса сверху вкладки «Верстак»
+    // Карточка Сундука-Лутбокса верстаков
     {
       const cardY = cardIdx * (cardH + 8) + cardH / 2;
       const boxCont = this.add.container(width / 2, cardY);
 
       const boxBg = this.add.graphics();
-      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.80);
+      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.85);
       boxBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
       boxBg.lineStyle(2, 0xeab308, 0.95);
       boxBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      boxBg.fillStyle(0x0d0805, 0.45);
-      boxBg.fillRoundedRect(-cardW / 2 + 10, -28, 56, 56, 9);
-
       const chestIcon = this.add.image(-cardW / 2 + 38, 0, 'lootbox_chest').setDisplaySize(48, 48);
 
-      this.tweens.add({
-        targets: chestIcon,
-        angle: { from: -3, to: 3 },
-        duration: 400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-
-      const title = this.add.text(-cardW / 2 + 74, -24, '📦 СУНДУК ИСКАТЕЛЯ', {
+      const title = this.add.text(-cardW / 2 + 74, -24, '📦 СУНДУК ИСКАТЕЛЯ (ВЕРСТАКИ)', {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: '#fef08a',
         fontStyle: 'bold',
         resolution: dpr
-      }).setShadow(0, 1, '#000000', 4, false, true);
+      });
 
-      const desc = this.add.text(-cardW / 2 + 74, -7, `Шанс: 2.5% эксклюзив, 5% эпоха (гарант: ${pityCount}/15)\nУтешительно: лак Кинцуги или 450–1100 🪙`, {
-        fontSize: '9px',
+      const desc = this.add.text(-cardW / 2 + 74, 4, `Шанс: 2.5% эксклюзив, 5% эпоха (гарант: ${pityCount}/15)\nУтешительно: лак Кинцуги или 450–1100 🪙`, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
-        wordWrap: { width: cardW - 165 },
         resolution: dpr
-      }).setShadow(0, 1, '#000000', 3, false, true);
+      });
 
       const lootboxPrice = 2200;
-      const openBtn = this.add.container(cardW / 2 - 45, 0);
+      const openBtn = this.add.container(cardW / 2 - 48, 0);
       const openGfx = this.add.graphics();
       openGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 0.98);
-      openGfx.fillRoundedRect(-37, -15, 74, 30, 8);
+      openGfx.fillRoundedRect(-40, -16, 80, 32, 8);
       openGfx.lineStyle(1.2, 0xfef08a, 0.95);
-      openGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
+      openGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
 
-      const openZone = this.add.zone(0, 0, 74, 30).setInteractive({ useHandCursor: true });
+      const openZone = this.add.zone(0, 0, 80, 32).setInteractive({ useHandCursor: true });
       const openTxt = this.add.text(0, 0, `${lootboxPrice} 🪙`, {
-        fontSize: '11px',
+        fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: '#1a1004',
         fontStyle: 'bold',
@@ -555,92 +779,21 @@ export class ShopScene extends Phaser.Scene {
 
       openBtn.add([openGfx, openTxt, openZone]);
 
-      let isOpening = false;
       openZone.on('pointerdown', () => {
-        if (this.isDragging || isOpening) return;
-        isOpening = true;
-
+        if (this.isDragging) return;
         const res = this.rollLootboxRebalanced(lootboxPrice);
         if (res.success) {
           if (AudioManager.playCoin) AudioManager.playCoin();
-
-          chestIcon.setScale(1.2);
-          this.time.delayedCall(120, () => chestIcon.setScale(1));
-
-          const winModal = this.add.container(0, 0).setDepth(200);
-          const overlay = this.add.rectangle(width / 2, this.scale.height / 2, width, this.scale.height, 0x080503, 0.85)
-            .setInteractive();
-
-          const isRareSkin = res.type === 'skin';
-          const modalBg = this.add.graphics();
-          modalBg.fillGradientStyle(
-            isRareSkin ? 0x3b1f0e : 0x2d180c,
-            isRareSkin ? 0x3b1f0e : 0x2d180c,
-            0x140a04,
-            0x140a04,
-            0.97
+          const isRare = res.type === 'skin' || res.type === 'lacquer';
+          this.showRewardPopup(
+            width,
+            res.name,
+            res.type === 'skin' ? 'Новый верстак добавлен в вашу коллекцию!' : 'Награда зачислена!',
+            isRare
           );
-          modalBg.fillRoundedRect(width / 2 - 128, this.scale.height / 2 - 78, 256, 156, 14);
-          modalBg.lineStyle(isRareSkin ? 2.2 : 1.5, isRareSkin ? 0xc084fc : 0xeab308, 0.95);
-          modalBg.strokeRoundedRect(width / 2 - 128, this.scale.height / 2 - 78, 256, 156, 14);
-
-          const modalTitle = this.add.text(
-            width / 2,
-            this.scale.height / 2 - 50,
-            isRareSkin ? '✨ РЕДКАЯ НАХОДКА!' : '📦 НАГРАДА ИЗ СУНДУКА!',
-            {
-              fontSize: '12.5px',
-              fontFamily: FONT_UI,
-              color: isRareSkin ? '#e879f9' : '#fde047',
-              fontStyle: 'bold',
-              resolution: dpr
-            }
-          ).setOrigin(0.5);
-
-          const rewardTxt = this.add.text(width / 2, this.scale.height / 2 - 10, res.name, {
-            fontSize: '13.5px',
-            fontFamily: FONT_UI,
-            color: '#ffffff',
-            fontStyle: 'bold',
-            align: 'center',
-            wordWrap: { width: 224 },
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          const tipTxtStr = isRareSkin ? 'Верстак добавлен в вашу коллекцию!' : 'Награда зачислена в казну';
-          const tipTxt = this.add.text(width / 2, this.scale.height / 2 + 22, tipTxtStr, {
-            fontSize: '10px',
-            fontFamily: FONT_UI,
-            color: '#d6c3a5',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          const closeGfx = this.add.graphics();
-          closeGfx.fillStyle(0x452a18, 1);
-          closeGfx.fillRoundedRect(width / 2 - 48, this.scale.height / 2 + 42, 96, 26, 7);
-          closeGfx.lineStyle(1, 0xc89d54, 0.9);
-          closeGfx.strokeRoundedRect(width / 2 - 48, this.scale.height / 2 + 42, 96, 26, 7);
-
-          const closeZone = this.add.zone(width / 2, this.scale.height / 2 + 55, 96, 26).setInteractive({ useHandCursor: true });
-          const closeTxt = this.add.text(width / 2, this.scale.height / 2 + 55, 'ЗАБРАТЬ', {
-            fontSize: '10.5px',
-            fontFamily: FONT_UI,
-            color: '#fef08a',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          closeZone.on('pointerdown', () => {
-            winModal.destroy();
-            this.updateCoinsDisplay();
-            this.renderContent();
-          });
-
-          winModal.add([overlay, modalBg, modalTitle, rewardTxt, tipTxt, closeGfx, closeTxt, closeZone]);
         } else {
           if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
         }
-        isOpening = false;
       });
 
       boxCont.add([boxBg, chestIcon, title, desc, openBtn]);
@@ -648,7 +801,6 @@ export class ShopScene extends Phaser.Scene {
       cardIdx++;
     }
 
-    // 2. Карточки всех 15 верстаков
     tiers.forEach((item) => {
       const cardY = cardIdx * (cardH + 8) + cardH / 2;
 
@@ -671,7 +823,7 @@ export class ShopScene extends Phaser.Scene {
         isCurrentActive ? 0x3b2614 : (isExclusive ? 0x28182e : 0x261a10),
         0x170f09,
         0x170f09,
-        isCurrentActive ? 0.74 : 0.58
+        isCurrentActive ? 0.78 : 0.62
       );
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
@@ -684,23 +836,23 @@ export class ShopScene extends Phaser.Scene {
       cardBg.lineStyle(isCurrentActive ? 1.8 : 1.2, borderClr, isBaseLocked ? 0.45 : 0.9);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      const title = this.add.text(-cardW / 2 + 16, -18, item.name, {
-        fontSize: '12.5px',
+      const title = this.add.text(-cardW / 2 + 16, -20, item.name, {
+        fontSize: '13.5px',
         fontFamily: FONT_UI,
         color: isBaseLocked ? '#9c8265' : (isExclusive ? '#f3e8ff' : '#fdf6e3'),
         fontStyle: 'bold',
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 16, 2, item.desc, {
-        fontSize: '10px',
+      const desc = this.add.text(-cardW / 2 + 16, 4, item.desc, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isBaseLocked ? '#7a6552' : '#e6d5bc',
-        wordWrap: { width: cardW - 135 },
+        wordWrap: { width: cardW - 140 },
         resolution: dpr
       }).setShadow(0, 1, '#000000', 3, false, true);
 
-      const actionBtn = this.add.container(cardW / 2 - 45, 0);
+      const actionBtn = this.add.container(cardW / 2 - 48, 0);
       const canBuy = canUpgradeBase || (!isBase && !isExclusive && !isPurchased);
 
       const actionGfx = this.add.graphics();
@@ -721,11 +873,11 @@ export class ShopScene extends Phaser.Scene {
       }
 
       actionGfx.fillStyle(btnColor, canBuy ? 0.98 : 0.88);
-      actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
       actionGfx.lineStyle(1, strokeColor, 0.95);
-      actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
 
-      const actionZone = this.add.zone(0, 0, 74, 30);
+      const actionZone = this.add.zone(0, 0, 80, 32);
       if (!isBaseLocked && !isCurrentActive && !isChestOnlyLocked) {
         actionZone.setInteractive({ useHandCursor: true });
       }
@@ -737,7 +889,7 @@ export class ShopScene extends Phaser.Scene {
       else if (canBuy) btnLabel = `${item.price} 🪙`;
 
       const actionTxt = this.add.text(0, 0, btnLabel, {
-        fontSize: isChestOnlyLocked ? '9.5px' : '10.5px',
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isCurrentActive
           ? '#facc15'
@@ -753,17 +905,17 @@ export class ShopScene extends Phaser.Scene {
 
         if (isPurchased) {
           if (AudioManager.playClick) AudioManager.playClick();
-          localStorage.setItem('active_workbench_skin', item.id);
+          Storage.setActiveWorkbenchSkin(item.id);
           this.renderContent();
         } else if (canBuy) {
-          const coins = Storage.getCoins ? Storage.getCoins() : 0;
+          const coins = Storage.getCoins();
           if (coins >= item.price) {
             Storage.addCoins(-item.price);
             if (isBase && Storage.setWorkshopTier) {
               Storage.setWorkshopTier(item.tier);
             }
-            this.unlockSkinSafe(item.id);
-            localStorage.setItem('active_workbench_skin', item.id);
+            Storage.unlockWorkbenchSkin(item.id);
+            Storage.setActiveWorkbenchSkin(item.id);
             if (AudioManager.playCoin) AudioManager.playCoin();
             this.updateCoinsDisplay();
             this.renderContent();
@@ -782,16 +934,8 @@ export class ShopScene extends Phaser.Scene {
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
 
-  unlockSkinSafe(skinId) {
-    const list = JSON.parse(localStorage.getItem('owned_workbench_skins') || '["workbench_bg_1","workbench_bg_2","workbench_bg_3","workbench_bg_4"]');
-    if (!list.includes(skinId)) {
-      list.push(skinId);
-      localStorage.setItem('owned_workbench_skins', JSON.stringify(list));
-    }
-  }
-
   rollLootboxRebalanced(cost) {
-    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    const coins = Storage.getCoins();
     if (coins < cost) return { success: false };
 
     Storage.addCoins(-cost);
@@ -806,14 +950,14 @@ export class ShopScene extends Phaser.Scene {
     const eraSkins = [
       { id: 'workbench_bg_9', name: 'Эпоха: Древний Египет' },
       { id: 'workbench_bg_10', name: 'Эпоха: Античность' },
-      { id: 'workbench_bg_11', name: 'Эпоха: Средневековая Европа' },
+      { id: 'workbench_bg_11', name: 'Эпоха: Средневековье' },
       { id: 'workbench_bg_12', name: 'Эпоха: Япония' },
       { id: 'workbench_bg_13', name: 'Эпоха: Ацтеки' },
       { id: 'workbench_bg_14', name: 'Эпоха: Викинги' },
       { id: 'workbench_bg_15', name: 'Эпоха: Ренессанс' }
     ];
 
-    const owned = JSON.parse(localStorage.getItem('owned_workbench_skins') || '[]');
+    const owned = Storage.getOwnedWorkbenchSkins();
     const unownedExclusive = exclusiveSkins.filter((s) => !owned.includes(s.id));
     const unownedEra = eraSkins.filter((s) => !owned.includes(s.id));
     const allUnowned = [...unownedExclusive, ...unownedEra];
@@ -821,47 +965,36 @@ export class ShopScene extends Phaser.Scene {
     let pity = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10) + 1;
     const rand = Math.random() * 100;
 
-    // 1. Гарантированный верстак на 15-м сундуке без скина
     if (pity >= 15 && allUnowned.length > 0) {
       const pool = unownedExclusive.length > 0 && Math.random() < 0.45 ? unownedExclusive : allUnowned;
       const win = pool[Math.floor(Math.random() * pool.length)];
-      this.unlockSkinSafe(win.id);
+      Storage.unlockWorkbenchSkin(win.id);
       localStorage.setItem('lootbox_pity_count', '0');
       return { success: true, type: 'skin', id: win.id, name: win.name };
     }
 
-    // 2. Шанс 2.5% на эксклюзивный верстак (только из сундука)
     if (rand < 2.5 && unownedExclusive.length > 0) {
       const win = unownedExclusive[Math.floor(Math.random() * unownedExclusive.length)];
-      this.unlockSkinSafe(win.id);
+      Storage.unlockWorkbenchSkin(win.id);
       localStorage.setItem('lootbox_pity_count', '0');
       return { success: true, type: 'skin', id: win.id, name: win.name };
     }
 
-    // 3. Шанс 5% (диапазон 2.5..7.5) на эпохальный верстак
     if (rand < 7.5 && unownedEra.length > 0) {
       const win = unownedEra[Math.floor(Math.random() * unownedEra.length)];
-      this.unlockSkinSafe(win.id);
+      Storage.unlockWorkbenchSkin(win.id);
       localStorage.setItem('lootbox_pity_count', '0');
       return { success: true, type: 'skin', id: win.id, name: win.name };
     }
 
-    // Скин не выпал — сохраняем прогресс гаранта
     localStorage.setItem('lootbox_pity_count', String(pity));
 
-    // 4. Шанс 22.5% (7.5..30) на Золотой лак Кинцуги (1-2 шт.)
     if (rand < 30) {
       const lac = Math.random() < 0.75 ? 1 : 2;
-      if (Storage.addKintsugiLacquer) {
-        Storage.addKintsugiLacquer(lac);
-      } else {
-        const cur = parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10);
-        localStorage.setItem('kintsugi_lacquer', cur + lac);
-      }
+      Storage.addKintsugiLacquer(lac);
       return { success: true, type: 'lacquer', amount: lac, name: `Золотой лак (${lac} шт.) ✨` };
     }
 
-    // 5. Утешительный приз: золото (450–1100 🪙, не окупает сундук полностью)
     const reward = Math.round((450 + Math.random() * 650) / 10) * 10;
     Storage.addCoins(reward);
     return { success: true, type: 'coins', amount: reward, name: `${reward} 🪙` };
@@ -872,13 +1005,13 @@ export class ShopScene extends Phaser.Scene {
     const FONT_UI = this.FONT_UI;
 
     const expansions = [
-      { id: 'pedestal_1', name: 'Бархатный постамент IV', desc: '+1 слот витрины и +10% к оффлайн-билетам', price: 1200 },
+      { id: 'pedestal_1', name: 'Бархатный постамент IV', desc: '+1 слот витрины и +15% к оффлайн-билетам', price: 1200 },
       { id: 'pedestal_2', name: 'Стеклянный купол с подсветкой V', desc: '+1 слот витрины и +25% к оффлайн-билетам', price: 2800 },
       { id: 'hall_antique', name: 'Зал Средиземноморья', desc: 'Удваивает пассивную выручку от античных реликвий', price: 5800 },
       { id: 'hall_royal', name: 'Королевская галерея славы', desc: 'Престиж музея максимального уровня: +50% ко всей казне', price: 14000 }
     ];
 
-    const cardH = 76;
+    const cardH = 82;
     const cardW = width * 0.90;
 
     expansions.forEach((exp, i) => {
@@ -888,41 +1021,41 @@ export class ShopScene extends Phaser.Scene {
       const card = this.add.container(width / 2, cardY);
 
       const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.56);
+      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.62);
       cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
       cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
       cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
 
-      const name = this.add.text(-cardW / 2 + 18, -18, exp.name, {
-        fontSize: '12.5px',
+      const name = this.add.text(-cardW / 2 + 18, -20, exp.name, {
+        fontSize: '13.5px',
         fontFamily: FONT_UI,
         color: '#fdf6e3',
         fontStyle: 'bold',
         resolution: dpr
       }).setShadow(0, 1, '#000000', 4, false, true);
 
-      const desc = this.add.text(-cardW / 2 + 18, 2, exp.desc, {
-        fontSize: '10px',
+      const desc = this.add.text(-cardW / 2 + 18, 4, exp.desc, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
-        wordWrap: { width: cardW - 135 },
+        wordWrap: { width: cardW - 140 },
         resolution: dpr
       }).setShadow(0, 1, '#000000', 3, false, true);
 
-      const actionBtn = this.add.container(cardW / 2 - 45, 0);
+      const actionBtn = this.add.container(cardW / 2 - 48, 0);
       const actionGfx = this.add.graphics();
       actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
-      actionGfx.fillRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
       actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
-      actionGfx.strokeRoundedRect(-37, -15, 74, 30, 8);
+      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
 
-      const actionZone = this.add.zone(0, 0, 74, 30);
+      const actionZone = this.add.zone(0, 0, 80, 32);
       if (!isBought) {
         actionZone.setInteractive({ useHandCursor: true });
       }
 
       const actionTxt = this.add.text(0, 0, isBought ? 'КУПЛЕНО' : `${exp.price} 🪙`, {
-        fontSize: '10.5px',
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isBought ? '#a89074' : '#1a1004',
         fontStyle: 'bold',
@@ -934,7 +1067,7 @@ export class ShopScene extends Phaser.Scene {
       if (!isBought) {
         actionZone.on('pointerdown', () => {
           if (this.isDragging) return;
-          const coins = Storage.getCoins ? Storage.getCoins() : 0;
+          const coins = Storage.getCoins();
           if (coins >= exp.price) {
             Storage.addCoins(-exp.price);
             localStorage.setItem(`museum_upg_${exp.id}`, 'true');
