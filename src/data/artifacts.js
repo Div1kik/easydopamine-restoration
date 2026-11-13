@@ -55,9 +55,9 @@ export const ARTIFACT_TEMPLATES = [
   {
     id: 'antique_coin',
     regionId: 'antique',
-    name: 'Афинская тетрадрахма',
-    description: 'Серебряная монета с чеканным профилем совы.',
-    textureKey: 'art_antique_coin',
+    name: 'Золотой венок триумфатора',
+    description: 'Античный золотой венец из чеканных лавровых листьев.',
+    textureKey: 'art_antique_laurel',
     marketValue: 95
   },
   {
@@ -71,9 +71,9 @@ export const ARTIFACT_TEMPLATES = [
   {
     id: 'antique_harp',
     regionId: 'antique',
-    name: 'Кифара Аполлона',
-    description: 'Инкрустированная перламутром кипарисовая лира.',
-    textureKey: 'art_antique_harp',
+    name: 'Помпейская мозаика',
+    description: 'Фрагмент античного панно из цветной смальты.',
+    textureKey: 'art_antique_mosaic',
     marketValue: 165
   },
   {
@@ -81,7 +81,7 @@ export const ARTIFACT_TEMPLATES = [
     regionId: 'antique',
     name: 'Мраморный бюст',
     description: 'Фрагмент античной статуи философа.',
-    textureKey: 'art_antique_statue',
+    textureKey: 'art_antique_bust',
     marketValue: 190
   },
   {
@@ -105,9 +105,9 @@ export const ARTIFACT_TEMPLATES = [
   {
     id: 'europe_book',
     regionId: 'europe',
-    name: 'Фолиант алхимика',
-    description: 'Кожаный переплёт с латунными коваными замками.',
-    textureKey: 'art_europe_book',
+    name: 'Топфхельм крестоносца',
+    description: 'Тяжёлый рыцарский шлем из кованой стали.',
+    textureKey: 'art_europe_helm',
     marketValue: 220
   },
   {
@@ -123,15 +123,15 @@ export const ARTIFACT_TEMPLATES = [
     regionId: 'europe',
     name: 'Кубок тамплиера',
     description: 'Позолоченный серебряный потир с эмалью.',
-    textureKey: 'art_europe_grail',
+    textureKey: 'art_europe_chalice',
     marketValue: 310
   },
   {
     id: 'europe_crown',
     regionId: 'europe',
-    name: 'Корона монарха',
-    description: 'Золотой венец с изумрудами и геральдикой.',
-    textureKey: 'art_europe_crown',
+    name: 'Печать суверена',
+    description: 'Золотая королевская матрица с гербовой гравировкой.',
+    textureKey: 'art_europe_seal',
     marketValue: 380
   },
 
@@ -157,7 +157,7 @@ export const ARTIFACT_TEMPLATES = [
     regionId: 'japan',
     name: 'Чаша Тэммоку',
     description: 'Керамика с кристаллическим масляным блеском.',
-    textureKey: 'art_japan_tea',
+    textureKey: 'art_japan_chawan',
     marketValue: 460
   },
   {
@@ -171,9 +171,9 @@ export const ARTIFACT_TEMPLATES = [
   {
     id: 'japan_katana',
     regionId: 'japan',
-    name: 'Катана мастера',
-    description: 'Клинок с линией закалки хамон и цубой.',
-    textureKey: 'art_japan_katana',
+    name: 'Цуба сёгуна',
+    description: 'Ажурная гарда катаны из вороненой стали с золотой всечкой.',
+    textureKey: 'art_japan_tsuba',
     marketValue: 650
   },
 
