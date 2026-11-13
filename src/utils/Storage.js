@@ -5,6 +5,10 @@ export const Storage = {
     WORKSHOP_TIER: 'art_workshop_tier',
     ACTIVE_WORKBENCH_SKIN: 'active_workbench_skin',
     OWNED_WORKBENCH_SKINS: 'owned_workbench_skins',
+    ACTIVE_TOOL_SKIN: 'art_active_tool_skin',
+    OWNED_TOOL_SKINS: 'art_owned_tool_skins',
+    TOOL_BOX_PITY: 'art_tool_box_pity',
+    AD_CHEST_LAST_TIME: 'art_ad_chest_last_time',
     INVENTORY: 'art_inventory',
     HISTORY: 'art_history',
     SESSION: 'art_active_session',
@@ -20,7 +24,7 @@ export const Storage = {
 
   // --- ДЕНЬГИ ---
   getCoins() {
-    return parseInt(localStorage.getItem(this.KEYS.COINS) || '0', 10);
+    return parseInt(localStorage.getItem(this.KEYS.COINS) || '120', 10);
   },
 
   setCoins(val) {
@@ -51,7 +55,7 @@ export const Storage = {
       const list = JSON.parse(localStorage.getItem(this.KEYS.OWNED_WORKBENCH_SKINS));
       if (Array.isArray(list) && list.length > 0) return list;
     } catch {}
-    return ['workbench_bg_1', 'workbench_bg_2', 'workbench_bg_3', 'workbench_bg_4'];
+    return ['workbench_bg_1'];
   },
 
   unlockWorkbenchSkin(skinId) {
@@ -59,6 +63,32 @@ export const Storage = {
     if (!list.includes(skinId)) {
       list.push(skinId);
       localStorage.setItem(this.KEYS.OWNED_WORKBENCH_SKINS, JSON.stringify(list));
+    }
+    return list;
+  },
+
+  // --- КАСТОМНЫЕ СКИНЫ ИНСТРУМЕНТОВ ---
+  getActiveToolSkin() {
+    return localStorage.getItem(this.KEYS.ACTIVE_TOOL_SKIN) || 'default';
+  },
+
+  setActiveToolSkin(skinId) {
+    localStorage.setItem(this.KEYS.ACTIVE_TOOL_SKIN, skinId || 'default');
+  },
+
+  getOwnedToolSkins() {
+    try {
+      const list = JSON.parse(localStorage.getItem(this.KEYS.OWNED_TOOL_SKINS));
+      if (Array.isArray(list) && list.length > 0) return list;
+    } catch {}
+    return ['default'];
+  },
+
+  unlockToolSkin(skinId) {
+    const list = this.getOwnedToolSkins();
+    if (!list.includes(skinId)) {
+      list.push(skinId);
+      localStorage.setItem(this.KEYS.OWNED_TOOL_SKINS, JSON.stringify(list));
     }
     return list;
   },
@@ -75,7 +105,7 @@ export const Storage = {
     return updated;
   },
 
-  buyKintsugiLacquer(count = 1, pricePerOne = 650) {
+  buyKintsugiLacquer(count = 1, pricePerOne = 550) {
     const totalCost = count * pricePerOne;
     if (this.getCoins() < totalCost) return false;
     this.addCoins(-totalCost);
@@ -92,17 +122,15 @@ export const Storage = {
     return false;
   },
 
-  // =========================================================================
-  // МАРКЕТИНГОВЫЙ БАЛАНС ЭПОХ (РЕНЕССАНС НА 25 УРОВНЕ)
-  // =========================================================================
+  // --- БАЛАНС ЭПОХ (РЕНЕССАНС НА 25 УРОВНЕ) ---
   REGION_UNLOCK_REQS: {
-    egypt: { minLevel: 1, cost: 0, name: 'Древний Египет' },
-    antique: { minLevel: 3, cost: 250, name: 'Античность' },
-    europe: { minLevel: 6, cost: 800, name: 'Средневековье' },
-    japan: { minLevel: 10, cost: 2200, name: 'Япония' },
-    aztec: { minLevel: 15, cost: 5500, name: 'Ацтеки' },
-    vikings: { minLevel: 20, cost: 12000, name: 'Викинги' },
-    renaissance: { minLevel: 25, cost: 25000, name: 'Ренессанс' }
+    egypt: { minLevel: 1, cost: 0, expeditionCost: 90, name: 'Древний Египет' },
+    antique: { minLevel: 3, cost: 250, expeditionCost: 220, name: 'Античность' },
+    europe: { minLevel: 6, cost: 750, expeditionCost: 480, name: 'Средневековье' },
+    japan: { minLevel: 10, cost: 1800, expeditionCost: 950, name: 'Япония' },
+    aztec: { minLevel: 15, cost: 4200, expeditionCost: 1750, name: 'Ацтеки' },
+    vikings: { minLevel: 20, cost: 9000, expeditionCost: 2800, name: 'Викинги' },
+    renaissance: { minLevel: 25, cost: 18000, expeditionCost: 4500, name: 'Ренессанс' }
   },
 
   getUnlockedRegions() {
@@ -115,8 +143,9 @@ export const Storage = {
 
   isRegionUnlocked(regionId) {
     if (regionId === 'egypt') return true;
-    const unlocked = this.getUnlockedRegions();
-    return unlocked.includes(regionId);
+    const req = this.REGION_UNLOCK_REQS[regionId];
+    if (req && this.getLevelData().level >= req.minLevel && req.cost === 0) return true;
+    return this.getUnlockedRegions().includes(regionId);
   },
 
   canUnlockRegion(regionId) {
@@ -139,9 +168,7 @@ export const Storage = {
     return true;
   },
 
-  // =========================================================================
-  // ДИНАМИЧЕСКАЯ ШКАЛА ОПЫТА (50 УРОВНЕЙ)
-  // =========================================================================
+  // --- ДИНАМИЧЕСКАЯ ШКАЛА ОПЫТА (50 УРОВНЕЙ) ---
   getLevelConfig(level) {
     const titles = [
       'Ученик реставратора', 'Подмастерье древностей', 'Помощник хранителя', 'Младший реставратор', 'Музейный эксперт',
@@ -214,6 +241,14 @@ export const Storage = {
     };
   },
 
+  getLevelRewardDetails(level) {
+    const bonusCoins = level * 150 + 100;
+    let lacquerBonus = 0;
+    if (level % 5 === 0) lacquerBonus = 2;
+    else if (level % 2 === 0) lacquerBonus = 1;
+    return { bonusCoins, lacquerBonus };
+  },
+
   addXP(amount) {
     const prevData = this.getLevelData();
     const prevLevel = prevData.level;
@@ -225,9 +260,14 @@ export const Storage = {
     const newLevel = newLevelData.level;
     const leveledUp = newLevel > prevLevel;
 
+    let totalBonusCoins = 0;
+    let totalLacquerBonus = 0;
+
     if (leveledUp) {
       for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
-        this.grantLevelReward(lvl);
+        const rew = this.grantLevelReward(lvl);
+        totalBonusCoins += rew.bonusCoins;
+        totalLacquerBonus += rew.lacquerBonus;
       }
     }
 
@@ -235,28 +275,24 @@ export const Storage = {
       leveledUp,
       prevLevel,
       newLevel,
-      newTitle: newLevelData.title
+      newTitle: newLevelData.title,
+      bonusCoins: totalBonusCoins,
+      lacquerBonus: totalLacquerBonus
     };
   },
 
   grantLevelReward(level) {
-    const bonusCoins = level * 160 + 100;
-    this.addCoins(bonusCoins);
-
-    let lacquerBonus = 0;
-    if (level % 5 === 0) {
-      lacquerBonus = 2;
-    } else if (level % 2 === 0) {
-      lacquerBonus = 1;
+    const rew = this.getLevelRewardDetails(level);
+    this.addCoins(rew.bonusCoins);
+    if (rew.lacquerBonus > 0) {
+      this.addKintsugiLacquer(rew.lacquerBonus);
     }
-    if (lacquerBonus > 0) {
-      this.addKintsugiLacquer(lacquerBonus);
-    }
+    return rew;
   },
 
   getMaxMuseumCapacity() {
     const lvl = this.getLevelData().level;
-    return Math.min(3 + Math.floor((lvl - 1) / 2), 24);
+    return Math.min(4 + Math.floor((lvl - 1) / 2), 26);
   },
 
   // --- ЭКСПЕДИЦИИ И СКЛАДЫ ---
@@ -275,7 +311,7 @@ export const Storage = {
     const regionTemplates = templates.filter(t => t.regionId === regionId);
     const initialStock = {};
     regionTemplates.forEach(t => {
-      initialStock[t.id] = regionId === 'egypt' ? 3 : 0;
+      initialStock[t.id] = regionId === 'egypt' ? 3 : 1;
     });
 
     all[regionId] = initialStock;
@@ -302,14 +338,16 @@ export const Storage = {
     const coins = this.getCoins();
     if (coins < cost) return false;
 
-    this.addCoins(-cost);
+    if (cost > 0) {
+      this.addCoins(-cost);
+    }
     const all = this.getAllStocks();
     const regionTemplates = templates.filter(t => t.regionId === regionId);
 
     if (!all[regionId]) all[regionId] = {};
 
     regionTemplates.forEach(t => {
-      const added = Math.floor(Math.random() * 3) + 1;
+      const added = Math.floor(Math.random() * 2) + 1;
       all[regionId][t.id] = (all[regionId][t.id] || 0) + added;
     });
 
@@ -318,17 +356,19 @@ export const Storage = {
   },
 
   // --- КОНТРАКТЫ ---
-  getDailyContract(templates) {
+  getDailyContract(templates, forceRefresh = false) {
     const now = Date.now();
-    try {
-      const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
-      if (raw) {
-        const contract = JSON.parse(raw);
-        if (contract && contract.nextAvailableAt > now) {
-          return contract;
+    if (!forceRefresh) {
+      try {
+        const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
+        if (raw) {
+          const contract = JSON.parse(raw);
+          if (contract && contract.nextAvailableAt > now) {
+            return contract;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
     if (!templates || templates.length === 0) return null;
 
@@ -342,7 +382,7 @@ export const Storage = {
     const client = clients[Math.floor(Math.random() * clients.length)];
 
     const basePrice = target.marketValue || 100;
-    const bonusReward = Math.round(basePrice * 0.45) + 80;
+    const bonusReward = Math.round(basePrice * 0.50) + 90;
     const contractPrice = basePrice + bonusReward;
     const cooldownDuration = 90 * 60 * 1000;
 
@@ -350,10 +390,11 @@ export const Storage = {
       id: 'ctr_' + now,
       templateId: target.id,
       regionId: target.regionId,
+      title: target.name,
       name: target.name,
       client,
       rewardCoins: contractPrice,
-      bonusXP: 100,
+      bonusXP: 110,
       completed: false,
       createdAt: now,
       nextAvailableAt: now + cooldownDuration
@@ -397,7 +438,12 @@ export const Storage = {
 
     if (count === 0) return { coins: 0, minutes: cappedMinutes, exhibitsCount: 0 };
 
-    const earnedCoins = Math.floor((cappedMinutes / 10) * count * 2);
+    let mult = 1.0;
+    if (localStorage.getItem('museum_upg_pedestal_1') === 'true') mult += 0.15;
+    if (localStorage.getItem('museum_upg_pedestal_2') === 'true') mult += 0.25;
+    if (localStorage.getItem('museum_upg_hall_royal') === 'true') mult += 0.50;
+
+    const earnedCoins = Math.floor((cappedMinutes / 10) * count * 2.5 * mult);
     return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes, exhibitsCount: count };
   },
 
