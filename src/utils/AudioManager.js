@@ -136,11 +136,10 @@ class AudioManagerClass {
     return buffer;
   }
 
-  // =========================================================================
-  // ЗВУКИ ИНСТРУМЕНТОВ С ПОДДЕРЖКОЙ РАНГОВ (TIER 1..4)
-  // =========================================================================
+  playScrape(tier = 1) {
+    this.playScrub(tier);
+  }
 
-  // 1. СКРЕБОК / СКАЛЬПЕЛЬ / ЛАЗЕР
   playScrub(tier = 1) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -149,16 +148,13 @@ class AudioManagerClass {
     const t = this.ctx.currentTime;
 
     if (tier >= 4) {
-      // ТИР IV: Лазерный микро-скальпель (высокочастотный плазменный импульс)
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(1400, t);
       osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
-
       gain.gain.setValueAtTime(0.18, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
       osc.connect(gain);
       gain.connect(this.sfxGain);
       osc.start(t);
@@ -167,16 +163,13 @@ class AudioManagerClass {
     }
 
     if (tier === 3) {
-      // ТИР III: Закалённый скальпель (тонкий срез стали по камню)
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(750, t);
       osc.frequency.exponentialRampToValueAtTime(520, t + 0.06);
-
       gain.gain.setValueAtTime(0.22, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-
       osc.connect(gain);
       gain.connect(this.sfxGain);
       osc.start(t);
@@ -184,23 +177,19 @@ class AudioManagerClass {
       return;
     }
 
-    // ТИР I-II: Классический сухой скрежет
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(tier === 2 ? 480 : 420, t);
     osc.frequency.exponentialRampToValueAtTime(tier === 2 ? 260 : 200, t + 0.07);
-
     gain.gain.setValueAtTime(0.24, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-
     osc.connect(gain);
     gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 0.07);
   }
 
-  // 2. КИСТЬ / ВЕЕР / ИОНИЗАТОР
   playBrush(tier = 1) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -215,19 +204,15 @@ class AudioManagerClass {
     noise.buffer = noiseBuffer;
 
     const filter = this.ctx.createBiquadFilter();
-
     if (tier >= 4) {
-      // ТИР IV: Ионизатор (свистящий поток чистого воздуха)
       filter.type = 'highpass';
       filter.frequency.setValueAtTime(3200, t);
       filter.frequency.exponentialRampToValueAtTime(4500, t + dur);
     } else if (tier === 3) {
-      // ТИР III: Веерная кисть (широкий шелест)
       filter.type = 'bandpass';
       filter.frequency.setValueAtTime(2200, t);
       filter.frequency.exponentialRampToValueAtTime(1400, t + dur);
     } else {
-      // ТИР I-II: Мягкое смахивание
       filter.type = 'bandpass';
       filter.frequency.setValueAtTime(1600, t);
       filter.frequency.exponentialRampToValueAtTime(2800, t + dur);
@@ -245,7 +230,6 @@ class AudioManagerClass {
     noise.stop(t + dur);
   }
 
-  // 3. РЕАКТИВ / ЭССЕНЦИЯ / УЛЬТРАЗВУК
   playSpray(tier = 1) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -254,16 +238,13 @@ class AudioManagerClass {
     const t = this.ctx.currentTime;
 
     if (tier >= 4) {
-      // ТИР IV: Ультразвуковой распылитель (тонкий свист мембраны + пар)
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(2400, t);
       osc.frequency.exponentialRampToValueAtTime(1800, t + 0.12);
-
       oscGain.gain.setValueAtTime(0.14, t);
       oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-
       osc.connect(oscGain);
       oscGain.connect(this.sfxGain);
       osc.start(t);
@@ -293,7 +274,6 @@ class AudioManagerClass {
     noise.stop(t + dur);
   }
 
-  // 4. ЗАМША / ГОИ / АЛМАЗНАЯ ЭМУЛЬСИЯ
   playCloth(tier = 1) {
     if (this.isSfxDisabled()) return;
     this.unlockAudio();
@@ -302,16 +282,13 @@ class AudioManagerClass {
     const t = this.ctx.currentTime;
 
     if (tier >= 4) {
-      // ТИР IV: Алмазная эмульсия (хрустальный призвук зеркального блеска)
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1950, t);
       osc.frequency.exponentialRampToValueAtTime(2600, t + 0.07);
-
       oscGain.gain.setValueAtTime(0.12, t);
       oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-
       osc.connect(oscGain);
       oscGain.connect(this.sfxGain);
       osc.start(t);
@@ -340,10 +317,6 @@ class AudioManagerClass {
     noise.start(t);
     noise.stop(t + dur);
   }
-
-  // =========================================================================
-  // ОСТАЛЬНЫЕ ИГРОВЫЕ SFX (БЕЗ ИЗМЕНЕНИЙ)
-  // =========================================================================
 
   playShopBell() {
     if (this.isSfxDisabled()) return;
@@ -417,6 +390,10 @@ class AudioManagerClass {
       osc.start(t);
       osc.stop(t + 0.26);
     });
+  }
+
+  playStarChime(step = 0) {
+    this.playTaskChime(step);
   }
 
   playTaskChime(step = 0) {
@@ -509,6 +486,10 @@ class AudioManagerClass {
     osc.stop(t + 0.06);
   }
 
+  playMusic(era = 'menu') {
+    this.playEraMusic(era);
+  }
+
   playEraMusic(era = 'menu') {
     this.unlockAudio();
     if (!this.ctx) return;
@@ -524,6 +505,7 @@ class AudioManagerClass {
       menu: [220.00, 329.63, 440.00, 523.25],
       egypt: [293.66, 311.13, 369.99, 440.00],
       antique: [220.00, 246.94, 329.63, 392.00],
+      europe: [220.00, 261.63, 329.63, 392.00],
       japan: [220.00, 233.08, 293.66, 349.23],
       aztec: [196.00, 220.00, 261.63, 311.13],
       vikings: [220.00, 247.42, 329.63, 440.00],
