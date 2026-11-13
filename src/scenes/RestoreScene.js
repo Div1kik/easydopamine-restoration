@@ -19,6 +19,30 @@ export class RestoreScene extends Phaser.Scene {
 
     YandexSDK.notifyGameplayStart();
 
+    // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
+    this._tempTextureKeys = [];
+    this.events.once('shutdown', () => {
+      if (this.dirtLayer) {
+        this.dirtLayer.destroy();
+        this.dirtLayer = null;
+      }
+      if (this.particles) {
+        this.particles.destroy();
+        this.particles = null;
+      }
+      if (this._tempTextureKeys) {
+        this._tempTextureKeys.forEach((k) => {
+          if (this.textures.exists(k)) {
+            this.textures.remove(k);
+          }
+        });
+        this._tempTextureKeys = [];
+      }
+      this._artSnapshotCanvas = null;
+      this._artSnapshotKey = null;
+      this.activeDraggedShard = null;
+    });
+
     // 1. ДАННЫЕ И СЕССИЯ
     this.activeContract = (data && data.contract) ? data.contract : null;
 
@@ -69,6 +93,7 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
     this.shardsList = [];
+    this.activeDraggedShard = null;
     this._artSnapshotCanvas = null;
     this._artSnapshotKey = null;
 
@@ -274,7 +299,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.breakHoleGfx = this.add.graphics().setDepth(7.5);
 
-    // RenderTexture без BitmapMask — обрезка грязи по силуэту делается напрямую при генерации слоя грязи!
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0)
       .setDepth(8);
@@ -306,7 +330,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
+    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД (БЕЗ КОНФЛИКТУЮЩЕГО DRAG-ПЛАГИНА PHASER)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
@@ -314,8 +338,13 @@ export class RestoreScene extends Phaser.Scene {
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (!currentTask) return;
 
+      // Если активен этап склейки
       if (currentTask.type === 'break_and_assemble') {
-        this.processGlueAction(pointer);
+        if (this.activeDraggedShard) {
+          this.dragShardTo(this.activeDraggedShard, pointer.x, pointer.y);
+        } else {
+          this.processGlueAction(pointer);
+        }
         return;
       }
 
@@ -349,7 +378,7 @@ export class RestoreScene extends Phaser.Scene {
 
       const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
       const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
-      const countRadius = (baseRadius + tierRadiusBonus) * 0.72;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.78;
 
       const col2 = this.artW / this.gridCols;
       const row2 = this.artH / this.gridRows;
@@ -381,10 +410,11 @@ export class RestoreScene extends Phaser.Scene {
       const maxScore = Math.max(1, this.targetValidCells);
       const ratio = Math.min(1, this.cleanedScore / maxScore);
       const maxBarW = Math.min(this.scale.width * 0.78, 280);
-      this.progressBarFill.width = Math.max(6, maxBarW * ratio);
+      this.progressBarFill.width = Math.max(6, maxBarW * Math.min(1, ratio / 0.89));
 
-      if (ratio >= 0.94 && !this.isTaskTransition) {
+      if (ratio >= 0.89 && !this.isTaskTransition) {
         this.isTaskTransition = true;
+        this.progressBarFill.width = maxBarW;
         this.dirtLayer.clear();
         this.toolSprite.setAlpha(0);
         this.completeTaskTransition();
@@ -394,24 +424,125 @@ export class RestoreScene extends Phaser.Scene {
     this.input.on('pointerdown', (p) => {
       if (this.isTaskTransition) return;
       if (p.y > trayTopLimit || p.y < workspaceTop) return;
+
       this.lastTouchPos = { x: p.x, y: p.y };
+
+      const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+      if (currentTask && currentTask.type === 'break_and_assemble' && this.shardsList.length > 0) {
+        // Проверяем, нажал ли игрок на один из неприклеенных осколков
+        const grabbed = this.shardsList.find(
+          (s) => !s.placed && Phaser.Math.Distance.Between(p.x, p.y, s.container.x, s.container.y) <= 44
+        );
+        if (grabbed) {
+          if (!grabbed.glued) {
+            this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
+            if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+            return;
+          }
+          this.activeDraggedShard = grabbed;
+          this.toolSprite.setAlpha(0);
+          this.dragShardTo(grabbed, p.x, p.y);
+          return;
+        }
+      }
+
       this.toolSprite.setAlpha(1);
       processInteraction(p);
     });
 
     this.input.on('pointermove', (p) => {
       if (!p.isDown || this.isTaskTransition) return;
+      if (this.activeDraggedShard) {
+        this.dragShardTo(this.activeDraggedShard, p.x, p.y);
+        return;
+      }
       processInteraction(p);
     });
 
     this.input.on('pointerup', () => {
       this.lastTouchPos = null;
+      if (this.activeDraggedShard) {
+        const shard = this.activeDraggedShard;
+        this.activeDraggedShard = null;
+        this.releaseShard(shard);
+        return;
+      }
       this.tweens.add({
         targets: this.toolSprite,
         alpha: 0,
         duration: 140
       });
     });
+  }
+
+  dragShardTo(shardObj, x, y) {
+    if (!shardObj || shardObj.placed) return;
+    shardObj.container.x = x;
+    shardObj.container.y = y;
+    const dist = Phaser.Math.Distance.Between(x, y, shardObj.targetX, shardObj.targetY);
+    shardObj.container.setScale(dist < 65 ? 1.08 : 1.0);
+  }
+
+  releaseShard(shardObj) {
+    if (!shardObj || shardObj.placed) return;
+    shardObj.container.setScale(1.0);
+
+    const dist = Phaser.Math.Distance.Between(
+      shardObj.container.x,
+      shardObj.container.y,
+      shardObj.targetX,
+      shardObj.targetY
+    );
+
+    if (dist < 65) {
+      shardObj.placed = true;
+      shardObj.container.x = shardObj.targetX;
+      shardObj.container.y = shardObj.targetY;
+      shardObj.border.clear();
+
+      if (this.isKintsugiMode) {
+        shardObj.border.lineStyle(3, 0xfacc15, 0.95);
+        shardObj.border.strokeCircle(0, 0, shardObj.radius);
+        if (AudioManager.playShine) AudioManager.playShine();
+      } else {
+        shardObj.border.lineStyle(1, 0x4ade80, 0.45);
+        shardObj.border.strokeCircle(0, 0, shardObj.radius);
+        if (AudioManager.playCoin) AudioManager.playCoin();
+      }
+
+      this.updateAssemblyProgress();
+
+      const allPlaced = this.shardsList.every((s) => s.placed);
+      if (allPlaced) {
+        this.isTaskTransition = true;
+        if (this.isKintsugiMode) {
+          this.hasKintsugiMastery = true;
+          Storage.addKintsugiLacquer(-1);
+        }
+
+        this.time.delayedCall(450, () => {
+          this.breakHoleGfx.setVisible(false);
+          this.assemblyContainer.setVisible(false);
+          if (this.kintsugiBanner) {
+            this.kintsugiBanner.destroy();
+            this.kintsugiBanner = null;
+          }
+          this.completeTaskTransition();
+        });
+      } else {
+        const left = this.shardsList.filter((s) => !s.placed).length;
+        this.toolWarning.setText(`Отлично! Осталось осколков: ${left}`);
+      }
+    } else {
+      this.toolWarning.setText('⚠️ Поднесите осколок точнее к месту скола!');
+      this.tweens.add({
+        targets: shardObj.container,
+        x: shardObj.restX,
+        y: shardObj.restY,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    }
   }
 
   getToolTier(toolKey) {
@@ -513,6 +644,7 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   emitDustFX(x, y) {
+    if (!this.particles) return;
     if (this.activeTool === 'tool_scraper') {
       const tier = this.getToolTier('tool_scraper');
       if (AudioManager.playScrape) AudioManager.playScrape(tier);
@@ -649,7 +781,7 @@ export class RestoreScene extends Phaser.Scene {
     this.tweens.add({
       targets: [this.cleanArt, this.dirtLayer],
       alpha: 1,
-      duration: 380,
+      duration: 360,
       ease: 'Quad.easeOut',
       onComplete: () => {
         this.isTaskTransition = false;
@@ -659,7 +791,7 @@ export class RestoreScene extends Phaser.Scene {
     this.tweens.add({
       targets: [this.artifactPedestal, this.artifactShadow],
       alpha: 0.85,
-      duration: 350
+      duration: 340
     });
   }
 
@@ -726,12 +858,9 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-  // Генерирует слой грязи, идеально обрезанный по силуэту артефакта через Canvas destination-in
   buildMaskedDirtCanvasTexture(reqTool) {
-    const tempKey = '_temp_dirt_layer';
-    if (this.textures.exists(tempKey)) {
-      this.textures.remove(tempKey);
-    }
+    const tempKey = `_dirt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    this._tempTextureKeys.push(tempKey);
 
     const cvs = this.textures.createCanvas(tempKey, this.artW, this.artH);
     const ctx = cvs.getContext();
@@ -769,7 +898,6 @@ export class RestoreScene extends Phaser.Scene {
       drawBlobs('rgba(40, 40, 36, 0.52)', 24, 14, 32);
     }
 
-    // Обрезаем грязь строго по силуэту артефакта
     const snapCanvas = this.getArtSnapshotCanvas(this.currentArtTexKey);
     if (snapCanvas) {
       ctx.globalCompositeOperation = 'destination-in';
@@ -892,8 +1020,10 @@ export class RestoreScene extends Phaser.Scene {
           this.breakHoleGfx.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
           this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, s.radius);
 
-          this.particles.setParticleTint(this.isKintsugiMode ? 0xfacc15 : 0x38bdf8);
-          this.particles.emitParticleAt(s.targetX, s.targetY, 6);
+          if (this.particles) {
+            this.particles.setParticleTint(this.isKintsugiMode ? 0xfacc15 : 0x38bdf8);
+            this.particles.emitParticleAt(s.targetX, s.targetY, 6);
+          }
         }
       }
     });
@@ -962,9 +1092,7 @@ export class RestoreScene extends Phaser.Scene {
 
   createShardTexture(texKey, targetX, targetY, radius, idx) {
     const shardKey = `shard_tex_${Date.now()}_${idx}`;
-    if (this.textures.exists(shardKey)) {
-      this.textures.remove(shardKey);
-    }
+    this._tempTextureKeys.push(shardKey);
 
     const size = radius * 2 + 8;
     const half = size / 2;
@@ -1004,6 +1132,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.progressBarFill.width = 6;
     this.shardsList = [];
+    this.activeDraggedShard = null;
 
     const texKey = this.currentArtTexKey;
 
@@ -1043,11 +1172,7 @@ export class RestoreScene extends Phaser.Scene {
       pieceBorder.lineStyle(2.5, 0xfacc15, 0.95);
       pieceBorder.strokeCircle(0, 0, radius);
 
-      const hitZone = this.add.circle(0, 0, 42, 0xfacc15, 0.05)
-        .setInteractive({ draggable: true, useHandCursor: true });
-
-      pieceContainer.add([pieceImg, pieceBorder, hitZone]);
-      this.input.setDraggable(hitZone);
+      pieceContainer.add([pieceImg, pieceBorder]);
       this.assemblyContainer.add(pieceContainer);
 
       const scatter = scatterOffsets[idx % scatterOffsets.length];
@@ -1064,7 +1189,6 @@ export class RestoreScene extends Phaser.Scene {
         texKey: shardTexKey,
         container: pieceContainer,
         border: pieceBorder,
-        hitZone,
         glued: false,
         placed: false
       };
@@ -1081,78 +1205,6 @@ export class RestoreScene extends Phaser.Scene {
             this.selectTool('tool_glue', this.getToolTextureForTier('tool_glue'), true);
             this.toolWarning.setText(`Нанесите Клей на места сколов (${points.length} шт.)!`);
           }
-        }
-      });
-
-      hitZone.on('drag', (pointer) => {
-        if (shardObj.placed) return;
-        if (!shardObj.glued) {
-          this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
-          return;
-        }
-        // Переводим физические координаты pointer.x/y в логические (с учётом camera.zoom = 3)
-        const zoom = this.cameras.main.zoom || 1;
-        pieceContainer.x = pointer.x / zoom;
-        pieceContainer.y = pointer.y / zoom;
-
-        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
-        pieceContainer.setScale(dist < 65 ? 1.08 : 1.0);
-      });
-
-      hitZone.on('dragend', () => {
-        if (shardObj.placed || !shardObj.glued) return;
-        pieceContainer.setScale(1.0);
-
-        const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
-        if (dist < 65) {
-          shardObj.placed = true;
-          pieceContainer.x = targetX;
-          pieceContainer.y = targetY;
-          hitZone.disableInteractive();
-          hitZone.setFillStyle(0xffffff, 0);
-          pieceBorder.clear();
-
-          if (this.isKintsugiMode) {
-            pieceBorder.lineStyle(3, 0xfacc15, 0.95);
-            pieceBorder.strokeCircle(0, 0, radius);
-            if (AudioManager.playShine) AudioManager.playShine();
-          } else {
-            pieceBorder.lineStyle(1, 0x4ade80, 0.45);
-            pieceBorder.strokeCircle(0, 0, radius);
-            if (AudioManager.playCoin) AudioManager.playCoin();
-          }
-
-          this.updateAssemblyProgress();
-
-          const allPlaced = this.shardsList.every((s) => s.placed);
-          if (allPlaced) {
-            if (this.isKintsugiMode) {
-              this.hasKintsugiMastery = true;
-              Storage.addKintsugiLacquer(-1);
-            }
-
-            this.time.delayedCall(450, () => {
-              this.breakHoleGfx.setVisible(false);
-              this.assemblyContainer.setVisible(false);
-              if (this.kintsugiBanner) {
-                this.kintsugiBanner.destroy();
-                this.kintsugiBanner = null;
-              }
-              this.completeTaskTransition();
-            });
-          } else {
-            const left = this.shardsList.filter((s) => !s.placed).length;
-            this.toolWarning.setText(`Отлично! Осталось осколков: ${left}`);
-          }
-        } else {
-          this.toolWarning.setText('⚠️ Поднесите осколок точнее к месту скола!');
-          this.tweens.add({
-            targets: pieceContainer,
-            x: restX,
-            y: restY,
-            duration: 200,
-            ease: 'Back.easeOut'
-          });
         }
       });
     });
@@ -1227,6 +1279,7 @@ export class RestoreScene extends Phaser.Scene {
   startTask(taskIdx, animateLayer = true) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
+    this.activeDraggedShard = null;
     this.cleanedGrid.fill(0);
     this.cleanedScore = 0;
     this.progressBarFill.width = 6;
@@ -1243,7 +1296,7 @@ export class RestoreScene extends Phaser.Scene {
     this.selectTool(reqTool, iconKey, true);
 
     if (task.type === 'break_and_assemble') {
-      this.dirtLayer.clear();
+      if (this.dirtLayer) this.dirtLayer.clear();
       this.setupBreakAndAssembleStage(task);
       return;
     }
@@ -1256,18 +1309,20 @@ export class RestoreScene extends Phaser.Scene {
     this.assemblyContainer.setVisible(false);
     this.breakHoleGfx.setVisible(false);
 
-    this.dirtLayer.clear();
-    const maskedDirtKey = this.buildMaskedDirtCanvasTexture(reqTool);
-    this.dirtLayer.draw(maskedDirtKey, 0, 0);
+    if (this.dirtLayer) {
+      this.dirtLayer.clear();
+      const maskedDirtKey = this.buildMaskedDirtCanvasTexture(reqTool);
+      this.dirtLayer.draw(maskedDirtKey, 0, 0);
 
-    if (animateLayer) {
-      this.dirtLayer.setAlpha(0);
-      this.tweens.add({
-        targets: this.dirtLayer,
-        alpha: 1,
-        duration: 280,
-        ease: 'Quad.easeOut'
-      });
+      if (animateLayer) {
+        this.dirtLayer.setAlpha(0);
+        this.tweens.add({
+          targets: this.dirtLayer,
+          alpha: 1,
+          duration: 280,
+          ease: 'Quad.easeOut'
+        });
+      }
     }
   }
 
