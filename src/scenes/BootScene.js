@@ -7,20 +7,17 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Основные фоны сцен
     this.load.image('menu_bg', 'assets/backgrounds/menu_bg.png');
     this.load.image('museum_bg', 'assets/backgrounds/museum_bg.png');
     this.load.image('shop_bg', 'assets/backgrounds/shop_bg.png');
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
     this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
-    // Активный фон верстака из assets/workbenches/*.webp
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
     this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
 
-    // Предзагрузка растровых иллюстраций артефактов из assets/artifacts/*.webp
     ARTIFACT_TEMPLATES.forEach((art) => {
       if (art.textureKey) {
         this.load.image(art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
@@ -35,7 +32,6 @@ export class BootScene extends Phaser.Scene {
       console.error('Ошибка createRestorationAssets:', err);
     }
 
-    // HD-текстура сундука верстаков (192x192 для 3x Retina без лесенок)
     if (!this.textures.exists('lootbox_chest')) {
       const cvs = this.textures.createCanvas('lootbox_chest', 192, 192);
       const ctx = cvs.getContext();
@@ -50,7 +46,6 @@ export class BootScene extends Phaser.Scene {
       ctx.roundRect(22, 36, 148, 120, 20);
       ctx.fill();
 
-      // Золотая окантовка и замок
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 6;
       ctx.stroke();
@@ -67,7 +62,6 @@ export class BootScene extends Phaser.Scene {
       cvs.refresh();
     }
 
-    // HD-текстура ларя инструментов (192x192)
     if (!this.textures.exists('toolbox_chest')) {
       const cvs = this.textures.createCanvas('toolbox_chest', 192, 192);
       const ctx = cvs.getContext();
@@ -111,48 +105,83 @@ export class BootScene extends Phaser.Scene {
       }
     };
 
-    const drawStar = (ctx, scx, scy, spikes, outerRadius, innerRadius) => {
-      let rot = (Math.PI / 2) * 3;
-      let x = scx;
-      let y = scy;
-      const step = Math.PI / spikes;
-      ctx.beginPath();
-      ctx.moveTo(scx, scy - outerRadius);
-      for (let i = 0; i < spikes; i++) {
-        x = scx + Math.cos(rot) * outerRadius;
-        y = scy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
+    const getStarPoints = (cx, cy, outerR, innerR) => {
+      const pts = [];
+      let rot = -Math.PI / 2;
+      const step = Math.PI / 5;
+      for (let i = 0; i < 5; i++) {
+        pts.push({ x: cx + Math.cos(rot) * outerR, y: cy + Math.sin(rot) * outerR });
         rot += step;
-        x = scx + Math.cos(rot) * innerRadius;
-        y = scy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
+        pts.push({ x: cx + Math.cos(rot) * innerR, y: cy + Math.sin(rot) * innerR });
         rot += step;
       }
-      ctx.lineTo(scx, scy - outerRadius);
-      ctx.closePath();
+      return pts;
     };
 
-    // HD-звёзды (128x128 вместо 64x64 для плавного сглаживания на экране победы)
+    // Ювелирная объёмная звезда с 10 гранями и золотой окантовкой
     make('icon_star', 128, 128, (ctx) => {
-      const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 56);
-      g.addColorStop(0, '#fffbeb');
-      g.addColorStop(0.45, '#facc15');
-      g.addColorStop(1, '#ca8a04');
-      ctx.fillStyle = g;
-      drawStar(ctx, 64, 64, 5, 52, 24);
+      const cx = 64;
+      const cy = 66;
+      const pts = getStarPoints(cx, cy, 52, 23);
+
+      // Мягкая тень под звездой
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+
+      const baseGrad = ctx.createLinearGradient(20, 14, 108, 114);
+      baseGrad.addColorStop(0, '#fef08a');
+      baseGrad.addColorStop(0.5, '#eab308');
+      baseGrad.addColorStop(1, '#a16207');
+      ctx.fillStyle = baseGrad;
       ctx.fill();
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 4;
+      ctx.restore();
+
+      // Огранка от центра к вершинам (левая грань светлее, правая темнее)
+      for (let i = 0; i < pts.length; i++) {
+        const p1 = pts[i];
+        const p2 = pts[(i + 1) % pts.length];
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fillStyle = (i % 2 === 0) ? 'rgba(255, 251, 235, 0.38)' : 'rgba(120, 53, 15, 0.28)';
+        ctx.fill();
+      }
+
+      // Чёткий золотой контур
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.strokeStyle = '#fef9c3';
+      ctx.lineWidth = 2.5;
       ctx.lineJoin = 'round';
       ctx.stroke();
     });
 
+    // Пустая звезда в едином ювелирном стиле
     make('icon_star_empty', 128, 128, (ctx) => {
-      ctx.fillStyle = '#1e293b';
-      drawStar(ctx, 64, 64, 5, 52, 24);
+      const cx = 64;
+      const cy = 66;
+      const pts = getStarPoints(cx, cy, 50, 22);
+
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+
+      ctx.fillStyle = 'rgba(24, 16, 10, 0.78)';
       ctx.fill();
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#785532';
+      ctx.lineWidth = 2.5;
       ctx.lineJoin = 'round';
       ctx.stroke();
     });
@@ -167,7 +196,6 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Резервные заглушки для артефактов (сработают только для тех, чьи .webp ещё не загружены в assets/artifacts/)
     const W = 640;
     const H = 800;
     const cx = 320;
