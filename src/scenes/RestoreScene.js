@@ -69,6 +69,8 @@ export class RestoreScene extends Phaser.Scene {
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
     this.shardsList = [];
+    this._artSnapshotCanvas = null;
+    this._artSnapshotKey = null;
 
     this.generateDetailedToolTextures();
 
@@ -86,8 +88,17 @@ export class RestoreScene extends Phaser.Scene {
     this.centerX = Math.floor(width / 2);
     this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
 
-    this.artW = Math.floor(Math.min(width * 0.78, 300));
-    this.artH = Math.floor(Math.min(workspaceAvailableHeight * 0.74, 290));
+    // Строгая пропорция 4:5 (под холст 640x800) с безопасным вписыванием в рабочую область
+    const maxArtH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 320));
+    const maxArtW = Math.floor(Math.min(width * 0.76, 260));
+    if (maxArtH * 0.8 <= maxArtW) {
+      this.artH = maxArtH;
+      this.artW = Math.floor(maxArtH * 0.8);
+    } else {
+      this.artW = maxArtW;
+      this.artH = Math.floor(maxArtW / 0.8);
+    }
+
     this.topLeftX = Math.floor(this.centerX - this.artW / 2);
     this.topLeftY = Math.floor(this.centerY - this.artH / 2);
 
@@ -669,22 +680,37 @@ export class RestoreScene extends Phaser.Scene {
     return map[toolId] || 'инструмент';
   }
 
+  getArtSnapshotCanvas(textureKey) {
+    if (this._artSnapshotCanvas && this._artSnapshotKey === textureKey) {
+      return this._artSnapshotCanvas;
+    }
+    const tex = this.textures.get(textureKey);
+    const srcImg = tex ? tex.getSourceImage() : null;
+    if (!srcImg) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.artW;
+    canvas.height = this.artH;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcImg, 0, 0, this.artW, this.artH);
+
+    this._artSnapshotCanvas = canvas;
+    this._artSnapshotKey = textureKey;
+    return canvas;
+  }
+
   buildValidCellsMask(textureKey) {
     this.validCellsMask.fill(0);
     this.targetValidCells = 0;
 
-    let srcCanvas = null;
-    try {
-      const tex = this.textures.get(textureKey);
-      srcCanvas = tex.getSourceImage();
-    } catch {
-      srcCanvas = null;
-    }
+    const snapCanvas = this.getArtSnapshotCanvas(textureKey);
 
-    if (srcCanvas && srcCanvas.getContext) {
-      const w = srcCanvas.width;
-      const h = srcCanvas.height;
-      const imgData = srcCanvas.getContext('2d').getImageData(0, 0, w, h).data;
+    if (snapCanvas) {
+      const w = snapCanvas.width;
+      const h = snapCanvas.height;
+      const imgData = snapCanvas.getContext('2d').getImageData(0, 0, w, h).data;
 
       for (let gy = 0; gy < this.gridRows; gy++) {
         for (let gx = 0; gx < this.gridCols; gx++) {
@@ -744,13 +770,13 @@ export class RestoreScene extends Phaser.Scene {
     }
 
     // Компактный реставрационный коврик строго вокруг артефакта
-    const artW = this.artW || 300;
-    const artH = this.artH || 290;
+    const artW = this.artW || 260;
+    const artH = this.artH || 320;
     const maxMatW = width - 56;
     const maxMatH = (bottomBound - topBound) - 44;
 
     const matW = Math.min(artW + 46, maxMatW);
-    const matH = Math.min(artH + 56, maxMatH);
+    const matH = Math.min(artH + 46, maxMatH);
     const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
 
     this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
@@ -854,8 +880,8 @@ export class RestoreScene extends Phaser.Scene {
     const colW = this.artW / this.gridCols;
     const rowH = this.artH / this.gridRows;
 
-    for (let gy = 4; gy < this.gridRows - 4; gy++) {
-      for (let gx = 4; gx < this.gridCols - 4; gx++) {
+    for (let gy = 5; gy < this.gridRows - 5; gy++) {
+      for (let gx = 5; gx < this.gridCols - 5; gx++) {
         const idx = gy * this.gridCols + gx;
         if (this.validCellsMask[idx] === 1) {
           candidates.push({
@@ -905,11 +931,11 @@ export class RestoreScene extends Phaser.Scene {
     ctx.closePath();
     ctx.clip();
 
-    const srcImg = this.textures.get(texKey).getSourceImage();
-    if (srcImg) {
+    const snapCanvas = this.getArtSnapshotCanvas(texKey);
+    if (snapCanvas) {
       const offsetX = this.topLeftX - targetX + half;
       const offsetY = this.topLeftY - targetY + half;
-      ctx.drawImage(srcImg, offsetX, offsetY, this.artW, this.artH);
+      ctx.drawImage(snapCanvas, offsetX, offsetY);
     } else {
       ctx.fillStyle = '#c89d54';
       ctx.fillRect(0, 0, size, size);
@@ -962,7 +988,7 @@ export class RestoreScene extends Phaser.Scene {
 
       const shardTexKey = this.createShardTexture(texKey, targetX, targetY, radius, idx);
 
-      const pieceContainer = this.add.container(targetX, targetY).setDepth(40);
+      const pieceContainer = this.add.container(targetX, targetY);
       const pieceImg = this.add.image(0, 0, shardTexKey);
 
       const pieceBorder = this.add.graphics();
