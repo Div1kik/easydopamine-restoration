@@ -9,20 +9,28 @@ import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 import { YandexSDK } from './utils/YandexSDK.js';
 
 const RETINA_MULT = 2;
-const TEXT_RES = 3;
+// Строго равно RETINA_MULT, чтобы текстура текста ложилась 1:1 в буфер камеры без дробного сжатия 1.5x
+const TEXT_RES = RETINA_MULT;
 
 function mapFontFamily(raw = '') {
   const s = String(raw).toLowerCase();
   if ((s.includes('palatino') || s.includes('georgia') || s.includes('serif')) && !s.includes('sans-serif')) {
     return '"Cormorant Garamond", Georgia, serif';
   }
-  return '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  return '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 }
 
 function patchTextStyle(style = {}) {
   const patched = { ...style };
   patched.resolution = TEXT_RES;
   patched.fontFamily = mapFontFamily(patched.fontFamily);
+  // Минимальный читаемый кегль 11.5px для описаний (без раздувания вёрстки)
+  if (patched.fontSize) {
+    const num = parseFloat(patched.fontSize);
+    if (!Number.isNaN(num) && num < 11.5) {
+      patched.fontSize = '11.5px';
+    }
+  }
   if (!patched.padding) {
     patched.padding = { top: 2, bottom: 2, left: 1, right: 1 };
   }
@@ -31,7 +39,10 @@ function patchTextStyle(style = {}) {
 
 const origTextFactory = Phaser.GameObjects.GameObjectFactory.prototype.text;
 Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, text, style = {}) {
-  const obj = origTextFactory.call(this, x, y, text, patchTextStyle(style));
+  // Округляем координаты до целых пикселей, чтобы глифы не попадали на субпиксельную границу
+  const rx = typeof x === 'number' ? Math.round(x) : x;
+  const ry = typeof y === 'number' ? Math.round(y) : y;
+  const obj = origTextFactory.call(this, rx, ry, text, patchTextStyle(style));
   obj.setResolution(TEXT_RES);
   return obj;
 };
@@ -49,15 +60,14 @@ const aspect = (window.innerHeight && window.innerWidth)
   : (800 / 480);
 const LOGICAL_HEIGHT = Phaser.Math.Clamp(Math.round(BASE_WIDTH * aspect), 780, 960);
 
-// Оборачиваем сцены, чтобы камера автоматически работала в 2x Retina-разрешении без изменения координат
 function makeRetinaScene(SceneClass) {
   return class extends SceneClass {
     init(data) {
       if (this.cameras && this.cameras.main) {
         this.cameras.main.setZoom(RETINA_MULT);
         this.cameras.main.setOrigin(0, 0);
+        this.cameras.main.setRoundPixels(true);
       }
-      // Подменяем логические width/height в this.scale для расчётов позиций
       this.scale = new Proxy(this.sys.scale, {
         get(target, prop) {
           if (prop === 'width') return BASE_WIDTH;
@@ -82,7 +92,7 @@ const config = {
   render: {
     antialias: true,
     antialiasGL: true,
-    roundPixels: false,
+    roundPixels: true,
     powerPreference: 'high-performance'
   },
   scale: {
