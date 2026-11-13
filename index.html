@@ -9,6 +9,14 @@
   <meta name="theme-color" content="#0d0805" />
   <title>Артефакты Времени — Мастерская реставратора</title>
 
+  <!-- Чёткие кириллические шрифты для заголовков и интерфейса -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Montserrat:wght@500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
   <!-- SDK Яндекс Игр -->
   <script src="https://yandex.ru/games/sdk/v2"></script>
 
@@ -33,6 +41,9 @@
       overflow: hidden;
       background-color: #0d0805;
       touch-action: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
 
     #game-container {
@@ -47,6 +58,7 @@
     canvas {
       display: block;
       touch-action: none;
+      image-rendering: -webkit-optimize-contrast;
     }
   </style>
 </head>
@@ -54,12 +66,25 @@
   <div id="game-container"></div>
 
   <script>
-    // Запрет контекстного меню по долгому тапу / правому клику (требование Яндекс Игр)
     window.addEventListener('contextmenu', function (e) {
       e.preventDefault();
     });
   </script>
 
-  <script type="module" src="./src/main.js"></script>
+  <!-- Ждём загрузку веб-шрифтов перед стартом Phaser, чтобы не было скачков и мыла при первом рендере -->
+  <script type="module">
+    const startApp = async () => {
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await Promise.race([
+            document.fonts.ready,
+            new Promise((resolve) => setTimeout(resolve, 1200))
+          ]);
+        }
+      } catch {}
+      await import('./src/main.js');
+    };
+    startApp();
+  </script>
 </body>
 </html>
