@@ -49,9 +49,9 @@ export class EraSelectScene extends Phaser.Scene {
       AudioManager.playEraMusic(this.eras[0].id);
     }
 
-    // Верхняя шапка
+    // Верхняя шапка (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.88);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 114);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 114, width, 114);
@@ -104,17 +104,12 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.listContainer = this.add.container(0, this.listTopY).setDepth(5);
 
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(0, this.listTopY, width, this.listHeight);
-    this.listContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
-
-    this.setupVerticalScroll();
+    this.setupScrollHandlers();
     this.renderArtifactsList();
 
-    // Нижняя панель с кнопкой возврата
+    // Нижняя панель с кнопкой возврата (depth 30 перекрывает низ списка)
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.90);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -175,11 +170,8 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.tabButtons = [];
     const totalTabsWidth = startX + this.eras.length * (tabWidth + spacing);
-    const minScrollX = Math.min(0, width - totalTabsWidth - 16);
-
-    let tabDragStartX = 0;
-    let tabInitialX = 0;
-    let isDraggingTabs = false;
+    this.minTabsScrollX = Math.min(0, width - totalTabsWidth - 16);
+    this.isDraggingTabs = false;
 
     this.eras.forEach((era, i) => {
       const tabX = startX + i * (tabWidth + spacing) + tabWidth / 2;
@@ -210,24 +202,8 @@ export class EraSelectScene extends Phaser.Scene {
         resolution: this.textRes
       }).setOrigin(0.5);
 
-      zone.on('pointerdown', (pointer) => {
-        tabDragStartX = pointer.x;
-        tabInitialX = this.tabsScrollContainer.x;
-        isDraggingTabs = false;
-      });
-
-      zone.on('pointermove', (pointer) => {
-        if (pointer.isDown) {
-          const dx = pointer.x - tabDragStartX;
-          if (Math.abs(dx) > 6) {
-            isDraggingTabs = true;
-            this.tabsScrollContainer.x = Phaser.Math.Clamp(tabInitialX + dx, minScrollX, 0);
-          }
-        }
-      });
-
       zone.on('pointerup', () => {
-        if (!isDraggingTabs) {
+        if (!this.isDraggingTabs) {
           if (AudioManager.playClick) AudioManager.playClick();
           this.selectedEraIndex = i;
           this.updateTabsVisual();
@@ -252,13 +228,26 @@ export class EraSelectScene extends Phaser.Scene {
     });
   }
 
-  setupVerticalScroll() {
+  setupScrollHandlers() {
     let startY = 0;
     let containerStartY = 0;
+    let listPointerActive = false;
+
+    let tabStartX = 0;
+    let tabsContainerStartX = 0;
+    let tabsPointerActive = false;
+
     this.isDraggingList = false;
+    this.isDraggingTabs = false;
 
     this.input.on('pointerdown', (p) => {
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
+      if (p.y >= 64 && p.y <= 112) {
+        tabsPointerActive = true;
+        tabStartX = p.x;
+        tabsContainerStartX = this.tabsScrollContainer ? this.tabsScrollContainer.x : 0;
+        this.isDraggingTabs = false;
+      } else if (p.y >= this.listTopY && p.y <= this.listBottomY) {
+        listPointerActive = true;
         startY = p.y;
         containerStartY = this.listContainer.y;
         this.isDraggingList = false;
@@ -266,17 +255,42 @@ export class EraSelectScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
+      if (tabsPointerActive && this.tabsScrollContainer) {
+        const dx = p.x - tabStartX;
+        if (Math.abs(dx) > 6) {
+          this.isDraggingTabs = true;
+        }
+        if (this.isDraggingTabs) {
+          const minX = this.minTabsScrollX !== undefined ? this.minTabsScrollX : 0;
+          this.tabsScrollContainer.x = Phaser.Math.Clamp(tabsContainerStartX + dx, minX, 0);
+        }
+      }
+
+      if (listPointerActive) {
         const dy = p.y - startY;
         if (Math.abs(dy) > 6) {
           this.isDraggingList = true;
         }
-        this.listContainer.y = Phaser.Math.Clamp(
-          containerStartY + dy,
-          this.minListY || this.listTopY,
-          this.listTopY
-        );
+        if (this.isDraggingList) {
+          const minScroll = this.minListY !== undefined ? this.minListY : this.listTopY;
+          this.listContainer.y = Phaser.Math.Clamp(containerStartY + dy, minScroll, this.listTopY);
+        }
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      listPointerActive = false;
+      tabsPointerActive = false;
+    });
+
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (pointer.y >= 64 && pointer.y <= 112 && this.tabsScrollContainer) {
+        const minX = this.minTabsScrollX !== undefined ? this.minTabsScrollX : 0;
+        const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+        this.tabsScrollContainer.x = Phaser.Math.Clamp(this.tabsScrollContainer.x - delta * 0.45, minX, 0);
+      } else if (pointer.y >= this.listTopY && pointer.y <= this.listBottomY) {
+        const minScroll = this.minListY !== undefined ? this.minListY : this.listTopY;
+        this.listContainer.y = Phaser.Math.Clamp(this.listContainer.y - deltaY * 0.45, minScroll, this.listTopY);
       }
     });
   }
@@ -291,7 +305,6 @@ export class EraSelectScene extends Phaser.Scene {
     const currentEra = this.eras[this.selectedEraIndex];
     this.updateHeader();
 
-    // Если эпоха не открыта
     if (!currentEra.unlocked) {
       this.minListY = this.listTopY;
       const boxW = width * 0.90;
@@ -350,7 +363,8 @@ export class EraSelectScene extends Phaser.Scene {
           resolution: textRes
         }).setOrigin(0.5);
 
-        unlockZone.on('pointerdown', () => {
+        unlockZone.on('pointerup', () => {
+          if (this.isDraggingList) return;
           if (Storage.unlockRegion(currentEra.id)) {
             if (AudioManager.playShine) AudioManager.playShine();
             currentEra.unlocked = true;
@@ -366,7 +380,7 @@ export class EraSelectScene extends Phaser.Scene {
       return;
     }
 
-    // 1. Карточка снаряжения экспедиции (+ широкая кнопка за рекламу)
+    // 1. Карточка снаряжения экспедиции
     const expW = width * 0.92;
     const expH = 92;
     const expY = 52;
@@ -416,7 +430,7 @@ export class EraSelectScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    fundZone.on('pointerdown', () => {
+    fundZone.on('pointerup', () => {
       if (this.isDraggingList) return;
       const success = Storage.fundExpedition(
         currentEra.id,
@@ -431,7 +445,6 @@ export class EraSelectScene extends Phaser.Scene {
       }
     });
 
-    // Кнопка бесплатной экспедиции за рекламу (широкая, текст помещается с запасом)
     const adExpGfx = this.add.graphics();
     adExpGfx.fillStyle(0x1e3a8a, 0.98);
     adExpGfx.fillRoundedRect(fundBtnX - fundBtnW / 2, 20 - 15, fundBtnW, 30, 8);
@@ -447,7 +460,7 @@ export class EraSelectScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    adExpZone.on('pointerdown', () => {
+    adExpZone.on('pointerup', () => {
       if (this.isDraggingList) return;
       YandexSDK.showRewarded(() => {
         Storage.fundExpedition(currentEra.id, 0, ARTIFACT_TEMPLATES);
@@ -469,7 +482,6 @@ export class EraSelectScene extends Phaser.Scene {
     const listOffsetY = 110;
 
     let touchDownTime = 0;
-    let touchDownY = 0;
 
     eraArtifacts.forEach((art, index) => {
       const cardY = listOffsetY + index * (cardH + spacing) + cardH / 2;
@@ -495,7 +507,7 @@ export class EraSelectScene extends Phaser.Scene {
 
       const texKey = this.textures.exists(art.textureKey) ? art.textureKey : 'art_egypt_scarab';
       const icon = this.add.image(-cardW / 2 + 44, 0, texKey)
-        .setDisplaySize(58, 58)
+        .setDisplaySize(50, 62)
         .setAlpha(hasStock ? 1 : 0.45);
 
       const title = this.add.text(-cardW / 2 + 88, -26, art.name, {
@@ -540,16 +552,14 @@ export class EraSelectScene extends Phaser.Scene {
       const hitZone = this.add.zone(0, 0, cardW, cardH)
         .setInteractive({ useHandCursor: hasStock });
 
-      hitZone.on('pointerdown', (p) => {
+      hitZone.on('pointerdown', () => {
         touchDownTime = this.time.now;
-        touchDownY = p.y;
       });
 
-      hitZone.on('pointerup', (p) => {
-        const moveDist = Math.abs(p.y - touchDownY);
+      hitZone.on('pointerup', () => {
         const elapsed = this.time.now - touchDownTime;
 
-        if (!this.isDraggingList && moveDist < 10 && elapsed < 450 && hasStock) {
+        if (!this.isDraggingList && elapsed < 500 && hasStock) {
           Storage.setActiveSession(currentEra.id, art.id);
           if (AudioManager.playClick) AudioManager.playClick();
           this.scene.start('RestoreScene', {
