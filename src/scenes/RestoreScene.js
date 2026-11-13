@@ -88,7 +88,7 @@ export class RestoreScene extends Phaser.Scene {
     this.centerX = Math.floor(width / 2);
     this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
 
-    // Строгая пропорция 4:5 (под холст 640x800) с безопасным вписыванием в рабочую область
+    // Строгая пропорция 4:5 (под холст 640x800)
     const maxArtH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 320));
     const maxArtW = Math.floor(Math.min(width * 0.76, 260));
     if (maxArtH * 0.8 <= maxArtW) {
@@ -266,24 +266,18 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(6);
 
     const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
+    this.currentArtTexKey = texKey;
+
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
       .setDisplaySize(this.artW, this.artH)
       .setDepth(7);
 
     this.breakHoleGfx = this.add.graphics().setDepth(7.5);
 
+    // RenderTexture без BitmapMask — обрезка грязи по силуэту делается напрямую при генерации слоя грязи!
     this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
       .setOrigin(0, 0)
       .setDepth(8);
-
-    const maskImage = this.make.image({
-      x: this.centerX,
-      y: this.centerY,
-      key: texKey,
-      add: false
-    });
-    maskImage.setDisplaySize(this.artW, this.artH);
-    this.dirtLayer.setMask(new Phaser.Display.Masks.BitmapMask(this, maskImage));
 
     this.createDustParticles();
 
@@ -313,7 +307,6 @@ export class RestoreScene extends Phaser.Scene {
     this.playMaterializeSequence();
 
     // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
-    // Примечание: в main.js this.input.on('pointer...') уже оборачивает pointer в wrapLogicalPointer (делит на RETINA_MULT = 3)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
@@ -733,6 +726,61 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
+  // Генерирует слой грязи, идеально обрезанный по силуэту артефакта через Canvas destination-in
+  buildMaskedDirtCanvasTexture(reqTool) {
+    const tempKey = '_temp_dirt_layer';
+    if (this.textures.exists(tempKey)) {
+      this.textures.remove(tempKey);
+    }
+
+    const cvs = this.textures.createCanvas(tempKey, this.artW, this.artH);
+    const ctx = cvs.getContext();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const drawBlobs = (color, count, minR, maxR) => {
+      ctx.fillStyle = color;
+      for (let i = 0; i < count; i++) {
+        const x = Phaser.Math.Between(12, this.artW - 12);
+        const y = Phaser.Math.Between(12, this.artH - 12);
+        const r = Phaser.Math.Between(minR, maxR);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    if (reqTool === 'tool_scraper') {
+      ctx.fillStyle = 'rgba(92, 74, 53, 0.92)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(66, 50, 31, 0.92)', 34, 12, 30);
+      drawBlobs('rgba(138, 109, 75, 0.65)', 20, 6, 16);
+    } else if (reqTool === 'tool_brush') {
+      ctx.fillStyle = 'rgba(168, 159, 145, 0.86)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(120, 113, 108, 0.78)', 32, 8, 24);
+    } else if (reqTool === 'tool_solvent') {
+      ctx.fillStyle = 'rgba(35, 77, 69, 0.86)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(54, 112, 99, 0.82)', 28, 10, 26);
+    } else {
+      ctx.fillStyle = 'rgba(65, 65, 58, 0.68)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(40, 40, 36, 0.52)', 24, 14, 32);
+    }
+
+    // Обрезаем грязь строго по силуэту артефакта
+    const snapCanvas = this.getArtSnapshotCanvas(this.currentArtTexKey);
+    if (snapCanvas) {
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(snapCanvas, 0, 0, this.artW, this.artH);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    cvs.refresh();
+    return tempKey;
+  }
+
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
@@ -770,7 +818,6 @@ export class RestoreScene extends Phaser.Scene {
       this.load.start();
     }
 
-    // Компактный реставрационный коврик строго вокруг артефакта
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
@@ -958,7 +1005,7 @@ export class RestoreScene extends Phaser.Scene {
     this.progressBarFill.width = 6;
     this.shardsList = [];
 
-    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
+    const texKey = this.currentArtTexKey;
 
     const shardCount = Phaser.Math.Clamp(task.shardCount || 2, 2, 3);
     const points = this.getRandomValidPointsOnArt(shardCount);
@@ -1037,17 +1084,16 @@ export class RestoreScene extends Phaser.Scene {
         }
       });
 
-      // В main.js камера имеет zoom = RETINA_MULT (3), поэтому для событий объекта используем pointer.worldX / worldY
       hitZone.on('drag', (pointer) => {
         if (shardObj.placed) return;
         if (!shardObj.glued) {
           this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
           return;
         }
-        const wx = (pointer.worldX !== undefined) ? pointer.worldX : (pointer.x / 3);
-        const wy = (pointer.worldY !== undefined) ? pointer.worldY : (pointer.y / 3);
-        pieceContainer.x = wx;
-        pieceContainer.y = wy;
+        // Переводим физические координаты pointer.x/y в логические (с учётом camera.zoom = 3)
+        const zoom = this.cameras.main.zoom || 1;
+        pieceContainer.x = pointer.x / zoom;
+        pieceContainer.y = pointer.y / zoom;
 
         const dist = Phaser.Math.Distance.Between(pieceContainer.x, pieceContainer.y, targetX, targetY);
         pieceContainer.setScale(dist < 65 ? 1.08 : 1.0);
@@ -1211,44 +1257,8 @@ export class RestoreScene extends Phaser.Scene {
     this.breakHoleGfx.setVisible(false);
 
     this.dirtLayer.clear();
-    const dirtGfx = this.make.graphics({ x: 0, y: 0, add: false });
-
-    if (reqTool === 'tool_scraper') {
-      dirtGfx.fillStyle(0x5c4a35, 0.90);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x42321f, 0.92);
-      for (let i = 0; i < 34; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(12, 30));
-      }
-      dirtGfx.fillStyle(0x8a6d4b, 0.65);
-      for (let i = 0; i < 20; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(6, 16));
-      }
-    } else if (reqTool === 'tool_brush') {
-      dirtGfx.fillStyle(0xa89f91, 0.84);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x78716c, 0.75);
-      for (let i = 0; i < 32; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(8, 24));
-      }
-    } else if (reqTool === 'tool_solvent') {
-      dirtGfx.fillStyle(0x234d45, 0.84);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x367063, 0.80);
-      for (let i = 0; i < 28; i++) {
-        dirtGfx.fillEllipse(Phaser.Math.Between(20, this.artW - 20), Phaser.Math.Between(20, this.artH - 20), Phaser.Math.Between(18, 38), Phaser.Math.Between(10, 22));
-      }
-    } else {
-      dirtGfx.fillStyle(0x41413a, 0.65);
-      dirtGfx.fillRect(0, 0, this.artW, this.artH);
-      dirtGfx.fillStyle(0x282824, 0.50);
-      for (let i = 0; i < 24; i++) {
-        dirtGfx.fillCircle(Phaser.Math.Between(15, this.artW - 15), Phaser.Math.Between(15, this.artH - 15), Phaser.Math.Between(14, 32));
-      }
-    }
-
-    this.dirtLayer.draw(dirtGfx, 0, 0);
-    dirtGfx.destroy();
+    const maskedDirtKey = this.buildMaskedDirtCanvasTexture(reqTool);
+    this.dirtLayer.draw(maskedDirtKey, 0, 0);
 
     if (animateLayer) {
       this.dirtLayer.setAlpha(0);
