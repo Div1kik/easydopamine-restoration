@@ -31,9 +31,9 @@ export class ShopScene extends Phaser.Scene {
 
     this.generateDetailedShopIcons();
 
-    // Верхняя шапка лавки
+    // Верхняя шапка лавки (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.92);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 110);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 110, width, 110);
@@ -56,7 +56,7 @@ export class ShopScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
     this.updateCoinsDisplay();
 
-    // 3 чётко разделённые вкладки: Инструменты (прокачка) | Стиль (визуал инструментов и верстаков) | Музей
+    // 3 вкладки: Инструменты | Стиль | Музей
     const tabW = (width * 0.90) / 3;
     const tabH = 34;
     const startX = width * 0.05 + tabW / 2;
@@ -119,18 +119,13 @@ export class ShopScene extends Phaser.Scene {
 
     this.itemsContainer = this.add.container(0, this.listTopY).setDepth(5);
 
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(0, this.listTopY, width, this.listHeight);
-    this.itemsContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
-
     this.setupScroll();
     this.refreshTabs();
     this.renderContent();
 
-    // Нижняя панель
+    // Нижняя панель (depth 30 перекрывает низ списка)
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.92);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -184,7 +179,6 @@ export class ShopScene extends Phaser.Scene {
       });
     });
 
-    // Превью ПОЛНЫХ комплектов из 5 инструментов для вкладки «Стиль»
     TOOL_SKINS.forEach((skin) => {
       const key = `skin_fullset_${skin.id}`;
       if (this.textures.exists(key)) return;
@@ -200,10 +194,12 @@ export class ShopScene extends Phaser.Scene {
   setupScroll() {
     let startY = 0;
     let containerStartY = 0;
+    let pointerDownActive = false;
     this.isDragging = false;
 
     this.input.on('pointerdown', (p) => {
       if (p.y >= this.listTopY && p.y <= this.listBottomY) {
+        pointerDownActive = true;
         startY = p.y;
         containerStartY = this.itemsContainer.y;
         this.isDragging = false;
@@ -211,17 +207,25 @@ export class ShopScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
-        const dy = p.y - startY;
-        if (Math.abs(dy) > 6) {
-          this.isDragging = true;
-        }
-        this.itemsContainer.y = Phaser.Math.Clamp(
-          containerStartY + dy,
-          this.minScrollY || this.listTopY,
-          this.listTopY
-        );
+      if (!pointerDownActive) return;
+      const dy = p.y - startY;
+      if (Math.abs(dy) > 6) {
+        this.isDragging = true;
+      }
+      if (this.isDragging) {
+        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
+        this.itemsContainer.y = Phaser.Math.Clamp(containerStartY + dy, minScroll, this.listTopY);
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      pointerDownActive = false;
+    });
+
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (pointer.y >= this.listTopY && pointer.y <= this.listBottomY) {
+        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
+        this.itemsContainer.y = Phaser.Math.Clamp(this.itemsContainer.y - deltaY * 0.45, minScroll, this.listTopY);
       }
     });
   }
@@ -260,9 +264,6 @@ export class ShopScene extends Phaser.Scene {
     }
   }
 
-  // =========================================================================
-  // ВКЛАДКА 1: ИНСТРУМЕНТЫ (ТОЛЬКО ПРОКАЧКА МОЩНОСТИ БЕЗ СКИНОВ)
-  // =========================================================================
   renderToolsUpgrades(width) {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
@@ -344,7 +345,7 @@ export class ShopScene extends Phaser.Scene {
       actionBtn.add([actionGfx, actionTxt, actionZone]);
 
       if (!isBought) {
-        actionZone.on('pointerdown', () => {
+        actionZone.on('pointerup', () => {
           if (this.isDragging) return;
           const coins = Storage.getCoins();
           if (coins >= tool.price) {
@@ -368,16 +369,12 @@ export class ShopScene extends Phaser.Scene {
     this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
 
-  // =========================================================================
-  // ВКЛАДКА 2: СТИЛЬ (ВНЕШНИЙ ВИД ВСЕХ 5 ИНСТРУМЕНТОВ + 15 ВЕРСТАКОВ)
-  // =========================================================================
   renderVisualStylesTab(width) {
     const dpr = this.dpr;
     const FONT_UI = this.FONT_UI;
     const cardW = width * 0.92;
     let curY = 8;
 
-    // --- СЕКЦИЯ А: ВНЕШНИЙ ВИД ИНСТРУМЕНТОВ (ПОЛНЫЕ НАБОРЫ ИЗ 5 ПРИБОРОВ) ---
     const secHeader1 = this.add.text(width / 2, curY + 12, 'СТИЛЬ ИНСТРУМЕНТОВ (ВСЕ 5 ПРИБОРОВ)', {
       fontSize: '12px',
       fontFamily: FONT_UI,
@@ -406,7 +403,6 @@ export class ShopScene extends Phaser.Scene {
       cardBg.lineStyle(1.5, isActive ? 0xfacc15 : (isOwned ? 0x4ade80 : 0xc89d54), 0.9);
       cardBg.strokeRoundedRect(-cardW / 2, -skinCardH / 2, cardW, skinCardH, 12);
 
-      // Витрина полного набора из 5 инструментов сверху карточки
       cardBg.fillStyle(0x0d0805, 0.65);
       cardBg.fillRoundedRect(-cardW / 2 + 10, -skinCardH / 2 + 8, cardW - 20, 48, 8);
 
@@ -453,7 +449,7 @@ export class ShopScene extends Phaser.Scene {
           resolution: dpr
         }).setOrigin(0.5);
 
-        btnZone.on('pointerdown', () => {
+        btnZone.on('pointerup', () => {
           if (this.isDragging || isActive) return;
           Storage.setActiveToolSkin(skin.id);
           if (AudioManager.playClick) AudioManager.playClick();
@@ -478,7 +474,7 @@ export class ShopScene extends Phaser.Scene {
             resolution: dpr
           }).setOrigin(0.5);
 
-          cZone.on('pointerdown', () => {
+          cZone.on('pointerup', () => {
             if (this.isDragging) return;
             if (Storage.getCoins() >= skin.priceCoins) {
               Storage.addCoins(-skin.priceCoins);
@@ -504,7 +500,7 @@ export class ShopScene extends Phaser.Scene {
             resolution: dpr
           }).setOrigin(0.5);
 
-          aZone.on('pointerdown', () => {
+          aZone.on('pointerup', () => {
             if (this.isDragging) return;
             YandexSDK.showRewarded(() => {
               const nextAds = adProgress + 1;
@@ -534,7 +530,7 @@ export class ShopScene extends Phaser.Scene {
             resolution: dpr
           }).setOrigin(0.5);
 
-          cZone.on('pointerdown', () => {
+          cZone.on('pointerup', () => {
             if (this.isDragging) return;
             if (Storage.getCoins() >= skin.priceCoins) {
               Storage.addCoins(-skin.priceCoins);
@@ -565,7 +561,7 @@ export class ShopScene extends Phaser.Scene {
             resolution: dpr
           }).setOrigin(0.5);
 
-          aZone.on('pointerdown', () => {
+          aZone.on('pointerup', () => {
             if (this.isDragging) return;
             YandexSDK.showRewarded(() => {
               const nextAds = adProgress + 1;
@@ -589,7 +585,6 @@ export class ShopScene extends Phaser.Scene {
       curY += skinCardH + 10;
     });
 
-    // --- СЕКЦИЯ Б: ВНЕШНИЙ ВИД ВЕРСТАКА (15 СТОЛОВ + СУНДУК ИСКАТЕЛЯ) ---
     curY += 8;
     const secHeader2 = this.add.text(width / 2, curY + 12, 'СТИЛЬ ВЕРСТАКА (СТОЛЫ МАСТЕРСКОЙ)', {
       fontSize: '12px',
@@ -676,7 +671,7 @@ export class ShopScene extends Phaser.Scene {
 
       openBtn.add([openGfx, openTxt, openZone]);
 
-      openZone.on('pointerdown', () => {
+      openZone.on('pointerup', () => {
         if (this.isDragging) return;
         const res = this.rollLootboxRebalanced(lootboxPrice);
         if (res.success) {
@@ -794,7 +789,7 @@ export class ShopScene extends Phaser.Scene {
 
       actionBtn.add([actionGfx, actionTxt, actionZone]);
 
-      actionZone.on('pointerdown', () => {
+      actionZone.on('pointerup', () => {
         if (this.isDragging || isCurrentActive || isBaseLocked || isChestOnlyLocked) return;
 
         if (isPurchased) {
@@ -955,7 +950,7 @@ export class ShopScene extends Phaser.Scene {
       actionBtn.add([actionGfx, actionTxt, actionZone]);
 
       if (!isBought) {
-        actionZone.on('pointerdown', () => {
+        actionZone.on('pointerup', () => {
           if (this.isDragging) return;
           const coins = Storage.getCoins();
           if (coins >= exp.price) {
