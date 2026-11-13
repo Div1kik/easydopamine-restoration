@@ -63,6 +63,63 @@ function makeRetinaScene(SceneClass) {
         this.cameras.main.setOrigin(0, 0);
         this.cameras.main.setRoundPixels(false);
       }
+
+      if (this.input) {
+        // Не блокируем скролл сцены, если палец коснулся интерактивной карточки или кнопки
+        this.input.setTopOnly(false);
+
+        const patchPointer = (p) => {
+          if (!p || p.__retinaPatched) return p;
+          p.__retinaPatched = true;
+
+          const rawDescX = Object.getOwnPropertyDescriptor(Phaser.Input.Pointer.prototype, 'x') ||
+            Object.getOwnPropertyDescriptor(p, 'x');
+          const rawDescY = Object.getOwnPropertyDescriptor(Phaser.Input.Pointer.prototype, 'y') ||
+            Object.getOwnPropertyDescriptor(p, 'y');
+
+          Object.defineProperties(p, {
+            x: {
+              get() {
+                const raw = rawDescX && rawDescX.get ? rawDescX.get.call(this) : this.position.x;
+                return raw / RETINA_MULT;
+              },
+              set(v) {
+                if (rawDescX && rawDescX.set) rawDescX.set.call(this, v * RETINA_MULT);
+                else this.position.x = v * RETINA_MULT;
+              }
+            },
+            y: {
+              get() {
+                const raw = rawDescY && rawDescY.get ? rawDescY.get.call(this) : this.position.y;
+                return raw / RETINA_MULT;
+              },
+              set(v) {
+                if (rawDescY && rawDescY.set) rawDescY.set.call(this, v * RETINA_MULT);
+                else this.position.y = v * RETINA_MULT;
+              }
+            },
+            worldX: {
+              get() {
+                return this.position.x / RETINA_MULT;
+              }
+            },
+            worldY: {
+              get() {
+                return this.position.y / RETINA_MULT;
+              }
+            }
+          });
+          return p;
+        };
+
+        const origEmit = this.input.emit.bind(this.input);
+        this.input.emit = (event, a1, a2, a3, a4) => {
+          if (a1 && typeof a1 === 'object' && 'position' in a1) patchPointer(a1);
+          if (a2 && typeof a2 === 'object' && 'position' in a2) patchPointer(a2);
+          return origEmit(event, a1, a2, a3, a4);
+        };
+      }
+
       this.scale = new Proxy(this.sys.scale, {
         get(target, prop) {
           if (prop === 'width') return BASE_WIDTH;
@@ -71,32 +128,6 @@ function makeRetinaScene(SceneClass) {
           return typeof val === 'function' ? val.bind(target) : val;
         }
       });
-
-      // Нормализуем pointer.x и pointer.y под 3x Retina-буфер для скролла и перетаскивания во всех сценах
-      const origInputOn = this.input.on.bind(this.input);
-      this.input.on = (event, fn, context) => {
-        if (event === 'pointerdown' || event === 'pointermove' || event === 'pointerup') {
-          const wrapped = function (pointer, ...args) {
-            const logicalPointer = new Proxy(pointer, {
-              get(t, prop) {
-                if (prop === 'x') return t.x / RETINA_MULT;
-                if (prop === 'y') return t.y / RETINA_MULT;
-                if (prop === 'prevPosition' && t.prevPosition) {
-                  return {
-                    x: t.prevPosition.x / RETINA_MULT,
-                    y: t.prevPosition.y / RETINA_MULT
-                  };
-                }
-                const v = t[prop];
-                return typeof v === 'function' ? v.bind(t) : v;
-              }
-            });
-            return fn.call(context || this, logicalPointer, ...args);
-          };
-          return origInputOn(event, wrapped, context);
-        }
-        return origInputOn(event, fn, context);
-      };
 
       if (super.init) super.init(data);
     }
