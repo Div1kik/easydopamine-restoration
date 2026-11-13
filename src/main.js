@@ -55,7 +55,7 @@ const aspect = (window.innerHeight && window.innerWidth)
   : (800 / 480);
 const LOGICAL_HEIGHT = Phaser.Math.Clamp(Math.round(BASE_WIDTH * aspect), 780, 960);
 
-function wrapLogicalPointer(pointer) {
+function wrapLogicalPointer(pointer, forceDown = null) {
   if (!pointer || typeof pointer !== 'object') return pointer;
   return new Proxy(pointer, {
     get(target, prop) {
@@ -65,6 +65,7 @@ function wrapLogicalPointer(pointer) {
       if (prop === 'downY') return target.downY / RETINA_MULT;
       if (prop === 'worldX') return target.x / RETINA_MULT;
       if (prop === 'worldY') return target.y / RETINA_MULT;
+      if (prop === 'isDown' && forceDown !== null) return forceDown;
       if (prop === 'prevPosition' && target.prevPosition) {
         return {
           x: target.prevPosition.x / RETINA_MULT,
@@ -89,11 +90,28 @@ function makeRetinaScene(SceneClass) {
       if (this.input) {
         this.input.setTopOnly(false);
 
+        let touchActive = false;
         const origOn = this.input.on.bind(this.input);
+
+        origOn('pointerdown', () => {
+          touchActive = true;
+          this.isDragging = false;
+          this.isDraggingList = false;
+        });
+
+        origOn('pointerup', () => {
+          touchActive = false;
+          setTimeout(() => {
+            this.isDragging = false;
+            this.isDraggingList = false;
+          }, 50);
+        });
+
         this.input.on = (event, fn, context) => {
           if (typeof event === 'string' && event.startsWith('pointer')) {
             const safeFn = function (p, ...rest) {
-              return fn.call(context || this, wrapLogicalPointer(p), ...rest);
+              const downState = (event === 'pointermove') ? (touchActive || p.isDown) : null;
+              return fn.call(context || this, wrapLogicalPointer(p, downState), ...rest);
             };
             return origOn(event, safeFn, context);
           }
