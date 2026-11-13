@@ -10,7 +10,7 @@ export class MenuScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const textRes = 2.5;
+    const textRes = 3;
 
     const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -27,20 +27,20 @@ export class MenuScene extends Phaser.Scene {
 
     // Верхняя плашка заголовка
     const headerW = width * 0.88;
-    const headerH = 98;
-    const headerY = 98;
+    const headerH = 96;
+    const headerY = 96;
     this.drawStyledBox(width / 2, headerY, headerW, headerH, {
       fillTop: 0x24180f,
       fillBottom: 0x140d08,
-      alpha: 0.88,
+      alpha: 0.90,
       stroke: 0xc89d54,
-      strokeAlpha: 0.75,
+      strokeAlpha: 0.78,
       radius: 14,
       highlight: true
     });
 
-    this.add.text(width / 2, headerY - 31, 'EASY DOPAMINE GAMES', {
-      fontSize: '12px',
+    this.add.text(width / 2, headerY - 30, 'EASY DOPAMINE GAMES', {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#e2b866',
       fontStyle: 'bold',
@@ -50,7 +50,7 @@ export class MenuScene extends Phaser.Scene {
 
     const divider = this.add.graphics();
     divider.lineStyle(1, 0xc89d54, 0.45);
-    divider.lineBetween(width / 2 - 64, headerY - 17, width / 2 + 64, headerY - 17);
+    divider.lineBetween(width / 2 - 64, headerY - 16, width / 2 + 64, headerY - 16);
 
     this.add.text(width / 2, headerY + 4, 'АРТЕФАКТЫ ВРЕМЕНИ', {
       fontSize: '23px',
@@ -71,13 +71,13 @@ export class MenuScene extends Phaser.Scene {
     // Парящий логотип артефакта
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
-      const logo = this.add.image(width / 2, height * 0.265, logoKey);
-      logo.setDisplaySize(96, 96);
+      const logo = this.add.image(width / 2, height * 0.258, logoKey);
+      logo.setDisplaySize(88, 88);
       logo.setDepth(10);
 
       this.tweens.add({
         targets: logo,
-        y: height * 0.252,
+        y: height * 0.246,
         duration: 2200,
         yoyo: true,
         repeat: -1,
@@ -85,15 +85,15 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Виджет срочного контракта
-    this.renderContractWidget(width, height * 0.365, textRes, FONT_UI);
+    // Виджет срочного контракта (выровненный, с просторными отступами)
+    this.renderContractWidget(width, height * 0.362, textRes, FONT_UI);
 
     // Плашка ранга
-    this.renderRankWidget(width, height * 0.46, textRes, FONT_UI);
+    this.renderRankWidget(width, height * 0.464, textRes, FONT_UI);
 
     const createBtn = (y, text, isPrimary, onClick) => {
       const btnW = width * 0.86;
-      const btnH = 50;
+      const btnH = 49;
       const cont = this.add.container(width / 2, y);
 
       const palette = isPrimary
@@ -181,15 +181,15 @@ export class MenuScene extends Phaser.Scene {
       this.startQuickRestore();
     });
 
-    createBtn(startY + 60, '🧭  ЭКСПЕДИЦИИ', false, () => {
+    createBtn(startY + 59, '🧭  ЭКСПЕДИЦИИ', false, () => {
       this.scene.start('EraSelectScene');
     });
 
-    createBtn(startY + 120, '🕯  ЛАВКА МАСТЕРА', false, () => {
+    createBtn(startY + 118, '🕯  ЛАВКА МАСТЕРА', false, () => {
       this.scene.start('ShopScene');
     });
 
-    createBtn(startY + 180, '🏛  ЗАЛ СЛАВЫ (МУЗЕЙ)', false, () => {
+    createBtn(startY + 177, '🏛  ЗАЛ СЛАВЫ (МУЗЕЙ)', false, () => {
       this.scene.start('MuseumScene');
     });
 
@@ -211,7 +211,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.add.text(width / 2, badgeY, `🪙 Казна: ${coins}   |   ✨ Лак Кинцуги: ${lacquer} шт.`, {
-      fontSize: '13px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -300,7 +300,8 @@ export class MenuScene extends Phaser.Scene {
     bgGfx.lineStyle(1.5, 0xc89d54, 0.8);
     bgGfx.strokeRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 11);
 
-    const lvlBadge = this.add.text(-boxW / 2 + 14, -9, `УР. ${lvlData.level}`, {
+    const padX = 14;
+    const lvlBadge = this.add.text(-boxW / 2 + padX, -9, `УР. ${lvlData.level}`, {
       fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#facc15',
@@ -308,22 +309,22 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    const rankTitle = this.add.text(-boxW / 2 + 72, -9, lvlData.title, {
-      fontSize: '13.5px',
+    const rankTitle = this.add.text(-boxW / 2 + padX + 56, -9, lvlData.title, {
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    const tapHint = this.add.text(boxW / 2 - 14, -9, 'Путь ›', {
+    const tapHint = this.add.text(boxW / 2 - padX, -9, 'Путь ›', {
       fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#d6c3a5',
       resolution: textRes
     }).setOrigin(1, 0.5);
 
-    const barW = boxW - 28;
+    const barW = boxW - padX * 2;
     const barH = 7;
     const barY = 12;
     const fillW = Math.max(8, barW * Phaser.Math.Clamp(lvlData.progressRatio, 0, 1));
@@ -350,41 +351,26 @@ export class MenuScene extends Phaser.Scene {
       .setDepth(40)
       .setInteractive();
 
-    const modalCont = this.add.container(width / 2, height / 2).setDepth(41);
     const modalW = width * 0.88;
     const modalH = height * 0.78;
+    const modalTop = height / 2 - modalH / 2;
+    const modalBottom = height / 2 + modalH / 2;
+    const headerH = 66;
+    const footerH = 56;
 
-    const bg = this.add.graphics();
+    // Фон модального окна
+    const bg = this.add.graphics().setDepth(41);
     bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.98);
-    bg.fillRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
-    bg.lineStyle(1.5, 0xc89d54, 0.9);
-    bg.strokeRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
+    bg.fillRoundedRect(width / 2 - modalW / 2, modalTop, modalW, modalH, 14);
 
-    const title = this.add.text(0, -modalH / 2 + 24, '🏆 ПУТЬ МАСТЕРА ВРЕМЕНИ', {
-      fontSize: '15px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5);
+    // Прокручиваемый контейнер списка уровней (без GeometryMask, перекрывается верхней и нижней планками)
+    const listViewportTop = modalTop + headerH;
+    const listViewportBottom = modalBottom - footerH;
+    const viewportH = listViewportBottom - listViewportTop;
 
-    const subTitle = this.add.text(0, -modalH / 2 + 46, `Текущий ранг: Уровень ${curLevel} из 50`, {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      color: '#d6c3a5',
-      resolution: textRes
-    }).setOrigin(0.5);
-
-    const listCont = this.add.container(0, 0);
-
-    const maskGfx = this.make.graphics();
-    maskGfx.fillStyle(0xffffff);
-    maskGfx.fillRect(width / 2 - modalW / 2 + 8, height / 2 - modalH / 2 + 64, modalW - 16, modalH - 128);
-    listCont.setMask(new Phaser.Display.Masks.GeometryMask(this, maskGfx));
+    const listCont = this.add.container(width / 2, listViewportTop).setDepth(42);
 
     const itemH = 56;
-    const startListY = -modalH / 2 + 68;
-
     const epochUnlocks = {
       1: '🇪🇬 Египет',
       3: '🏛 Античность',
@@ -398,7 +384,7 @@ export class MenuScene extends Phaser.Scene {
     for (let lvl = 1; lvl <= 50; lvl++) {
       const cfg = Storage.getLevelConfig(lvl);
       const rew = Storage.getLevelRewardDetails(lvl);
-      const itemY = startListY + (lvl - 1) * itemH;
+      const itemY = (lvl - 1) * itemH;
       const isCurrent = (lvl === curLevel);
       const isPassed = (lvl < curLevel);
 
@@ -407,22 +393,23 @@ export class MenuScene extends Phaser.Scene {
       const rowBgColor = isCurrent ? 0x3b2614 : (isPassed ? 0x261a11 : 0x160f0a);
       const rowStroke = isCurrent ? 0xfacc15 : (isPassed ? 0x8c6239 : 0x4a3525);
 
+      const rowW = modalW - 24;
       const rowBg = this.add.graphics();
-      rowBg.fillStyle(rowBgColor, 0.94);
-      rowBg.fillRoundedRect(-(modalW - 24) / 2, 0, modalW - 24, itemH - 6, 8);
+      rowBg.fillStyle(rowBgColor, 0.96);
+      rowBg.fillRoundedRect(-rowW / 2, 0, rowW, itemH - 6, 8);
       rowBg.lineStyle(isCurrent ? 1.5 : 1, rowStroke, 0.85);
-      rowBg.strokeRoundedRect(-(modalW - 24) / 2, 0, modalW - 24, itemH - 6, 8);
+      rowBg.strokeRoundedRect(-rowW / 2, 0, rowW, itemH - 6, 8);
 
-      const numTxt = this.add.text(-modalW / 2 + 20, 15, `УР. ${lvl}`, {
-        fontSize: '12.5px',
+      const numTxt = this.add.text(-rowW / 2 + 12, 15, `УР. ${lvl}`, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isCurrent ? '#facc15' : (isPassed ? '#e2b866' : '#8c735b'),
         fontStyle: 'bold',
         resolution: textRes
       }).setOrigin(0, 0.5);
 
-      const titleTxt = this.add.text(-modalW / 2 + 72, 15, cfg.title, {
-        fontSize: '12.5px',
+      const titleTxt = this.add.text(-rowW / 2 + 62, 15, cfg.title, {
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: isCurrent ? '#ffffff' : (isPassed ? '#f5e6c8' : '#7a6552'),
         fontStyle: isCurrent ? 'bold' : 'normal',
@@ -432,16 +419,18 @@ export class MenuScene extends Phaser.Scene {
       let rewardStr = `Награда: +${rew.bonusCoins} 🪙`;
       if (rew.lacquerBonus > 0) rewardStr += ` + ${rew.lacquerBonus} ✨ Лак`;
 
-      const rewardTxt = this.add.text(-modalW / 2 + 72, 35, rewardStr, {
-        fontSize: '12px',
+      const rewardTxt = this.add.text(-rowW / 2 + 62, 35, rewardStr, {
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#e2b866',
         resolution: textRes
       }).setOrigin(0, 0.5);
 
+      rowCont.add([rowBg, numTxt, titleTxt, rewardTxt]);
+
       if (epochUnlocks[lvl]) {
-        const epochTxt = this.add.text(modalW / 2 - 20, 35, epochUnlocks[lvl], {
-          fontSize: '12px',
+        const epochTxt = this.add.text(rowW / 2 - 12, 35, epochUnlocks[lvl], {
+          fontSize: '11.5px',
           fontFamily: FONT_UI,
           color: '#38bdf8',
           fontStyle: 'bold',
@@ -451,8 +440,8 @@ export class MenuScene extends Phaser.Scene {
       }
 
       if (isPassed) {
-        const checkTxt = this.add.text(modalW / 2 - 20, 15, '✓', {
-          fontSize: '14px',
+        const checkTxt = this.add.text(rowW / 2 - 12, 15, '✓', {
+          fontSize: '13.5px',
           fontFamily: FONT_UI,
           color: '#86efac',
           fontStyle: 'bold',
@@ -460,8 +449,8 @@ export class MenuScene extends Phaser.Scene {
         }).setOrigin(1, 0.5);
         rowCont.add(checkTxt);
       } else if (isCurrent) {
-        const curTxt = this.add.text(modalW / 2 - 20, 15, '• ВЫ ЗДЕСЬ', {
-          fontSize: '12px',
+        const curTxt = this.add.text(rowW / 2 - 12, 15, '• ВЫ ЗДЕСЬ', {
+          fontSize: '11px',
           fontFamily: FONT_UI,
           color: '#facc15',
           fontStyle: 'bold',
@@ -470,57 +459,125 @@ export class MenuScene extends Phaser.Scene {
         rowCont.add(curTxt);
       }
 
-      rowCont.add([rowBg, numTxt, titleTxt, rewardTxt]);
       listCont.add(rowCont);
     }
 
-    const initialScrollY = Math.min(0, -((curLevel - 3) * itemH) - (50 * itemH - modalH + 140));
-    listCont.y = initialScrollY;
+    // Непрозрачная верхняя шапка модального окна (depth 44 перекрывает прокручиваемые строки сверху)
+    const modalHeaderGfx = this.add.graphics().setDepth(44);
+    modalHeaderGfx.fillGradientStyle(0x24180f, 0x24180f, 0x1d130c, 0x1d130c, 1);
+    modalHeaderGfx.fillRoundedRect(width / 2 - modalW / 2, modalTop, modalW, headerH, { tl: 14, tr: 14, bl: 0, br: 0 });
+    modalHeaderGfx.lineStyle(1, 0xc89d54, 0.45);
+    modalHeaderGfx.lineBetween(width / 2 - modalW / 2 + 12, listViewportTop - 2, width / 2 + modalW / 2 - 12, listViewportTop - 2);
+
+    const title = this.add.text(width / 2, modalTop + 23, '🏆 ПУТЬ МАСТЕРА ВРЕМЕНИ', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(45);
+
+    const subTitle = this.add.text(width / 2, modalTop + 45, `Текущий ранг: Уровень ${curLevel} из 50`, {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(45);
+
+    // Непрозрачная нижняя панель с кнопкой ЗАКРЫТЬ (depth 44 перекрывает строки снизу)
+    const modalFooterGfx = this.add.graphics().setDepth(44);
+    modalFooterGfx.fillGradientStyle(0x19110b, 0x19110b, 0x160f0a, 0x160f0a, 1);
+    modalFooterGfx.fillRoundedRect(width / 2 - modalW / 2, listViewportBottom, modalW, footerH, { tl: 0, tr: 0, bl: 14, br: 14 });
+    modalFooterGfx.lineStyle(1, 0xc89d54, 0.45);
+    modalFooterGfx.lineBetween(width / 2 - modalW / 2 + 12, listViewportBottom + 2, width / 2 + modalW / 2 - 12, listViewportBottom + 2);
+
+    // Внешняя золотая рамка поверх всего модального окна
+    const borderGfx = this.add.graphics().setDepth(46);
+    borderGfx.lineStyle(1.5, 0xc89d54, 0.92);
+    borderGfx.strokeRoundedRect(width / 2 - modalW / 2, modalTop, modalW, modalH, 14);
+
+    // Расчёт границ прокрутки и авто-позиционирование на текущем уровне
+    const totalListH = 50 * itemH;
+    const minScrollY = Math.min(listViewportTop, listViewportBottom - totalListH - 6);
+    const maxScrollY = listViewportTop;
+
+    const targetOffset = (curLevel - 3) * itemH;
+    listCont.y = Phaser.Math.Clamp(listViewportTop - targetOffset, minScrollY, maxScrollY);
 
     let startY = 0;
+    let listStartY = 0;
     let isDragging = false;
-    const minScrollY = -(50 * itemH - (modalH - 130));
 
-    overlay.on('pointerdown', (p) => {
-      startY = p.y;
-      isDragging = true;
-    });
+    const onDown = (p) => {
+      if (p.y >= listViewportTop && p.y <= listViewportBottom) {
+        startY = p.y;
+        listStartY = listCont.y;
+        isDragging = true;
+      }
+    };
 
-    overlay.on('pointermove', (p) => {
+    const onMove = (p) => {
       if (!isDragging) return;
       const dy = p.y - startY;
-      startY = p.y;
-      listCont.y = Phaser.Math.Clamp(listCont.y + dy, minScrollY, 0);
-    });
+      listCont.y = Phaser.Math.Clamp(listStartY + dy, minScrollY, maxScrollY);
+    };
 
-    overlay.on('pointerup', () => {
+    const onUp = () => {
       isDragging = false;
-    });
+    };
 
-    const closeGfx = this.add.graphics();
+    const onWheel = (pointer, gameObjects, deltaX, deltaY) => {
+      if (pointer.y >= listViewportTop && pointer.y <= listViewportBottom) {
+        listCont.y = Phaser.Math.Clamp(listCont.y - deltaY * 0.45, minScrollY, maxScrollY);
+      }
+    };
+
+    this.input.on('pointerdown', onDown);
+    this.input.on('pointermove', onMove);
+    this.input.on('pointerup', onUp);
+    this.input.on('wheel', onWheel);
+
+    const closeBtnW = modalW * 0.72;
+    const closeBtnH = 38;
+    const closeBtnY = modalBottom - footerH / 2;
+
+    const closeGfx = this.add.graphics().setDepth(45);
     closeGfx.fillGradientStyle(0x3b2614, 0x3b2614, 0x24160b, 0x24160b, 1);
-    closeGfx.fillRoundedRect(-(modalW * 0.7) / 2, modalH / 2 - 46, modalW * 0.7, 36, 10);
+    closeGfx.fillRoundedRect(width / 2 - closeBtnW / 2, closeBtnY - closeBtnH / 2, closeBtnW, closeBtnH, 10);
     closeGfx.lineStyle(1.5, 0xc89d54, 0.9);
-    closeGfx.strokeRoundedRect(-(modalW * 0.7) / 2, modalH / 2 - 46, modalW * 0.7, 36, 10);
+    closeGfx.strokeRoundedRect(width / 2 - closeBtnW / 2, closeBtnY - closeBtnH / 2, closeBtnW, closeBtnH, 10);
 
-    const closeHit = this.add.zone(0, modalH / 2 - 28, modalW * 0.7, 36).setInteractive({ useHandCursor: true });
+    const closeHit = this.add.zone(width / 2, closeBtnY, closeBtnW, closeBtnH)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(47);
 
-    const closeTxt = this.add.text(0, modalH / 2 - 28, 'ЗАКРЫТЬ', {
+    const closeTxt = this.add.text(width / 2, closeBtnY, 'ЗАКРЫТЬ', {
       fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: textRes
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(46);
 
     closeHit.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
-      maskGfx.destroy();
-      modalCont.destroy();
-      overlay.destroy();
-    });
+      this.input.off('pointerdown', onDown);
+      this.input.off('pointermove', onMove);
+      this.input.off('pointerup', onUp);
+      this.input.off('wheel', onWheel);
 
-    modalCont.add([bg, title, subTitle, listCont, closeGfx, closeTxt, closeHit]);
+      overlay.destroy();
+      bg.destroy();
+      listCont.destroy();
+      modalHeaderGfx.destroy();
+      title.destroy();
+      subTitle.destroy();
+      modalFooterGfx.destroy();
+      borderGfx.destroy();
+      closeGfx.destroy();
+      closeTxt.destroy();
+      closeHit.destroy();
+    });
   }
 
   formatTimeRemaining(ms) {
@@ -537,7 +594,10 @@ export class MenuScene extends Phaser.Scene {
     if (!contract) return;
 
     const boxW = width * 0.86;
-    const boxH = 62;
+    const boxH = 74;
+    const leftEdge = width / 2 - boxW / 2;
+    const rightEdge = width / 2 + boxW / 2;
+    const padX = 14;
 
     this.drawStyledBox(width / 2, y, boxW, boxH, {
       fillTop: 0x261a10,
@@ -550,38 +610,38 @@ export class MenuScene extends Phaser.Scene {
     });
 
     if (contract.completed) {
-      this.add.text(width / 2 - 36, y - 10, '✓ КОНТРАКТ ВЫПОЛНЕН!', {
+      this.add.text(leftEdge + padX, y - 12, '✓ КОНТРАКТ ВЫПОЛНЕН!', {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: '#86efac',
         fontStyle: 'bold',
         resolution: textRes
-      }).setOrigin(0.5);
+      }).setOrigin(0, 0.5);
 
-      const timerTxt = this.add.text(width / 2 - 36, y + 11, 'Новый через: 00:00:00', {
+      const timerTxt = this.add.text(leftEdge + padX, y + 12, 'Новый через: 00:00:00', {
         fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#d6c3a5',
         resolution: textRes
-      }).setOrigin(0.5);
+      }).setOrigin(0, 0.5);
 
-      // Кнопка получения нового контракта за рекламу
-      const adBtnX = width / 2 + boxW / 2 - 48;
+      const btnW = 82;
+      const adBtnX = rightEdge - padX - btnW / 2;
       const adGfx = this.add.graphics();
       adGfx.fillStyle(0x1e3a8a, 1);
-      adGfx.fillRoundedRect(adBtnX - 38, y - 16, 76, 32, 8);
+      adGfx.fillRoundedRect(adBtnX - btnW / 2, y - 16, btnW, 32, 8);
       adGfx.lineStyle(1, 0x38bdf8, 0.95);
-      adGfx.strokeRoundedRect(adBtnX - 38, y - 16, 76, 32, 8);
+      adGfx.strokeRoundedRect(adBtnX - btnW / 2, y - 16, btnW, 32, 8);
 
       this.add.text(adBtnX, y, '🎬 НОВЫЙ', {
-        fontSize: '12px',
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#ffffff',
         fontStyle: 'bold',
         resolution: textRes
       }).setOrigin(0.5);
 
-      const adZone = this.add.zone(adBtnX, y, 76, 32).setInteractive({ useHandCursor: true });
+      const adZone = this.add.zone(adBtnX, y, btnW, 32).setInteractive({ useHandCursor: true });
       adZone.on('pointerdown', () => {
         YandexSDK.showRewarded(() => {
           Storage.getDailyContract(ARTIFACT_TEMPLATES, true);
@@ -606,36 +666,43 @@ export class MenuScene extends Phaser.Scene {
 
     const hitBox = this.add.zone(width / 2, y, boxW, boxH).setInteractive({ useHandCursor: true });
 
-    this.add.text(width / 2 - boxW / 2 + 14, y - 20, '📜 СРОЧНЫЙ ЗАКАЗ МУЗЕЯ', {
-      fontSize: '12px',
+    // Левая колонка: равномерные отступы от краёв и друг от друга
+    this.add.text(leftEdge + padX, y - 21, '📜 СРОЧНЫЙ ЗАКАЗ МУЗЕЯ', {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: textRes
-    }).setOrigin(0);
+    }).setOrigin(0, 0.5);
 
-    this.add.text(width / 2 - boxW / 2 + 14, y - 3, contract.title || contract.name, {
-      fontSize: '13px',
+    this.add.text(leftEdge + padX, y, contract.title || contract.name, {
+      fontSize: '13.5px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: textRes
-    }).setOrigin(0);
+    }).setOrigin(0, 0.5);
 
-    this.add.text(width / 2 - boxW / 2 + 14, y + 14, `+${contract.rewardCoins} 🪙 | +${contract.bonusXP} XP`, {
-      fontSize: '12px',
+    this.add.text(leftEdge + padX, y + 21, `+${contract.rewardCoins} 🪙  |  +${contract.bonusXP} XP`, {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#e2b866',
       fontStyle: 'bold',
       resolution: textRes
-    }).setOrigin(0);
+    }).setOrigin(0, 0.5);
 
-    const timerTxt = this.add.text(width / 2 + boxW / 2 - 14, y - 20, '00:00:00', {
-      fontSize: '12px',
+    // Правая колонка: таймер и кнопка ВЗЯТЬ строго внутри правой границы плашки
+    const btnW = 74;
+    const btnH = 28;
+    const btnX = rightEdge - padX - btnW / 2;
+    const btnY = y + 10;
+
+    const timerTxt = this.add.text(btnX, y - 18, '00:00:00', {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#d6c3a5',
       resolution: textRes
-    }).setOrigin(1, 0);
+    }).setOrigin(0.5);
 
     const updateTimer = () => {
       const nextAvail = contract.nextAvailableAt || Date.now();
@@ -650,13 +717,11 @@ export class MenuScene extends Phaser.Scene {
     this.time.addEvent({ delay: 1000, loop: true, callback: updateTimer });
     updateTimer();
 
-    const btnX = width / 2 + boxW / 2 - 46;
-    const btnY = y + 9;
     const takeGfx = this.add.graphics();
     takeGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
-    takeGfx.fillRoundedRect(btnX - 36, btnY - 14, 72, 28, 8);
+    takeGfx.fillRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
     takeGfx.lineStyle(1, 0xfef08a, 0.95);
-    takeGfx.strokeRoundedRect(btnX - 36, btnY - 14, 72, 28, 8);
+    takeGfx.strokeRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
 
     this.add.text(btnX, btnY, 'ВЗЯТЬ', {
       fontSize: '12px',
@@ -718,7 +783,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    // Кнопка обычного сбора
     const claimGfx = this.add.graphics();
     claimGfx.fillStyle(0x332215, 1);
     claimGfx.fillRoundedRect(-(width * 0.72) / 2, 34, width * 0.72, 34, 9);
@@ -734,7 +798,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    // Кнопка x2 за рекламу
     const adGfx = this.add.graphics();
     adGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
     adGfx.fillRoundedRect(-(width * 0.72) / 2, 74, width * 0.72, 36, 9);
