@@ -8,7 +8,6 @@ import { MuseumScene } from './scenes/MuseumScene.js';
 import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 import { YandexSDK } from './utils/YandexSDK.js';
 
-// 3x Native Retina буфер (1440px по ширине) убирает лесенки на всех кнопках, рамках и шрифтах
 const RETINA_MULT = 3;
 const TEXT_RES = 3;
 
@@ -72,6 +71,33 @@ function makeRetinaScene(SceneClass) {
           return typeof val === 'function' ? val.bind(target) : val;
         }
       });
+
+      // Нормализуем pointer.x и pointer.y под 3x Retina-буфер для скролла и перетаскивания во всех сценах
+      const origInputOn = this.input.on.bind(this.input);
+      this.input.on = (event, fn, context) => {
+        if (event === 'pointerdown' || event === 'pointermove' || event === 'pointerup') {
+          const wrapped = function (pointer, ...args) {
+            const logicalPointer = new Proxy(pointer, {
+              get(t, prop) {
+                if (prop === 'x') return t.x / RETINA_MULT;
+                if (prop === 'y') return t.y / RETINA_MULT;
+                if (prop === 'prevPosition' && t.prevPosition) {
+                  return {
+                    x: t.prevPosition.x / RETINA_MULT,
+                    y: t.prevPosition.y / RETINA_MULT
+                  };
+                }
+                const v = t[prop];
+                return typeof v === 'function' ? v.bind(t) : v;
+              }
+            });
+            return fn.call(context || this, logicalPointer, ...args);
+          };
+          return origInputOn(event, wrapped, context);
+        }
+        return origInputOn(event, fn, context);
+      };
+
       if (super.init) super.init(data);
     }
   };
