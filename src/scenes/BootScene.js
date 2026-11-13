@@ -1,5 +1,6 @@
 import { Storage } from '../utils/Storage.js';
 import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
+import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -86,6 +87,9 @@ export class BootScene extends Phaser.Scene {
       cvs.refresh();
     }
 
+    // Сообщаем Яндекс Играм, что все ассеты загружены и игра готова к старту
+    YandexSDK.notifyLoadingReady();
+
     this.scene.start('MenuScene');
   }
 
@@ -124,7 +128,6 @@ export class BootScene extends Phaser.Scene {
       const cy = 66;
       const pts = getStarPoints(cx, cy, 52, 23);
 
-      // Мягкая тень под звездой
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
       ctx.shadowBlur = 10;
@@ -143,7 +146,6 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
       ctx.restore();
 
-      // Огранка от центра к вершинам (левая грань светлее, правая темнее)
       for (let i = 0; i < pts.length; i++) {
         const p1 = pts[i];
         const p2 = pts[(i + 1) % pts.length];
@@ -156,7 +158,6 @@ export class BootScene extends Phaser.Scene {
         ctx.fill();
       }
 
-      // Чёткий золотой контур
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -196,30 +197,11 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
     });
 
+    // Страховочные процедурные текстуры 640x800 на случай, если какой-то .webp не загрузится
     const W = 640;
     const H = 800;
     const cx = 320;
     const cy = 400;
-
-    make('art_egypt_scarab', W, H, (ctx) => {
-      const bg = ctx.createLinearGradient(cx - 140, cy, cx + 140, cy);
-      bg.addColorStop(0, '#ca8a04');
-      bg.addColorStop(0.4, '#fde047');
-      bg.addColorStop(1, '#854d0e');
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 30, 130, 175, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1e3a8a';
-      ctx.beginPath();
-      ctx.ellipse(cx - 56, cy + 40, 48, 105, -0.15, 0, Math.PI * 2);
-      ctx.ellipse(cx + 56, cy + 40, 48, 105, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#eab308';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - 120, 88, 52, 0, 0, Math.PI * 2);
-      ctx.fill();
-    });
 
     ARTIFACT_TEMPLATES.forEach((art, index) => {
       make(art.textureKey, W, H, (ctx) => {
