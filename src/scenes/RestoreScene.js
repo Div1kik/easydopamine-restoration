@@ -1,6 +1,7 @@
 import * as ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { YandexSDK } from '../utils/YandexSDK.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -9,11 +10,13 @@ export class RestoreScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    const dpr = 2;
+    const dpr = 2.5;
     this.dpr = dpr;
 
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
     this.FONT_UI = FONT_UI;
+
+    YandexSDK.notifyGameplayStart();
 
     // 1. ДАННЫЕ И СЕССИЯ
     this.activeContract = (data && data.contract) ? data.contract : null;
@@ -59,7 +62,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.currentTaskIndex = 0;
     this.lastTouchPos = null;
-    this.lastDustPos = null;
     this.activeTool = null;
     this.isTaskTransition = false;
     this.mistakesCount = 0;
@@ -67,17 +69,16 @@ export class RestoreScene extends Phaser.Scene {
     this.hasKintsugiMastery = false;
     this.shardsList = [];
 
-    this.isMobileDevice = true;
     this.generateDetailedToolTextures();
 
     // 2. БЕЗОПАСНАЯ ГЕОМЕТРИЯ ЭКРАНА
-    const systemTopPad = 8;
+    const systemTopPad = 6;
     const topBarHeight = 46;
-    const infoPanelHeight = 80;
+    const infoPanelHeight = 84;
     const workspaceTop = systemTopPad + topBarHeight + infoPanelHeight;
 
-    const trayHeight = 90;
-    const trayY = height - trayHeight / 2 - 14;
+    const trayHeight = 92;
+    const trayY = height - trayHeight / 2 - 12;
     const trayTopLimit = trayY - trayHeight / 2;
 
     const workspaceAvailableHeight = trayTopLimit - workspaceTop;
@@ -91,16 +92,16 @@ export class RestoreScene extends Phaser.Scene {
 
     this.renderWorkbenchBackdrop(width, height, workspaceTop, trayTopLimit);
 
-    // 3. ВЕРХНИЙ БАР (АНТИКВАРНО-БРОНЗОВЫЙ)
+    // 3. ВЕРХНИЙ БАР
     const topBarGfx = this.add.graphics().setDepth(200);
     topBarGfx.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.94);
     topBarGfx.fillRect(0, systemTopPad, width, topBarHeight);
     topBarGfx.lineStyle(1, 0xc89d54, 0.55);
     topBarGfx.lineBetween(0, systemTopPad + topBarHeight, width, systemTopPad + topBarHeight);
 
-    const coins = Storage.getCoins ? Storage.getCoins() : 0;
+    const coins = Storage.getCoins();
     this.coinsText = this.add.text(16, systemTopPad + 23, `${coins} 🪙`, {
-      fontSize: '13px',
+      fontSize: '14px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -121,7 +122,7 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(206);
 
     this.add.text(width - rightMargin - 32, systemTopPad + 23, 'Меню', {
-      fontSize: '12px',
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -129,6 +130,7 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(205);
 
     menuBtn.on('pointerdown', () => {
+      YandexSDK.notifyGameplayStop();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
@@ -141,7 +143,7 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(205);
 
     const musicIcon = this.add.text(musicX, systemTopPad + 23, AudioManager.isMusicOn() ? '🎵' : '🔇', {
-      fontSize: '13px',
+      fontSize: '14px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -161,7 +163,7 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(205);
 
     const sfxIcon = this.add.text(sfxX, systemTopPad + 23, AudioManager.isSfxOn() ? '🔊' : '🔈', {
-      fontSize: '13px',
+      fontSize: '14px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -178,7 +180,7 @@ export class RestoreScene extends Phaser.Scene {
     const artInfoCont = this.add.container(0, systemTopPad + 46).setDepth(190);
 
     const infoPanelGfx = this.add.graphics();
-    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.90);
+    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.92);
     infoPanelGfx.fillRect(0, 0, width, infoPanelHeight);
     infoPanelGfx.lineStyle(1.2, 0xc89d54, 0.55);
     infoPanelGfx.lineBetween(0, infoPanelHeight, width, infoPanelHeight);
@@ -199,17 +201,17 @@ export class RestoreScene extends Phaser.Scene {
     if (this.activeContract) badgeText = '📜 СРОЧНЫЙ КОНТРАКТ';
     else if (this.isDuplicate) badgeText = 'ПОВТОРНАЯ НАХОДКА (-35%)';
 
-    const badgeTxt = this.add.text(width / 2, 10, badgeText, {
-      fontSize: '9.5px',
+    const badgeTxt = this.add.text(width / 2, 7, badgeText, {
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: this.isDuplicate ? '#fda4af' : '#e2b866',
       fontStyle: 'bold',
-      letterSpacing: 1.2,
+      letterSpacing: 1,
       resolution: dpr
     }).setOrigin(0.5, 0);
 
-    const artTitle = this.add.text(width / 2, 24, this.artifactData.name || 'Артефакт', {
-      fontSize: '15px',
+    const artTitle = this.add.text(width / 2, 23, this.artifactData.name || 'Артефакт', {
+      fontSize: '16px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -217,7 +219,7 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     this.taskNotice = this.add.text(width / 2, 43, '', {
-      fontSize: '11px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#d6c3a5',
       resolution: dpr
@@ -226,15 +228,15 @@ export class RestoreScene extends Phaser.Scene {
     const barW = Math.min(width * 0.78, 280);
     const progressBarBg = this.add.graphics();
     progressBarBg.fillStyle(0x0d0805, 0.95);
-    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
+    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 62, barW, 6, 3);
     progressBarBg.lineStyle(1, 0x5c3d22, 0.8);
-    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
+    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 62, barW, 6, 3);
 
-    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 63, 6, 4, 0xfacc15)
+    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 65, 6, 4, 0xfacc15)
       .setOrigin(0, 0.5);
 
-    this.toolWarning = this.add.text(width / 2, 69, '', {
-      fontSize: '10.5px',
+    this.toolWarning = this.add.text(width / 2, 70, '', {
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#fde047',
       fontStyle: 'bold',
@@ -276,7 +278,6 @@ export class RestoreScene extends Phaser.Scene {
     const firstTask = this.artifactData.tasks[0];
     const initialTool = firstTask.requiredTool || 'tool_scraper';
 
-    // Рабочий кончик инструмента (верхний край спрайта, origin y = 0.08) совпадает ровно с точкой касания
     this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(initialTool))
       .setOrigin(0.5, 0.10)
       .setScale(0.75)
@@ -296,10 +297,10 @@ export class RestoreScene extends Phaser.Scene {
     this.targetValidCells = this.totalCells;
 
     this.buildValidCellsMask(texKey);
-    this.startTask(0);
+    this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ (ТОЧНО ПОД ПАЛЬЦЕМ)
+    // 7. ИНТЕРАКТИВНОЕ ВЗАИМОДЕЙСТВИЕ
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
       if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
@@ -312,7 +313,6 @@ export class RestoreScene extends Phaser.Scene {
         return;
       }
 
-      // Инструмент позиционируется ровно под точкой касания пальца
       this.toolSprite.setPosition(pointer.x, pointer.y);
       this.animateToolUnderFinger(pointer);
 
@@ -338,7 +338,6 @@ export class RestoreScene extends Phaser.Scene {
       const requiredPasses = tier >= 3 ? 1 : 2;
       const brushKey = `${this.activeTool}_t${tier}`;
 
-      // Вычитаем половину размера текстуры кисти (32px), чтобы центр стирания попал точно в (localX, localY)
       this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
       this.emitDustFX(pointer.x, pointer.y);
 
@@ -381,11 +380,13 @@ export class RestoreScene extends Phaser.Scene {
       if (ratio >= 0.94 && !this.isTaskTransition) {
         this.isTaskTransition = true;
         this.dirtLayer.clear();
+        this.toolSprite.setAlpha(0);
         this.completeTaskTransition();
       }
     };
 
     this.input.on('pointerdown', (p) => {
+      if (this.isTaskTransition) return;
       if (p.y > trayTopLimit || p.y < workspaceTop) return;
       this.lastTouchPos = { x: p.x, y: p.y };
       this.toolSprite.setAlpha(1);
@@ -393,7 +394,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
+      if (!p.isDown || this.isTaskTransition) return;
       processInteraction(p);
     });
 
@@ -417,6 +418,10 @@ export class RestoreScene extends Phaser.Scene {
 
   getToolTextureForTier(toolId) {
     const tier = this.getToolTier(toolId);
+    const skin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
+    const skinnedKey = `tex_hd_${toolId}_t${tier}_${skin}`;
+    if (this.textures.exists(skinnedKey)) return skinnedKey;
+
     const key = `tex_hd_${toolId}_t${tier}`;
     return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
   }
@@ -452,7 +457,15 @@ export class RestoreScene extends Phaser.Scene {
       cvs.refresh();
     };
 
-    // Кисти стирания строго 64x64 с центром в (32, 32) для точного совпадения с пальцем
+    const activeSkin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
+    const skinAccents = {
+      default: { handle1: '#5c3a21', handle2: '#855832', ring: '#94a3b8' },
+      gold: { handle1: '#92400e', handle2: '#facc15', ring: '#fef08a' },
+      jade: { handle1: '#064e3b', handle2: '#10b981', ring: '#a7f3d0' },
+      damascus: { handle1: '#1e1b4b', handle2: '#6366f1', ring: '#c7d2fe' }
+    };
+    const accent = skinAccents[activeSkin] || skinAccents.default;
+
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
     const baseRadii = { scraper: 18, brush: 22, solvent: 20, polish: 21 };
     const tierRadiusBonus = [0, 0, 3, 6, 9];
@@ -476,11 +489,11 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     makeTex('tex_hd_tool_glue', 128, (ctx) => {
-      ctx.fillStyle = '#78350f';
+      ctx.fillStyle = accent.handle1;
       ctx.beginPath();
       ctx.roundRect(58, 36, 12, 74, 6);
       ctx.fill();
-      ctx.fillStyle = '#eab308';
+      ctx.fillStyle = accent.ring;
       ctx.fillRect(56, 26, 16, 12);
       ctx.fillStyle = '#38bdf8';
       ctx.beginPath();
@@ -492,50 +505,24 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_scraper_t${tier}`, 128, (ctx) => {
+      makeTex(`tex_hd_tool_scraper_t${tier}_${activeSkin}`, 128, (ctx) => {
         const hGrad = ctx.createLinearGradient(56, 60, 72, 60);
-        if (tier === 1) {
-          hGrad.addColorStop(0, '#5c3a21');
-          hGrad.addColorStop(1, '#855832');
-        } else if (tier === 2) {
-          hGrad.addColorStop(0, '#92400e');
-          hGrad.addColorStop(1, '#d97706');
-        } else if (tier === 3) {
-          hGrad.addColorStop(0, '#334155');
-          hGrad.addColorStop(1, '#94a3b8');
-        } else {
-          hGrad.addColorStop(0, '#1e293b');
-          hGrad.addColorStop(1, '#38bdf8');
-        }
+        hGrad.addColorStop(0, accent.handle1);
+        hGrad.addColorStop(1, accent.handle2);
         ctx.fillStyle = hGrad;
         ctx.beginPath();
         ctx.roundRect(57, 52, 14, 62, 5);
         ctx.fill();
 
-        ctx.fillStyle = tier >= 3 ? '#facc15' : '#94a3b8';
+        ctx.fillStyle = accent.ring;
         ctx.fillRect(55, 46, 18, 8);
 
-        if (tier === 4) {
-          ctx.fillStyle = '#e0f2fe';
+        if (tier >= 3) {
+          ctx.fillStyle = tier === 4 ? '#e0f2fe' : '#f8fafc';
           ctx.beginPath();
           ctx.moveTo(64, 6);
-          ctx.lineTo(44, 46);
-          ctx.lineTo(84, 46);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.moveTo(64, 14);
-          ctx.lineTo(54, 46);
-          ctx.lineTo(74, 46);
-          ctx.closePath();
-          ctx.fill();
-        } else if (tier === 3) {
-          ctx.fillStyle = '#f8fafc';
-          ctx.beginPath();
-          ctx.moveTo(64, 8);
-          ctx.lineTo(48, 46);
-          ctx.lineTo(80, 46);
+          ctx.lineTo(46, 46);
+          ctx.lineTo(82, 46);
           ctx.closePath();
           ctx.fill();
         } else {
@@ -549,96 +536,44 @@ export class RestoreScene extends Phaser.Scene {
           ctx.fill();
         }
       });
-    });
 
-    [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_brush_t${tier}`, 128, (ctx) => {
-        ctx.fillStyle = tier >= 3 ? '#1e293b' : '#78350f';
+      makeTex(`tex_hd_tool_brush_t${tier}_${activeSkin}`, 128, (ctx) => {
+        ctx.fillStyle = accent.handle1;
         ctx.beginPath();
         ctx.roundRect(58, 56, 12, 58, 5);
         ctx.fill();
 
-        ctx.fillStyle = tier >= 2 ? '#facc15' : '#94a3b8';
+        ctx.fillStyle = accent.ring;
         ctx.fillRect(54, 44, 20, 13);
 
-        if (tier === 4) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.arc(64, 28, 22, Math.PI, 0);
-          ctx.stroke();
-          ctx.fillStyle = '#e0f2fe';
-          ctx.beginPath();
-          ctx.arc(64, 34, 14, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (tier === 3) {
-          ctx.fillStyle = '#fef3c7';
-          ctx.beginPath();
-          ctx.moveTo(54, 44);
-          ctx.lineTo(74, 44);
-          ctx.lineTo(96, 14);
-          ctx.lineTo(64, 8);
-          ctx.lineTo(32, 14);
-          ctx.closePath();
-          ctx.fill();
-        } else {
-          ctx.fillStyle = tier === 2 ? '#fde68a' : '#d6d3d1';
-          ctx.beginPath();
-          ctx.arc(64, 28, 20, Math.PI, 0);
-          ctx.fillRect(44, 28, 40, 16);
-          ctx.fill();
-        }
+        ctx.fillStyle = tier === 4 ? '#38bdf8' : (tier === 3 ? '#fef3c7' : '#fde68a');
+        ctx.beginPath();
+        ctx.arc(64, 28, 20, Math.PI, 0);
+        ctx.fillRect(44, 28, 40, 16);
+        ctx.fill();
       });
-    });
 
-    [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_solvent_t${tier}`, 128, (ctx) => {
-        ctx.fillStyle = tier === 4 ? '#6366f1' : (tier === 3 ? '#0d9488' : (tier === 2 ? '#0284c7' : '#38bdf8'));
+      makeTex(`tex_hd_tool_solvent_t${tier}_${activeSkin}`, 128, (ctx) => {
+        ctx.fillStyle = activeSkin === 'jade' ? '#059669' : (activeSkin === 'gold' ? '#d97706' : (tier >= 3 ? '#0d9488' : '#38bdf8'));
         ctx.beginPath();
         ctx.roundRect(42, 42, 44, 68, 12);
         ctx.fill();
 
-        ctx.fillStyle = tier >= 3 ? '#facc15' : '#d97706';
+        ctx.fillStyle = accent.ring;
         ctx.fillRect(55, 24, 18, 18);
         ctx.fillRect(52, 16, 24, 9);
       });
-    });
 
-    [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_polish_t${tier}`, 128, (ctx) => {
-        if (tier === 4) {
-          ctx.fillStyle = '#eab308';
-          ctx.beginPath();
-          ctx.roundRect(38, 52, 52, 52, 12);
-          ctx.fill();
-          ctx.fillStyle = '#38bdf8';
-          ctx.beginPath();
-          ctx.moveTo(64, 14);
-          ctx.lineTo(80, 34);
-          ctx.lineTo(64, 52);
-          ctx.lineTo(48, 34);
-          ctx.closePath();
-          ctx.fill();
-        } else if (tier === 3) {
-          ctx.fillStyle = '#f59e0b';
-          ctx.beginPath();
-          ctx.roundRect(36, 48, 56, 56, 14);
-          ctx.fill();
-          ctx.fillStyle = '#fef08a';
-          ctx.beginPath();
-          ctx.arc(64, 34, 16, Math.PI, 0);
-          ctx.fill();
-        } else {
-          ctx.fillStyle = tier === 2 ? '#d97706' : '#a16207';
-          ctx.beginPath();
-          ctx.roundRect(34, 46, 60, 56, 16);
-          ctx.fill();
-          ctx.strokeStyle = '#fef08a';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(64, 38, 22, Math.PI * 1.1, Math.PI * 1.9);
-          ctx.stroke();
-        }
+      makeTex(`tex_hd_tool_polish_t${tier}_${activeSkin}`, 128, (ctx) => {
+        ctx.fillStyle = activeSkin === 'damascus' ? '#4338ca' : (activeSkin === 'jade' ? '#047857' : '#d97706');
+        ctx.beginPath();
+        ctx.roundRect(36, 48, 56, 56, 14);
+        ctx.fill();
+        ctx.strokeStyle = accent.ring;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(64, 38, 22, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
       });
     });
   }
@@ -725,7 +660,7 @@ export class RestoreScene extends Phaser.Scene {
       const iconImg = this.add.image(0, -8, t.icon).setScale(0.42);
 
       const lbl = this.add.text(0, 22, t.label, {
-        fontSize: '9.5px',
+        fontSize: '12px',
         fontFamily: this.FONT_UI,
         color: isSelected ? '#facc15' : '#e6d5bc',
         fontStyle: 'bold',
@@ -823,7 +758,7 @@ export class RestoreScene extends Phaser.Scene {
     try {
       const tex = this.textures.get(textureKey);
       srcCanvas = tex.getSourceImage();
-    } catch (e) {
+    } catch {
       srcCanvas = null;
     }
 
@@ -852,7 +787,7 @@ export class RestoreScene extends Phaser.Scene {
     }
   }
 
-renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -871,7 +806,8 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       fallbackBg.fillStyle(0x0d0805, 1);
       fallbackBg.fillRect(0, 0, width, height);
 
-      this.load.image(activeSkin, `assets/backgrounds/${activeSkin}.png`);
+      // Новый путь .webp в папке assets/workbenches/
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         if (this.scene && this.scene.isActive()) {
           applyBgTexture(activeSkin);
@@ -879,7 +815,7 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       });
       this.load.once('loaderror', (file) => {
         if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
-          this.load.image('workbench_bg_1', 'assets/backgrounds/workbench_bg_1.png');
+          this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
           this.load.once('filecomplete-image-workbench_bg_1', () => {
             if (this.scene && this.scene.isActive()) applyBgTexture('workbench_bg_1');
           });
@@ -889,14 +825,14 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       this.load.start();
     }
 
-    // Компактный реставрационный коврик строго вокруг артефакта, чтобы не закрывать красивый фон верстака
+    // Компактный реставрационный коврик строго вокруг артефакта
     const artW = this.artW || 300;
     const artH = this.artH || 290;
-    const maxMatW = width - 48;
-    const maxMatH = (bottomBound - topBound) - 36;
+    const maxMatW = width - 56;
+    const maxMatH = (bottomBound - topBound) - 44;
 
-    const matW = Math.min(artW + 52, maxMatW);
-    const matH = Math.min(artH + 64, maxMatH);
+    const matW = Math.min(artW + 46, maxMatW);
+    const matH = Math.min(artH + 56, maxMatH);
     const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
 
     this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
@@ -913,7 +849,6 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     };
     const palette = palettes[tier] || palettes[1];
 
-    // Лёгкая тонированная подложка под артефактом, чтобы фон стола свободно дышал вокруг
     matGfx.fillStyle(palette.fill, 0.22);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
@@ -934,27 +869,7 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       matGfx.fillCircle(r.x, r.y, 2.5);
     });
 
-    const grid = this.add.graphics();
-    grid.lineStyle(1, palette.line, 0.07);
-    const step = 32;
-    for (let x = -halfW + 24; x <= halfW - 24; x += step) {
-      grid.lineBetween(x, -halfH + 10, x, halfH - 10);
-    }
-    for (let y = -halfH + 24; y <= halfH - 24; y += step) {
-      grid.lineBetween(-halfW + 10, y, halfW - 10, y);
-    }
-
-    this.matContainer.add([matGfx, grid]);
-    this.matContainer.setScale(0.95);
-    this.matContainer.setAlpha(0);
-    this.tweens.add({
-      targets: this.matContainer,
-      scaleX: 1,
-      scaleY: 1,
-      alpha: 1,
-      duration: 320,
-      ease: 'Cubic.easeOut'
-    });
+    this.matContainer.add(matGfx);
   }
 
   processGlueAction(pointer) {
@@ -998,9 +913,9 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       this.updateAssemblyProgress();
 
       if (gluedCount < total) {
-        this.toolWarning.setText(`Клей нанесён (${gluedCount}/${total}). Промажьте остальные сколы!`);
+        this.toolWarning.setText(`Клей нанесён (${gluedCount}/${total}). Промажьте остальные!`);
       } else {
-        this.toolWarning.setText('✨ Все места промазаны! Перетащите каждый осколок на своё место!');
+        this.toolWarning.setText('✨ Все гнезда промазаны! Перетащите осколки на места!');
       }
     }
   }
@@ -1066,7 +981,6 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Вырезаем реальный фрагмент артефакта в локальной системе координат (half, half)
     ctx.save();
     ctx.beginPath();
     ctx.arc(half, half, radius, 0, Math.PI * 2);
@@ -1123,13 +1037,11 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       const targetY = pt.y;
       const radius = 25;
 
-      // Тёмное углубление скола на артефакте
       this.breakHoleGfx.fillStyle(0x0d0805, 0.94);
       this.breakHoleGfx.fillCircle(targetX, targetY, radius);
       this.breakHoleGfx.lineStyle(2, 0xef4444, 0.9);
       this.breakHoleGfx.strokeCircle(targetX, targetY, radius);
 
-      // Генерируем самостоятельную текстуру осколка без WebGL GeometryMask
       const shardTexKey = this.createShardTexture(texKey, targetX, targetY, radius, idx);
 
       const pieceContainer = this.add.container(targetX, targetY).setDepth(40);
@@ -1175,7 +1087,7 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
         onComplete: () => {
           if (idx === 0) {
             this.selectTool('tool_glue', 'tex_hd_tool_glue', true);
-            this.toolWarning.setText(`Нанесите Клей на все места сколов (${points.length} шт.)!`);
+            this.toolWarning.setText(`Нанесите Клей на места сколов (${points.length} шт.)!`);
           }
         }
       });
@@ -1218,15 +1130,10 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
           if (allPlaced) {
             if (this.isKintsugiMode) {
               this.hasKintsugiMastery = true;
-              if (Storage.addKintsugiLacquer) {
-                Storage.addKintsugiLacquer(-1);
-              } else {
-                const cur = Math.max(0, parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10) - 1);
-                localStorage.setItem('kintsugi_lacquer', String(cur));
-              }
+              Storage.addKintsugiLacquer(-1);
             }
 
-            this.time.delayedCall(400, () => {
+            this.time.delayedCall(450, () => {
               this.breakHoleGfx.setVisible(false);
               this.assemblyContainer.setVisible(false);
               if (this.kintsugiBanner) {
@@ -1237,10 +1144,10 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
             });
           } else {
             const left = this.shardsList.filter((s) => !s.placed).length;
-            this.toolWarning.setText(`Отлично! Осталось установить осколков: ${left}`);
+            this.toolWarning.setText(`Отлично! Осталось осколков: ${left}`);
           }
         } else {
-          this.toolWarning.setText('⚠️ Этот осколок не подходит сюда — ищите его родное место!');
+          this.toolWarning.setText('⚠️ Этот осколок не подходит сюда!');
           this.tweens.add({
             targets: pieceContainer,
             x: restX,
@@ -1252,20 +1159,16 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
       });
     });
 
-    const lacquer = Storage.getKintsugiLacquer
-      ? Storage.getKintsugiLacquer()
-      : parseInt(localStorage.getItem('kintsugi_lacquer') || '0', 10);
-    if (lacquer > 0) {
-      this.showKintsugiBanner(width, dpr);
-    }
+    const lacquer = Storage.getKintsugiLacquer();
+    this.showKintsugiBanner(width, dpr, lacquer > 0);
   }
 
-  showKintsugiBanner(width, dpr) {
+  showKintsugiBanner(width, dpr, hasLacquer) {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
     this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(45);
     const bannerW = width * 0.88;
-    const bannerH = 44;
+    const bannerH = 46;
 
     const bannerGfx = this.add.graphics();
     bannerGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.96);
@@ -1273,30 +1176,30 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     bannerGfx.lineStyle(1.5, 0xc89d54, 0.9);
     bannerGfx.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
 
-    const btnX = width * 0.44 - 52;
+    const btnX = width * 0.44 - 56;
     const btnGfx = this.add.graphics();
     const drawBtn = (active) => {
       btnGfx.clear();
-      btnGfx.fillStyle(active ? 0x16a34a : 0xd99b26, 1);
-      btnGfx.fillRoundedRect(btnX - 45, -14, 90, 28, 7);
-      btnGfx.lineStyle(1, active ? 0x86efac : 0xfef08a, 0.95);
-      btnGfx.strokeRoundedRect(btnX - 45, -14, 90, 28, 7);
+      btnGfx.fillStyle(active ? 0x16a34a : (hasLacquer ? 0xd99b26 : 0x1e3a8a), 1);
+      btnGfx.fillRoundedRect(btnX - 48, -15, 96, 30, 7);
+      btnGfx.lineStyle(1, active ? 0x86efac : (hasLacquer ? 0xfef08a : 0x38bdf8), 0.95);
+      btnGfx.strokeRoundedRect(btnX - 48, -15, 96, 30, 7);
     };
     drawBtn(false);
 
-    const kintsugiZone = this.add.zone(btnX, 0, 90, 28)
+    const kintsugiZone = this.add.zone(btnX, 0, 96, 30)
       .setInteractive({ useHandCursor: true });
 
-    const kintsugiTxt = this.add.text(btnX, 0, '✨ КИНЦУГИ', {
-      fontSize: '10.5px',
+    const kintsugiTxt = this.add.text(btnX, 0, hasLacquer ? '✨ КИНЦУГИ' : '🎬 ЛАК КИНЦУГИ', {
+      fontSize: '12px',
       fontFamily: this.FONT_UI,
-      color: '#1a1004',
+      color: hasLacquer ? '#1a1004' : '#ffffff',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
-    const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов (1 лак на все): +60%', {
-      fontSize: '10.5px',
+    const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов (+60% к цене):', {
+      fontSize: '12px',
       fontFamily: this.FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -1304,18 +1207,25 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     }).setOrigin(0, 0.5);
 
     kintsugiZone.on('pointerdown', () => {
+      if (!hasLacquer) {
+        YandexSDK.showRewarded(() => {
+          Storage.addKintsugiLacquer(1);
+          this.showKintsugiBanner(width, dpr, true);
+        });
+        return;
+      }
       this.isKintsugiMode = !this.isKintsugiMode;
       drawBtn(this.isKintsugiMode);
       kintsugiTxt.setColor(this.isKintsugiMode ? '#ffffff' : '#1a1004');
       kintsugiTxt.setText(this.isKintsugiMode ? '✓ ВЫБРАНО' : '✨ КИНЦУГИ');
-      infoTxt.setText(this.isKintsugiMode ? 'Золото активно на все сколы!' : 'Золотой шов (1 лак на все): +60%');
+      infoTxt.setText(this.isKintsugiMode ? 'Золото активно на все сколы!' : 'Золотой шов (+60% к цене):');
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
     this.kintsugiBanner.add([bannerGfx, infoTxt, btnGfx, kintsugiTxt, kintsugiZone]);
   }
 
-  startTask(taskIdx) {
+  startTask(taskIdx, animateLayer = true) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
     this.cleanedGrid.fill(0);
@@ -1386,30 +1296,75 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
 
     this.dirtLayer.draw(dirtGfx, 0, 0);
     dirtGfx.destroy();
+
+    if (animateLayer) {
+      this.dirtLayer.setAlpha(0);
+      this.tweens.add({
+        targets: this.dirtLayer,
+        alpha: 1,
+        duration: 280,
+        ease: 'Quad.easeOut'
+      });
+    }
   }
 
   completeTaskTransition() {
-    if (AudioManager.playCoin) AudioManager.playCoin();
+    if (AudioManager.playTaskChime) AudioManager.playTaskChime(this.currentTaskIndex);
+    else if (AudioManager.playCoin) AudioManager.playCoin();
 
-    const flash = this.add.rectangle(this.cleanArt.x, this.cleanArt.y, this.cleanArt.width, this.cleanArt.height, 0xfffbeb, 0.7)
+    const flash = this.add.rectangle(this.cleanArt.x, this.cleanArt.y, this.cleanArt.width, this.cleanArt.height, 0xfffbeb, 0.65)
       .setDepth(25);
     flash.setBlendMode(Phaser.BlendModes.ADD);
 
     this.tweens.add({
       targets: flash,
       alpha: 0,
-      scaleX: 1.1,
-      scaleY: 1.1,
-      duration: 350,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 420,
       ease: 'Quad.easeOut',
       onComplete: () => flash.destroy()
     });
 
     if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
-      this.time.delayedCall(200, () => {
-        this.startTask(this.currentTaskIndex + 1);
+      // Тактильная микропауза между этапами очистки (~650 мс) с плашкой подтверждения
+      const stepBanner = this.add.container(this.centerX, this.centerY).setDepth(60).setScale(0.8).setAlpha(0);
+      const pill = this.add.graphics();
+      pill.fillStyle(0x140d08, 0.92);
+      pill.fillRoundedRect(-110, -20, 220, 40, 12);
+      pill.lineStyle(1.5, 0x4ade80, 0.95);
+      pill.strokeRoundedRect(-110, -20, 220, 40, 12);
+
+      const pillTxt = this.add.text(0, 0, `✓ Этап ${this.currentTaskIndex + 1} завершён!`, {
+        fontSize: '14px',
+        fontFamily: this.FONT_UI,
+        color: '#86efac',
+        fontStyle: 'bold',
+        resolution: this.dpr
+      }).setOrigin(0.5);
+
+      stepBanner.add([pill, pillTxt]);
+
+      this.tweens.add({
+        targets: stepBanner,
+        scale: 1,
+        alpha: 1,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+
+      this.time.delayedCall(650, () => {
+        this.tweens.add({
+          targets: stepBanner,
+          alpha: 0,
+          y: this.centerY - 14,
+          duration: 180,
+          onComplete: () => stepBanner.destroy()
+        });
+        this.startTask(this.currentTaskIndex + 1, true);
       });
     } else {
+      YandexSDK.notifyGameplayStop();
       if (AudioManager.playShine) AudioManager.playShine();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
 
@@ -1421,11 +1376,11 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
         qualityMultiplier = 0.6;
       } else if (this.mistakesCount >= 1) {
         earnedStars = 2;
-        qualityMultiplier = 0.8;
+        qualityMultiplier = 0.85;
       }
 
       const kintsugiBonus = this.hasKintsugiMastery ? 1.6 : 1.0;
-      const finalPrice = Math.max(10, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
+      const finalPrice = Math.max(15, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
       this.artifactData.marketValue = finalPrice;
       this.artifactData.isKintsugi = this.hasKintsugiMastery;
 
@@ -1436,7 +1391,7 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
           regionId: this.artifactData.regionId,
           regionName: this.artifactData.regionName || 'Древний Египет',
           name: this.artifactData.name,
-          museumDesc: this.artifactData.museumDesc || '',
+          museumDesc: this.artifactData.description || this.artifactData.museumDesc || '',
           textureKey: this.artifactData.textureKey,
           marketValue: finalPrice,
           stars: earnedStars,
@@ -1449,13 +1404,17 @@ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
           date: Date.now()
         });
 
+        if (!this.activeContract && Storage.decrementArtifactStock) {
+          Storage.decrementArtifactStock(this.artifactData.regionId, this.artifactData.id);
+        }
+
         if (Storage.setActiveSession) Storage.setActiveSession(null);
         if (this.activeContract && Storage.completeDailyContract) Storage.completeDailyContract();
       } catch (e) {
         console.warn('Inventory save error:', e);
       }
 
-      this.time.delayedCall(300, () => {
+      this.time.delayedCall(450, () => {
         this.scene.start('VictoryScene', {
           artifact: this.artifactData,
           stars: earnedStars,
