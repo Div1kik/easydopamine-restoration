@@ -8,9 +8,9 @@ import { MuseumScene } from './scenes/MuseumScene.js';
 import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 import { YandexSDK } from './utils/YandexSDK.js';
 
-const RETINA_MULT = 2;
-// Строго равно RETINA_MULT, чтобы текстура текста ложилась 1:1 в буфер камеры без дробного сжатия 1.5x
-const TEXT_RES = RETINA_MULT;
+// 3x Native Retina буфер (1440px по ширине) убирает лесенки на всех кнопках, рамках и шрифтах
+const RETINA_MULT = 3;
+const TEXT_RES = 3;
 
 function mapFontFamily(raw = '') {
   const s = String(raw).toLowerCase();
@@ -24,7 +24,6 @@ function patchTextStyle(style = {}) {
   const patched = { ...style };
   patched.resolution = TEXT_RES;
   patched.fontFamily = mapFontFamily(patched.fontFamily);
-  // Минимальный читаемый кегль 11.5px для описаний (без раздувания вёрстки)
   if (patched.fontSize) {
     const num = parseFloat(patched.fontSize);
     if (!Number.isNaN(num) && num < 11.5) {
@@ -32,17 +31,14 @@ function patchTextStyle(style = {}) {
     }
   }
   if (!patched.padding) {
-    patched.padding = { top: 2, bottom: 2, left: 1, right: 1 };
+    patched.padding = { top: 2, bottom: 2, left: 2, right: 2 };
   }
   return patched;
 }
 
 const origTextFactory = Phaser.GameObjects.GameObjectFactory.prototype.text;
 Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, text, style = {}) {
-  // Округляем координаты до целых пикселей, чтобы глифы не попадали на субпиксельную границу
-  const rx = typeof x === 'number' ? Math.round(x) : x;
-  const ry = typeof y === 'number' ? Math.round(y) : y;
-  const obj = origTextFactory.call(this, rx, ry, text, patchTextStyle(style));
+  const obj = origTextFactory.call(this, x, y, text, patchTextStyle(style));
   obj.setResolution(TEXT_RES);
   return obj;
 };
@@ -66,7 +62,7 @@ function makeRetinaScene(SceneClass) {
       if (this.cameras && this.cameras.main) {
         this.cameras.main.setZoom(RETINA_MULT);
         this.cameras.main.setOrigin(0, 0);
-        this.cameras.main.setRoundPixels(true);
+        this.cameras.main.setRoundPixels(false);
       }
       this.scale = new Proxy(this.sys.scale, {
         get(target, prop) {
@@ -92,7 +88,7 @@ const config = {
   render: {
     antialias: true,
     antialiasGL: true,
-    roundPixels: true,
+    roundPixels: false,
     powerPreference: 'high-performance'
   },
   scale: {
