@@ -29,16 +29,20 @@ class YandexSDKManager {
       );
       this.ysdk = await Promise.race([window.YaGames.init(), timeout]);
       this.initialized = true;
-
-      if (this.ysdk?.features?.LoadingAPI) {
-        this.ysdk.features.LoadingAPI.ready();
-      }
     } catch (e) {
       this.initialized = true;
       console.warn('YaGames init fallback:', e);
     }
 
     return this.ysdk;
+  }
+
+  notifyLoadingReady() {
+    try {
+      if (this.ysdk?.features?.LoadingAPI) {
+        this.ysdk.features.LoadingAPI.ready();
+      }
+    } catch {}
   }
 
   notifyGameplayStart() {
