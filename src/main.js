@@ -8,6 +8,7 @@ import { MuseumScene } from './scenes/MuseumScene.js';
 import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 import { YandexSDK } from './utils/YandexSDK.js';
 
+const RETINA_MULT = 2;
 const TEXT_RES = 3;
 
 function mapFontFamily(raw = '') {
@@ -42,22 +43,42 @@ Phaser.GameObjects.Text.prototype.setStyle = function (style, updateText, setDef
   return res;
 };
 
-// Адаптивная высота под соотношение сторон экрана без чёрных полос
 const BASE_WIDTH = 480;
 const aspect = (window.innerHeight && window.innerWidth)
   ? (window.innerHeight / window.innerWidth)
   : (800 / 480);
-const ADAPTIVE_HEIGHT = Phaser.Math.Clamp(Math.round(BASE_WIDTH * aspect), 780, 960);
+const LOGICAL_HEIGHT = Phaser.Math.Clamp(Math.round(BASE_WIDTH * aspect), 780, 960);
+
+// Оборачиваем сцены, чтобы камера автоматически работала в 2x Retina-разрешении без изменения координат
+function makeRetinaScene(SceneClass) {
+  return class extends SceneClass {
+    init(data) {
+      if (this.cameras && this.cameras.main) {
+        this.cameras.main.setZoom(RETINA_MULT);
+        this.cameras.main.setOrigin(0, 0);
+      }
+      // Подменяем логические width/height в this.scale для расчётов позиций
+      this.scale = new Proxy(this.sys.scale, {
+        get(target, prop) {
+          if (prop === 'width') return BASE_WIDTH;
+          if (prop === 'height') return LOGICAL_HEIGHT;
+          const val = target[prop];
+          return typeof val === 'function' ? val.bind(target) : val;
+        }
+      });
+      if (super.init) super.init(data);
+    }
+  };
+}
 
 YandexSDK.init();
 
 const config = {
   type: Phaser.AUTO,
   parent: 'game-container',
-  width: BASE_WIDTH,
-  height: ADAPTIVE_HEIGHT,
+  width: BASE_WIDTH * RETINA_MULT,
+  height: LOGICAL_HEIGHT * RETINA_MULT,
   backgroundColor: '#0d0805',
-  resolution: Math.min(Math.max(window.devicePixelRatio || 2, 2), 3),
   render: {
     antialias: true,
     antialiasGL: true,
@@ -66,17 +87,17 @@ const config = {
   },
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
+    autoCenter: Phaser.Scale.CENTER_BOTH
   },
   scene: [
-    BootScene,
-    MenuScene,
-    EraSelectScene,
-    RestoreScene,
-    VictoryScene,
-    ShopScene,
-    MuseumScene,
-    ArtifactDetailScene
+    makeRetinaScene(BootScene),
+    makeRetinaScene(MenuScene),
+    makeRetinaScene(EraSelectScene),
+    makeRetinaScene(RestoreScene),
+    makeRetinaScene(VictoryScene),
+    makeRetinaScene(ShopScene),
+    makeRetinaScene(MuseumScene),
+    makeRetinaScene(ArtifactDetailScene)
   ]
 };
 
