@@ -9,9 +9,11 @@ export class VictoryScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    const dpr = 2.5;
-    const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
-    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    const dpr = 3;
+    const FONT_TITLE = '"Cormorant Garamond", Georgia, serif';
+    const FONT_UI = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    this.isNavigating = false;
 
     const artifact = (data && data.artifact)
       ? data.artifact
@@ -26,64 +28,70 @@ export class VictoryScene extends Phaser.Scene {
     if (this.textures.exists('victory_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'victory_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.52).setDepth(0);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.54).setDepth(0);
     } else {
       this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
     // Заголовок победы
-    const title = this.add.text(width / 2, height * 0.09, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
-      fontSize: '20px',
+    const title = this.add.text(width / 2, height * 0.085, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
+      fontSize: '21px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
       letterSpacing: 1.5,
       resolution: dpr
-    }).setOrigin(0.5).setAlpha(0).setDepth(10).setShadow(0, 2, '#000000', 6, false, true);
+    }).setOrigin(0.5).setAlpha(0).setDepth(10);
 
     this.tweens.add({
       targets: title,
       alpha: 1,
-      y: height * 0.09 - 4,
-      duration: 550,
+      y: height * 0.085 - 3,
+      duration: 500,
       ease: 'Quad.easeOut'
     });
 
-    // Каскадная анимация звезд
-    const starSpacing = 64;
+    // Аккуратная корона из 3 ювелирных звёзд (без гигантского размера и наползания на артефакт)
+    const starSpacing = 54;
     const starStartX = width / 2 - starSpacing;
+    const baseStarY = height * 0.165;
+    const targetStarScale = 0.36; // 128 * 0.36 = 46px
 
     for (let i = 0; i < 3; i++) {
       const isFilled = (i < starsCount);
       const starKey = isFilled ? 'icon_star' : 'icon_star_empty';
       const posX = starStartX + i * starSpacing;
-      const posY = height * 0.16;
+      // Центральная звезда чуть выше боковых (дуга)
+      const posY = baseStarY - (i === 1 ? 8 : 0);
 
       const star = this.add.image(posX, posY, starKey)
         .setScale(0)
         .setAlpha(0)
-        .setDepth(10);
+        .setDepth(12);
 
-      const flash = this.add.circle(posX, posY, 32, 0xfde047, 0)
+      const flash = this.add.circle(posX, posY, 24, 0xfde047, 0)
         .setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(9);
+        .setDepth(11);
 
-      this.time.delayedCall(220 + i * 180, () => {
+      this.time.delayedCall(200 + i * 170, () => {
+        if (!this.scene || !this.scene.isActive() || this.isNavigating) return;
+
         if (isFilled && AudioManager.playStarChime) {
           AudioManager.playStarChime(i);
         }
 
         this.tweens.add({
           targets: star,
-          scale: 0.95,
+          scale: targetStarScale,
           alpha: 1,
-          duration: 380,
+          duration: 360,
           ease: 'Back.easeOut',
           onComplete: () => {
+            if (!this.scene || !this.scene.isActive() || this.isNavigating) return;
             this.tweens.add({
               targets: star,
-              y: posY - 4,
-              duration: 1200 + i * 150,
+              y: posY - 3,
+              duration: 1300 + i * 150,
               yoyo: true,
               repeat: -1,
               ease: 'Sine.easeInOut'
@@ -94,34 +102,35 @@ export class VictoryScene extends Phaser.Scene {
         if (isFilled) {
           this.tweens.add({
             targets: flash,
-            alpha: { from: 0.8, to: 0 },
-            scale: { from: 0.4, to: 1.5 },
-            duration: 380,
+            alpha: { from: 0.75, to: 0 },
+            scale: { from: 0.4, to: 1.4 },
+            duration: 360,
             ease: 'Quad.easeOut'
           });
         }
       });
     }
 
-    // Артефакт
+    // Артефакт (с безопасным отступом от звёзд сверху и названия снизу)
     const tex = this.textures.exists(artifact.textureKey)
       ? artifact.textureKey
       : 'art_egypt_scarab';
 
-    const artImg = this.add.image(width / 2, height * 0.35, tex)
+    const artCenterY = height * 0.37;
+    const artImg = this.add.image(width / 2, artCenterY, tex)
       .setScale(0)
       .setDepth(10);
 
     if (isKintsugi) {
-      const glow = this.add.ellipse(width / 2, height * 0.35, 220, 260, 0xfacc15, 0.25)
+      const glow = this.add.ellipse(width / 2, artCenterY, 190, 220, 0xfacc15, 0.25)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(9);
 
       this.tweens.add({
         targets: glow,
-        scaleX: 1.08,
-        scaleY: 1.08,
-        alpha: 0.38,
+        scaleX: 1.07,
+        scaleY: 1.07,
+        alpha: 0.36,
         duration: 1400,
         yoyo: true,
         repeat: -1,
@@ -129,17 +138,19 @@ export class VictoryScene extends Phaser.Scene {
       });
     }
 
+    const baseArtScale = 0.56;
     this.tweens.add({
       targets: artImg,
-      scale: 0.72,
-      duration: 550,
-      delay: 400,
+      scale: baseArtScale,
+      duration: 500,
+      delay: 350,
       ease: 'Back.easeOut',
       onComplete: () => {
+        if (!this.scene || !this.scene.isActive() || this.isNavigating) return;
         this.tweens.add({
           targets: artImg,
-          scaleX: 0.75,
-          scaleY: 0.75,
+          scaleX: baseArtScale + 0.025,
+          scaleY: baseArtScale + 0.025,
           duration: 1800,
           yoyo: true,
           repeat: -1,
@@ -149,8 +160,8 @@ export class VictoryScene extends Phaser.Scene {
     });
 
     // Название
-    this.add.text(width / 2, height * 0.505, artifact.name, {
-      fontSize: '20px',
+    this.add.text(width / 2, height * 0.535, artifact.name, {
+      fontSize: '19px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -159,13 +170,13 @@ export class VictoryScene extends Phaser.Scene {
 
     // Оценка и бейдж
     const baseVal = artifact.marketValue || 100;
-    let valueDesc = `Музейная оценка: +${baseVal} 🪙`;
-    if (isKintsugi) valueDesc += ' (✨ Кинцуги +60%)';
+    let valueDesc = `Музейная оценка: +${baseVal} монет`;
+    if (isKintsugi) valueDesc += ' (Кинцуги +60%)';
     else if (isContract) valueDesc += ' (Премия гильдии)';
     else if (isDuplicate) valueDesc += ' (Повтор -35%)';
 
-    const valTxt = this.add.text(width / 2, height * 0.545, valueDesc, {
-      fontSize: '13.5px',
+    const valTxt = this.add.text(width / 2, height * 0.573, valueDesc, {
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: isKintsugi ? '#facc15' : '#86efac',
       fontStyle: 'bold',
@@ -174,7 +185,7 @@ export class VictoryScene extends Phaser.Scene {
 
     // Кнопка Удвоить оценку экспоната за рекламу
     let doubled = false;
-    const adBtnY = height * 0.605;
+    const adBtnY = height * 0.63;
     const adBtnW = width * 0.84;
     const adBtnH = 42;
 
@@ -188,8 +199,8 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(22);
 
-    const adTxt = this.add.text(width / 2, adBtnY, `🎬 УДВОИТЬ ОЦЕНКУ (+${baseVal} 🪙 В КАЗНУ)`, {
-      fontSize: '13.5px',
+    const adTxt = this.add.text(width / 2, adBtnY, `УДВОИТЬ ОЦЕНКУ (+${baseVal} В КАЗНУ)`, {
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#1a1004',
       fontStyle: 'bold',
@@ -197,7 +208,7 @@ export class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(21);
 
     adZone.on('pointerdown', () => {
-      if (doubled) return;
+      if (doubled || this.isNavigating) return;
       YandexSDK.showRewarded(() => {
         doubled = true;
         Storage.addCoins(baseVal);
@@ -208,16 +219,25 @@ export class VictoryScene extends Phaser.Scene {
         adGfx.lineStyle(1.2, 0x4ade80, 0.9);
         adGfx.strokeRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
         adTxt.setColor('#86efac');
-        adTxt.setText(`✓ ПОЛУЧЕНО +${baseVal} 🪙 В КАЗНУ!`);
-        valTxt.setText(`Итоговая ценность: ${baseVal * 2} 🪙`);
+        adTxt.setText(`ПОЛУЧЕНО +${baseVal} МОНЕТ В КАЗНУ!`);
+        valTxt.setText(`Итоговая ценность: ${baseVal * 2} монет`);
       });
     });
 
     // Прогресс Опыта
     this.createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI);
 
+    const goToScene = (targetScene) => {
+      if (this.isNavigating) return;
+      this.isNavigating = true;
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.tweens.killAll();
+      this.time.removeAllEvents();
+      this.scene.start(targetScene);
+    };
+
     // Кнопка: В главное меню
-    const menuBtnY = height * 0.805;
+    const menuBtnY = height * 0.815;
     const menuGfx = this.add.graphics().setDepth(20);
     menuGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
     menuGfx.fillRoundedRect(width / 2 - adBtnW / 2, menuBtnY - 22, adBtnW, 44, 11);
@@ -228,21 +248,18 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(22);
 
-    this.add.text(width / 2, menuBtnY, '🗂️ В главное меню', {
-      fontSize: '15px',
+    this.add.text(width / 2, menuBtnY, 'В главное меню', {
+      fontSize: '14.5px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5).setDepth(21);
 
-    menuZone.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.scene.start('MenuScene');
-    });
+    menuZone.on('pointerdown', () => goToScene('MenuScene'));
 
     // Кнопка: Следующий артефакт
-    const nextBtnY = height * 0.885;
+    const nextBtnY = height * 0.892;
     const nextGfx = this.add.graphics().setDepth(20);
     nextGfx.fillGradientStyle(0x15803d, 0x15803d, 0x14532d, 0x14532d, 1);
     nextGfx.fillRoundedRect(width / 2 - adBtnW / 2, nextBtnY - 23, adBtnW, 46, 11);
@@ -253,22 +270,19 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(22);
 
-    this.add.text(width / 2, nextBtnY, '▶ К следующему артефакту', {
-      fontSize: '15px',
+    this.add.text(width / 2, nextBtnY, 'К следующему артефакту ›', {
+      fontSize: '14.5px',
       fontFamily: FONT_UI,
       color: '#ffffff',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5).setDepth(21);
 
-    nextZone.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.scene.start('EraSelectScene');
-    });
+    nextZone.on('pointerdown', () => goToScene('EraSelectScene'));
   }
 
   createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI) {
-    const xpBoxY = height * 0.695;
+    const xpBoxY = height * 0.715;
     const barW = width * 0.82;
 
     let baseXp = 100;
@@ -281,7 +295,7 @@ export class VictoryScene extends Phaser.Scene {
     const initialLvl = Storage.getLevelData();
 
     this.add.text(width / 2 - barW / 2, xpBoxY - 16, `УР. ${initialLvl.level} • ${initialLvl.title}`, {
-      fontSize: '13px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#f5e6c8',
       fontStyle: 'bold',
@@ -289,7 +303,7 @@ export class VictoryScene extends Phaser.Scene {
     }).setDepth(15);
 
     this.add.text(width / 2 + barW / 2, xpBoxY - 16, `+${xpAward} XP`, {
-      fontSize: '13px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#38bdf8',
       fontStyle: 'bold',
@@ -300,17 +314,18 @@ export class VictoryScene extends Phaser.Scene {
     const xpFill = this.add.rectangle(width / 2 - barW / 2, xpBoxY + 5, barW * initialLvl.progressRatio, 8, 0x38bdf8)
       .setOrigin(0, 0.5).setDepth(15);
 
-    this.time.delayedCall(650, () => {
+    this.time.delayedCall(600, () => {
+      if (!this.scene || !this.scene.isActive() || this.isNavigating) return;
       const result = Storage.addXP(xpAward);
       const updatedLvl = Storage.getLevelData();
 
       this.tweens.add({
         targets: xpFill,
         width: barW * (result.leveledUp ? 1 : updatedLvl.progressRatio),
-        duration: 700,
+        duration: 650,
         ease: 'Cubic.easeOut',
         onComplete: () => {
-          if (result.leveledUp) {
+          if (result.leveledUp && !this.isNavigating) {
             this.showLevelUpModal(width, height, result.newLevel, result.newTitle, result.bonusCoins, result.lacquerBonus, dpr, FONT_UI);
           }
         }
@@ -332,8 +347,8 @@ export class VictoryScene extends Phaser.Scene {
     cardBg.lineStyle(2, 0xfacc15, 0.95);
     cardBg.strokeRoundedRect(-(width * 0.84) / 2, -115, width * 0.84, 230, 14);
 
-    const badge = this.add.text(0, -78, '⭐ НОВЫЙ РАНГ МАСТЕРА! ⭐', {
-      fontSize: '15px',
+    const badge = this.add.text(0, -78, 'НОВЫЙ РАНГ МАСТЕРА!', {
+      fontSize: '14.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -342,7 +357,7 @@ export class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const rankText = this.add.text(0, -44, `УРОВЕНЬ ${level}`, {
-      fontSize: '23px',
+      fontSize: '22px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -350,17 +365,17 @@ export class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const titleText = this.add.text(0, -14, `«${title}»`, {
-      fontSize: '14.5px',
+      fontSize: '14px',
       fontFamily: FONT_UI,
       color: '#e2b866',
       resolution: dpr
     }).setOrigin(0.5);
 
-    let rewLine = `Награда: +${bonusCoins} 🪙 в казну`;
-    if (lacquerBonus > 0) rewLine += `\n+ ${lacquerBonus} ✨ Золотой лак Кинцуги`;
+    let rewLine = `Награда: +${bonusCoins} монет в казну`;
+    if (lacquerBonus > 0) rewLine += `\n+ ${lacquerBonus} Золотой лак Кинцуги`;
 
     const rewardText = this.add.text(0, 26, rewLine, {
-      fontSize: '13.5px',
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#86efac',
       align: 'center',
@@ -378,7 +393,7 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const okTxt = this.add.text(0, 81, 'ЗАБРАТЬ НАГРАДУ', {
-      fontSize: '13.5px',
+      fontSize: '13px',
       fontFamily: FONT_UI,
       color: '#1a1004',
       fontStyle: 'bold',
