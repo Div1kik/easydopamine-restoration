@@ -8,7 +8,7 @@ export class MuseumScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    this.dpr = 2.5;
+    this.dpr = 3;
 
     const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
     const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -28,9 +28,9 @@ export class MuseumScene extends Phaser.Scene {
       AudioManager.playShopBell();
     }
 
-    // Верхняя шапка музея
+    // Верхняя шапка музея (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.90);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 82);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 82, width, 82);
@@ -65,17 +65,12 @@ export class MuseumScene extends Phaser.Scene {
 
     this.listCont = this.add.container(0, this.listTopY).setDepth(5);
 
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(0, this.listTopY, width, this.listHeight);
-    this.listCont.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
-
     this.setupScroll();
     this.renderExhibitGrid();
 
-    // Нижняя панель с кнопкой возврата
+    // Нижняя панель с кнопкой возврата (depth 30 перекрывает низ списка)
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.92);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -139,10 +134,12 @@ export class MuseumScene extends Phaser.Scene {
   setupScroll() {
     let startY = 0;
     let containerStartY = 0;
+    let pointerDownActive = false;
     this.isDragging = false;
 
     this.input.on('pointerdown', (p) => {
       if (p.y >= this.listTopY && p.y <= this.listBottomY) {
+        pointerDownActive = true;
         startY = p.y;
         containerStartY = this.listCont.y;
         this.isDragging = false;
@@ -150,17 +147,26 @@ export class MuseumScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      if (p.y >= this.listTopY && p.y <= this.listBottomY) {
-        const dy = p.y - startY;
-        if (Math.abs(dy) > 6) {
-          this.isDragging = true;
-        }
-        this.listCont.y = Phaser.Math.Clamp(
-          containerStartY + dy,
-          this.minScrollY || this.listTopY,
-          this.listTopY
-        );
+      if (!pointerDownActive) return;
+      const dy = p.y - startY;
+      if (Math.abs(dy) > 6) {
+        this.isDragging = true;
+      }
+      if (this.isDragging) {
+        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
+        this.listCont.y = Phaser.Math.Clamp(containerStartY + dy, minScroll, this.listTopY);
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      pointerDownActive = false;
+    });
+
+    // Поддержка колёсика мыши на ПК
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (pointer.y >= this.listTopY && pointer.y <= this.listBottomY) {
+        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
+        this.listCont.y = Phaser.Math.Clamp(this.listCont.y - deltaY * 0.45, minScroll, this.listTopY);
       }
     });
   }
@@ -229,7 +235,8 @@ export class MuseumScene extends Phaser.Scene {
         tile.add(pedGfx);
 
         const tex = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
-        const icon = this.add.image(0, -28, tex).setDisplaySize(86, 86);
+        // Пропорция 4:5 (72x90) вместо сплющенного квадрата 86x86
+        const icon = this.add.image(0, -30, tex).setDisplaySize(72, 90);
         tile.add(icon);
 
         // Тап по экспонату открывает детальный 360-осмотр
