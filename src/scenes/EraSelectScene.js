@@ -10,11 +10,11 @@ export class EraSelectScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    const textRes = 2.5;
+    const textRes = 3;
     this.textRes = textRes;
 
-    const FONT_TITLE = '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif';
-    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    const FONT_TITLE = '"Cormorant Garamond", Georgia, serif';
+    const FONT_UI = '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     this.FONT_UI = FONT_UI;
 
     if (this.textures.exists('expedition_bg')) {
@@ -51,13 +51,13 @@ export class EraSelectScene extends Phaser.Scene {
 
     // Верхняя шапка
     const headerBg = this.add.graphics().setDepth(18);
-    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.86);
+    headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.88);
     headerBg.fillRect(0, 0, width, 114);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
     headerBg.lineBetween(0, 114, width, 114);
 
-    this.add.text(width / 2, 24, '🧭 КАРТА ЭКСПЕДИЦИЙ', {
-      fontSize: '18px',
+    this.add.text(width / 2, 22, '🧭 КАРТА ЭКСПЕДИЦИЙ', {
+      fontSize: '20px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -67,10 +67,10 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.subInfoText = this.add.text(
       width / 2,
-      49,
+      48,
       `Ур. ${levelData.level} (${levelData.title})  |  Казна: ${coins} 🪙`,
       {
-        fontSize: '12.5px',
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#e2b866',
         fontStyle: 'bold',
@@ -81,15 +81,15 @@ export class EraSelectScene extends Phaser.Scene {
     // Кнопка сброса в углу
     const resetGfx = this.add.graphics().setDepth(24);
     resetGfx.fillStyle(0x2b1512, 0.9);
-    resetGfx.fillRoundedRect(width - 52, 18, 32, 32, 8);
+    resetGfx.fillRoundedRect(width - 50, 16, 32, 32, 8);
     resetGfx.lineStyle(1.2, 0xf87171, 0.85);
-    resetGfx.strokeRoundedRect(width - 52, 18, 32, 32, 8);
+    resetGfx.strokeRoundedRect(width - 50, 16, 32, 32, 8);
 
-    const resetBtn = this.add.zone(width - 36, 34, 32, 32)
+    const resetBtn = this.add.zone(width - 34, 32, 32, 32)
       .setInteractive({ useHandCursor: true })
       .setDepth(26);
 
-    this.add.text(width - 36, 34, '🗑', {
+    this.add.text(width - 34, 32, '🗑', {
       fontSize: '14px',
       resolution: textRes
     }).setOrigin(0.5).setDepth(25);
@@ -114,7 +114,7 @@ export class EraSelectScene extends Phaser.Scene {
 
     // Нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
-    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.88);
+    footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.90);
     footerBg.fillRect(0, height - 66, width, 66);
     footerBg.lineStyle(1.5, 0xc89d54, 0.65);
     footerBg.lineBetween(0, height - 66, width, height - 66);
@@ -134,7 +134,7 @@ export class EraSelectScene extends Phaser.Scene {
       .setDepth(33);
 
     this.add.text(width / 2, btnY, 'В главное меню', {
-      fontSize: '15px',
+      fontSize: '14px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -203,7 +203,7 @@ export class EraSelectScene extends Phaser.Scene {
         : (era.levelReached ? `🔑 ${shortNames[era.id]}` : `🔒 Ур.${era.requiredLevel}`);
 
       const txt = this.add.text(tabX, 0, labelStr, {
-        fontSize: '12px',
+        fontSize: '11.5px',
         fontFamily: this.FONT_UI,
         color: isSelected ? '#1a1004' : (era.unlocked ? '#fdf6e3' : (era.levelReached ? '#facc15' : '#9c8265')),
         fontStyle: 'bold',
@@ -294,11 +294,11 @@ export class EraSelectScene extends Phaser.Scene {
     // Если эпоха не открыта
     if (!currentEra.unlocked) {
       this.minListY = this.listTopY;
-      const boxW = width * 0.88;
+      const boxW = width * 0.90;
       const boxH = 190;
 
       const lockGfx = this.add.graphics();
-      lockGfx.fillGradientStyle(0x261a10, 0x261a10, 0x160f0a, 0x160f0a, 0.82);
+      lockGfx.fillGradientStyle(0x261a10, 0x261a10, 0x160f0a, 0x160f0a, 0.85);
       lockGfx.fillRoundedRect(width / 2 - boxW / 2, 125 - boxH / 2, boxW, boxH, 14);
       lockGfx.lineStyle(1.5, currentEra.levelReached ? 0xfacc15 : 0xf87171, 0.85);
       lockGfx.strokeRoundedRect(width / 2 - boxW / 2, 125 - boxH / 2, boxW, boxH, 14);
@@ -306,9 +306,9 @@ export class EraSelectScene extends Phaser.Scene {
       const lockTxt = this.add.text(
         width / 2,
         66,
-        currentEra.levelReached ? `🔑 ЭПОХА ГОТОВА К ОТКРЫТИЮ` : '🔒 ЭПОХА ЗАБЛОКИРОВАНА',
+        currentEra.levelReached ? '🔑 ЭПОХА ГОТОВА К ОТКРЫТИЮ' : '🔒 ЭПОХА ЗАБЛОКИРОВАНА',
         {
-          fontSize: '15px',
+          fontSize: '14.5px',
           fontFamily: FONT_UI,
           color: currentEra.levelReached ? '#facc15' : '#fda4af',
           fontStyle: 'bold',
@@ -321,18 +321,19 @@ export class EraSelectScene extends Phaser.Scene {
         : `Требуется ${currentEra.requiredLevel}-й уровень мастера.\nПовышайте ранг, реставрируя доступные реликвии!`;
 
       const reqTxt = this.add.text(width / 2, 114, reqStr, {
-        fontSize: '13px',
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
         align: 'center',
         lineSpacing: 4,
+        wordWrap: { width: boxW - 28 },
         resolution: textRes
       }).setOrigin(0.5);
 
       this.listContainer.add([lockGfx, lockTxt, reqTxt]);
 
       if (currentEra.levelReached) {
-        const unlockBtnW = 210;
+        const unlockBtnW = 216;
         const unlockBtnH = 40;
         const unlockGfx = this.add.graphics();
         unlockGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
@@ -342,7 +343,7 @@ export class EraSelectScene extends Phaser.Scene {
 
         const unlockZone = this.add.zone(width / 2, 174, unlockBtnW, unlockBtnH).setInteractive({ useHandCursor: true });
         const unlockLabel = this.add.text(width / 2, 174, `ОТКРЫТЬ ЗА ${currentEra.unlockCost} 🪙`, {
-          fontSize: '13.5px',
+          fontSize: '13px',
           fontFamily: FONT_UI,
           color: '#1a1004',
           fontStyle: 'bold',
@@ -355,8 +356,8 @@ export class EraSelectScene extends Phaser.Scene {
             currentEra.unlocked = true;
             this.createScrollableTabs(width, 86);
             this.renderArtifactsList();
-          } else {
-            if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+          } else if (AudioManager.playBreakSnap) {
+            AudioManager.playBreakSnap();
           }
         });
 
@@ -365,35 +366,37 @@ export class EraSelectScene extends Phaser.Scene {
       return;
     }
 
-    // 1. Карточка снаряжения экспедиции (+ опция за рекламу)
-    const expW = width * 0.90;
+    // 1. Карточка снаряжения экспедиции (+ широкая кнопка за рекламу)
+    const expW = width * 0.92;
     const expH = 92;
     const expY = 52;
     const expeditionBox = this.add.container(width / 2, expY);
 
     const expGfx = this.add.graphics();
-    expGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.72);
+    expGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.78);
     expGfx.fillRoundedRect(-expW / 2, -expH / 2, expW, expH, 12);
     expGfx.lineStyle(1.5, 0xc89d54, 0.88);
     expGfx.strokeRoundedRect(-expW / 2, -expH / 2, expW, expH, 12);
 
-    const expTitle = this.add.text(-expW / 2 + 14, -20, '🧭 СНАРЯДИТЬ ЭКСПЕДИЦИЮ', {
-      fontSize: '13px',
+    const textMaxW = expW - 144;
+    const expTitle = this.add.text(-expW / 2 + 14, -22, '🧭 СНАРЯДИТЬ ЭКСПЕДИЦИЮ', {
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    const expDesc = this.add.text(-expW / 2 + 14, 12, 'Доставка 1–2 находок каждого вида\nна склад выбранной эпохи', {
-      fontSize: '12px',
+    const expDesc = this.add.text(-expW / 2 + 14, 10, 'Доставка 1–2 находок каждого вида на склад эпохи', {
+      fontSize: '10.5px',
       fontFamily: FONT_UI,
       color: '#e6d5bc',
+      wordWrap: { width: textMaxW },
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    const fundBtnX = expW / 2 - 52;
-    const fundBtnW = 90;
+    const fundBtnW = 112;
+    const fundBtnX = expW / 2 - fundBtnW / 2 - 12;
     const fundBtnH = 34;
 
     const fundGfx = this.add.graphics();
@@ -406,7 +409,7 @@ export class EraSelectScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const fundTxt = this.add.text(fundBtnX, -20, `${currentEra.cost} 🪙`, {
-      fontSize: '13px',
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#1a1004',
       fontStyle: 'bold',
@@ -423,12 +426,12 @@ export class EraSelectScene extends Phaser.Scene {
       if (success) {
         if (AudioManager.playCoin) AudioManager.playCoin();
         this.renderArtifactsList();
-      } else {
-        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+      } else if (AudioManager.playBreakSnap) {
+        AudioManager.playBreakSnap();
       }
     });
 
-    // Кнопка бесплатной экспедиции за рекламу
+    // Кнопка бесплатной экспедиции за рекламу (широкая, текст помещается с запасом)
     const adExpGfx = this.add.graphics();
     adExpGfx.fillStyle(0x1e3a8a, 0.98);
     adExpGfx.fillRoundedRect(fundBtnX - fundBtnW / 2, 20 - 15, fundBtnW, 30, 8);
@@ -437,7 +440,7 @@ export class EraSelectScene extends Phaser.Scene {
 
     const adExpZone = this.add.zone(fundBtnX, 20, fundBtnW, 30).setInteractive({ useHandCursor: true });
     const adExpTxt = this.add.text(fundBtnX, 20, '🎬 БЕСПЛАТНО', {
-      fontSize: '12px',
+      fontSize: '10.5px',
       fontFamily: FONT_UI,
       color: '#ffffff',
       fontStyle: 'bold',
@@ -462,7 +465,7 @@ export class EraSelectScene extends Phaser.Scene {
 
     const cardH = 96;
     const spacing = 10;
-    const cardW = width * 0.90;
+    const cardW = width * 0.92;
     const listOffsetY = 110;
 
     let touchDownTime = 0;
@@ -481,7 +484,7 @@ export class EraSelectScene extends Phaser.Scene {
         hasStock ? 0x261a10 : 0x160f0a,
         hasStock ? 0x170f09 : 0x110b07,
         hasStock ? 0x170f09 : 0x110b07,
-        hasStock ? 0.64 : 0.45
+        hasStock ? 0.72 : 0.50
       );
       cardGfx.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
       cardGfx.lineStyle(1.3, hasStock ? 0xc89d54 : 0x5c3d22, hasStock ? 0.88 : 0.5);
@@ -495,11 +498,12 @@ export class EraSelectScene extends Phaser.Scene {
         .setDisplaySize(58, 58)
         .setAlpha(hasStock ? 1 : 0.45);
 
-      const title = this.add.text(-cardW / 2 + 90, -26, art.name, {
-        fontSize: '14.5px',
+      const title = this.add.text(-cardW / 2 + 88, -26, art.name, {
+        fontSize: '13.5px',
         fontFamily: FONT_UI,
         color: hasStock ? '#fdf6e3' : '#9c8265',
         fontStyle: 'bold',
+        wordWrap: { width: cardW - 155 },
         resolution: textRes
       });
 
@@ -508,8 +512,8 @@ export class EraSelectScene extends Phaser.Scene {
         ? `📦 На складе: ${countLeft} шт.`
         : 'Склад пуст (нужна экспедиция)';
 
-      const stockBadge = this.add.text(-cardW / 2 + 90, -3, stockBadgeText, {
-        fontSize: '12px',
+      const stockBadge = this.add.text(-cardW / 2 + 88, -3, stockBadgeText, {
+        fontSize: '11px',
         fontFamily: FONT_UI,
         color: stockBadgeColor,
         fontStyle: 'bold',
@@ -517,8 +521,8 @@ export class EraSelectScene extends Phaser.Scene {
       });
 
       const takeBtnText = hasStock ? '⚒ ВЗЯТЬ НА ВЕРСТАК ›' : 'Нет в наличии';
-      const takeBtn = this.add.text(-cardW / 2 + 90, 21, takeBtnText, {
-        fontSize: '12.5px',
+      const takeBtn = this.add.text(-cardW / 2 + 88, 21, takeBtnText, {
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: hasStock ? '#facc15' : '#7a6552',
         fontStyle: 'bold',
@@ -526,7 +530,7 @@ export class EraSelectScene extends Phaser.Scene {
       });
 
       const valueBadge = this.add.text(cardW / 2 - 14, -22, `${art.marketValue || 100} 🪙`, {
-        fontSize: '13px',
+        fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: hasStock ? '#facc15' : '#7a6552',
         fontStyle: 'bold',
@@ -583,7 +587,7 @@ export class EraSelectScene extends Phaser.Scene {
     boxGfx.strokeRoundedRect(width / 2 - boxW / 2, height / 2 - boxH / 2, boxW, boxH, 14);
 
     const title = this.add.text(width / 2, height / 2 - 68, '⚠️ СБРОС ПРОГРЕССА', {
-      fontSize: '16px',
+      fontSize: '15px',
       fontFamily: FONT_UI,
       color: '#fda4af',
       fontStyle: 'bold',
@@ -595,7 +599,7 @@ export class EraSelectScene extends Phaser.Scene {
       height / 2 - 14,
       'Все отреставрированные артефакты,\nмонеты, открытые эпохи и улучшения\nбудут удалены безвозвратно.',
       {
-        fontSize: '13px',
+        fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#f5e6c8',
         align: 'center',
@@ -614,7 +618,7 @@ export class EraSelectScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const confirmTxt = this.add.text(width / 2 - 64, height / 2 + 56, 'СБРОСИТЬ', {
-      fontSize: '13px',
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#ffffff',
       fontStyle: 'bold',
@@ -636,7 +640,7 @@ export class EraSelectScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const cancelTxt = this.add.text(width / 2 + 64, height / 2 + 56, 'ОТМЕНА', {
-      fontSize: '13px',
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
