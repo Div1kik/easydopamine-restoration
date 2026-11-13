@@ -1,69 +1,59 @@
-// Генератор уникальной временной метки для гарантированного обхода кэша
-const t = Date.now();
+import { BootScene } from './scenes/BootScene.js';
+import { MenuScene } from './scenes/MenuScene.js';
+import { EraSelectScene } from './scenes/EraSelectScene.js';
+import { RestoreScene } from './scenes/RestoreScene.js';
+import { VictoryScene } from './scenes/VictoryScene.js';
+import { ShopScene } from './scenes/ShopScene.js';
+import { MuseumScene } from './scenes/MuseumScene.js';
+import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
+import { YandexSDK } from './utils/YandexSDK.js';
 
-// Динамическая параллельная загрузка всех модулей игры
-Promise.all([
-  import(`./scenes/BootScene.js?t=${t}`),
-  import(`./scenes/MenuScene.js?t=${t}`),
-  import(`./scenes/EraSelectScene.js?t=${t}`),
-  import(`./scenes/RestoreScene.js?t=${t}`),
-  import(`./scenes/VictoryScene.js?t=${t}`),
-  import(`./scenes/ShopScene.js?t=${t}`),
-  import(`./scenes/MuseumScene.js?t=${t}`),
-  import(`./utils/AudioManager.js?t=${t}`)
-]).then(([
-  { BootScene },
-  { MenuScene },
-  { EraSelectScene },
-  { RestoreScene },
-  { VictoryScene },
-  { ShopScene },
-  { MuseumScene },
-  { AudioManager }
-]) => {
-  const unlockAudio = () => {
-    AudioManager.unlockAudio();
-    window.removeEventListener('pointerdown', unlockAudio);
-    window.removeEventListener('touchstart', unlockAudio);
-  };
-  window.addEventListener('pointerdown', unlockAudio);
-  window.addEventListener('touchstart', unlockAudio);
+// Глобальный HiDPI-патч шрифтов: убирает размытие и поднимает мелкие кегли на мобильных экранах
+const origTextFactory = Phaser.GameObjects.GameObjectFactory.prototype.text;
+Phaser.GameObjects.GameObjectFactory.prototype.text = function (x, y, text, style = {}) {
+  const patchedStyle = { ...style };
+  const targetRes = Math.min(Math.max(window.devicePixelRatio || 2, 2.5), 3);
+  if (!patchedStyle.resolution || patchedStyle.resolution < targetRes) {
+    patchedStyle.resolution = targetRes;
+  }
+  if (patchedStyle.fontSize) {
+    const num = parseFloat(patchedStyle.fontSize);
+    if (!Number.isNaN(num) && num < 12) {
+      patchedStyle.fontSize = `${Math.ceil(num + 2)}px`;
+    }
+  }
+  return origTextFactory.call(this, x, y, text, patchedStyle);
+};
 
-  const config = {
-    type: Phaser.AUTO,
-    width: 480,
-    height: 800,
-    parent: 'game-container',
-    backgroundColor: '#0d0906',
-    render: {
-      antialias: true,
-      antialiasGL: true,
-      pixelArt: false,
-      roundPixels: false,
-      powerPreference: 'high-performance'
-    },
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
-      width: 480,
-      height: 800,
-      zoom: Math.min(window.devicePixelRatio || 1, 2)
-    },
-    input: {
-      activePointers: 2
-    },
-    scene: [
-      BootScene,
-      MenuScene,
-      EraSelectScene,
-      RestoreScene,
-      VictoryScene,
-      ShopScene,
-      MuseumScene
-    ]
-  };
+YandexSDK.init();
 
-  new Phaser.Game(config);
-}).catch((err) => {
-  console.error('Ошибка инициализации игры:', err);
-});
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: 480,
+  height: 800,
+  backgroundColor: '#0d0805',
+  resolution: Math.min(window.devicePixelRatio || 2, 2.5),
+  render: {
+    antialias: true,
+    antialiasGL: true,
+    roundPixels: false,
+    powerPreference: 'high-performance'
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
+  },
+  scene: [
+    BootScene,
+    MenuScene,
+    EraSelectScene,
+    RestoreScene,
+    VictoryScene,
+    ShopScene,
+    MuseumScene,
+    ArtifactDetailScene
+  ]
+};
+
+new Phaser.Game(config);
