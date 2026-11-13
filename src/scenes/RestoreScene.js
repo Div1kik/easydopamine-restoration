@@ -1,8 +1,8 @@
-import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
 import * as ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
+import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -11,10 +11,10 @@ export class RestoreScene extends Phaser.Scene {
 
   create(data) {
     const { width, height } = this.scale;
-    const dpr = 2.5;
+    const dpr = 3;
     this.dpr = dpr;
 
-    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    const FONT_UI = '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     this.FONT_UI = FONT_UI;
 
     YandexSDK.notifyGameplayStart();
@@ -75,10 +75,10 @@ export class RestoreScene extends Phaser.Scene {
     // 2. БЕЗОПАСНАЯ ГЕОМЕТРИЯ ЭКРАНА
     const systemTopPad = 6;
     const topBarHeight = 46;
-    const infoPanelHeight = 84;
+    const infoPanelHeight = 86;
     const workspaceTop = systemTopPad + topBarHeight + infoPanelHeight;
 
-    const trayHeight = 92;
+    const trayHeight = 94;
     const trayY = height - trayHeight / 2 - 12;
     const trayTopLimit = trayY - trayHeight / 2;
 
@@ -102,7 +102,7 @@ export class RestoreScene extends Phaser.Scene {
 
     const coins = Storage.getCoins();
     this.coinsText = this.add.text(16, systemTopPad + 23, `${coins} 🪙`, {
-      fontSize: '14px',
+      fontSize: '13.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -114,16 +114,16 @@ export class RestoreScene extends Phaser.Scene {
 
     const menuBtnGfx = this.add.graphics().setDepth(204);
     menuBtnGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
-    menuBtnGfx.fillRoundedRect(width - rightMargin - 64, systemTopPad + 6, 64, btnSize, 8);
+    menuBtnGfx.fillRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
     menuBtnGfx.lineStyle(1.2, 0xc89d54, 0.9);
-    menuBtnGfx.strokeRoundedRect(width - rightMargin - 64, systemTopPad + 6, 64, btnSize, 8);
+    menuBtnGfx.strokeRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
 
-    const menuBtn = this.add.zone(width - rightMargin - 32, systemTopPad + 23, 64, btnSize)
+    const menuBtn = this.add.zone(width - rightMargin - 33, systemTopPad + 23, 66, btnSize)
       .setInteractive({ useHandCursor: true })
       .setDepth(206);
 
-    this.add.text(width - rightMargin - 32, systemTopPad + 23, 'Меню', {
-      fontSize: '13px',
+    this.add.text(width - rightMargin - 33, systemTopPad + 23, 'Меню', {
+      fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -137,14 +137,14 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    const musicX = width - rightMargin - 64 - 8 - btnSize / 2;
+    const musicX = width - rightMargin - 66 - 8 - btnSize / 2;
     const musicBtn = this.add.circle(musicX, systemTopPad + 23, 16, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
       .setStrokeStyle(1.3, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(205);
 
     const musicIcon = this.add.text(musicX, systemTopPad + 23, AudioManager.isMusicOn() ? '🎵' : '🔇', {
-      fontSize: '14px',
+      fontSize: '13px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -164,7 +164,7 @@ export class RestoreScene extends Phaser.Scene {
       .setDepth(205);
 
     const sfxIcon = this.add.text(sfxX, systemTopPad + 23, AudioManager.isSfxOn() ? '🔊' : '🔈', {
-      fontSize: '14px',
+      fontSize: '13px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -203,7 +203,7 @@ export class RestoreScene extends Phaser.Scene {
     else if (this.isDuplicate) badgeText = 'ПОВТОРНАЯ НАХОДКА (-35%)';
 
     const badgeTxt = this.add.text(width / 2, 7, badgeText, {
-      fontSize: '12px',
+      fontSize: '10px',
       fontFamily: FONT_UI,
       color: this.isDuplicate ? '#fda4af' : '#e2b866',
       fontStyle: 'bold',
@@ -211,16 +211,16 @@ export class RestoreScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5, 0);
 
-    const artTitle = this.add.text(width / 2, 23, this.artifactData.name || 'Артефакт', {
-      fontSize: '16px',
+    const artTitle = this.add.text(width / 2, 22, this.artifactData.name || 'Артефакт', {
+      fontSize: '15px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5, 0);
 
-    this.taskNotice = this.add.text(width / 2, 43, '', {
-      fontSize: '12.5px',
+    this.taskNotice = this.add.text(width / 2, 42, '', {
+      fontSize: '11px',
       fontFamily: FONT_UI,
       color: '#d6c3a5',
       resolution: dpr
@@ -229,15 +229,15 @@ export class RestoreScene extends Phaser.Scene {
     const barW = Math.min(width * 0.78, 280);
     const progressBarBg = this.add.graphics();
     progressBarBg.fillStyle(0x0d0805, 0.95);
-    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 62, barW, 6, 3);
+    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
     progressBarBg.lineStyle(1, 0x5c3d22, 0.8);
-    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 62, barW, 6, 3);
+    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
 
-    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 65, 6, 4, 0xfacc15)
+    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 63, 6, 4, 0xfacc15)
       .setOrigin(0, 0.5);
 
-    this.toolWarning = this.add.text(width / 2, 70, '', {
-      fontSize: '12px',
+    this.toolWarning = this.add.text(width / 2, 69, '', {
+      fontSize: '10.5px',
       fontFamily: FONT_UI,
       color: '#fde047',
       fontStyle: 'bold',
@@ -281,7 +281,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(initialTool))
       .setOrigin(0.5, 0.10)
-      .setScale(0.75)
+      .setScale(0.76)
       .setAlpha(0)
       .setDepth(100);
 
@@ -420,6 +420,10 @@ export class RestoreScene extends Phaser.Scene {
   getToolTextureForTier(toolId) {
     const tier = this.getToolTier(toolId);
     const skin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
+    if (toolId === 'tool_glue') {
+      const glueSkinned = `tex_hd_tool_glue_${skin}`;
+      return this.textures.exists(glueSkinned) ? glueSkinned : 'tex_hd_tool_glue';
+    }
     const skinnedKey = `tex_hd_${toolId}_t${tier}_${skin}`;
     if (this.textures.exists(skinnedKey)) return skinnedKey;
 
@@ -459,14 +463,6 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     const activeSkin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
-    const skinAccents = {
-      default: { handle1: '#5c3a21', handle2: '#855832', ring: '#94a3b8' },
-      gold: { handle1: '#92400e', handle2: '#facc15', ring: '#fef08a' },
-      jade: { handle1: '#064e3b', handle2: '#10b981', ring: '#a7f3d0' },
-      damascus: { handle1: '#1e1b4b', handle2: '#6366f1', ring: '#c7d2fe' }
-    };
-    const accent = skinAccents[activeSkin] || skinAccents.default;
-
     const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
     const baseRadii = { scraper: 18, brush: 22, solvent: 20, polish: 21 };
     const tierRadiusBonus = [0, 0, 3, 6, 9];
@@ -486,96 +482,18 @@ export class RestoreScene extends Phaser.Scene {
           ctx.arc(32, 32, rad, 0, Math.PI * 2);
           ctx.fill();
         });
+
+        makeTex(`tex_hd_tool_${type}_t${tier}_${activeSkin}`, 128, (ctx) => {
+          drawDetailedToolCanvas(ctx, type, tier, activeSkin, 128);
+        });
       });
     });
 
+    makeTex(`tex_hd_tool_glue_${activeSkin}`, 128, (ctx) => {
+      drawDetailedToolCanvas(ctx, 'glue', 1, activeSkin, 128);
+    });
     makeTex('tex_hd_tool_glue', 128, (ctx) => {
-      ctx.fillStyle = accent.handle1;
-      ctx.beginPath();
-      ctx.roundRect(58, 36, 12, 74, 6);
-      ctx.fill();
-      ctx.fillStyle = accent.ring;
-      ctx.fillRect(56, 26, 16, 12);
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.moveTo(56, 26);
-      ctx.lineTo(72, 26);
-      ctx.lineTo(64, 6);
-      ctx.closePath();
-      ctx.fill();
-    });
-
-    [1, 2, 3, 4].forEach((tier) => {
-      makeTex(`tex_hd_tool_scraper_t${tier}_${activeSkin}`, 128, (ctx) => {
-        const hGrad = ctx.createLinearGradient(56, 60, 72, 60);
-        hGrad.addColorStop(0, accent.handle1);
-        hGrad.addColorStop(1, accent.handle2);
-        ctx.fillStyle = hGrad;
-        ctx.beginPath();
-        ctx.roundRect(57, 52, 14, 62, 5);
-        ctx.fill();
-
-        ctx.fillStyle = accent.ring;
-        ctx.fillRect(55, 46, 18, 8);
-
-        if (tier >= 3) {
-          ctx.fillStyle = tier === 4 ? '#e0f2fe' : '#f8fafc';
-          ctx.beginPath();
-          ctx.moveTo(64, 6);
-          ctx.lineTo(46, 46);
-          ctx.lineTo(82, 46);
-          ctx.closePath();
-          ctx.fill();
-        } else {
-          ctx.fillStyle = tier === 2 ? '#fbbf24' : '#cbd5e1';
-          ctx.beginPath();
-          ctx.moveTo(46, 14);
-          ctx.lineTo(82, 14);
-          ctx.lineTo(74, 46);
-          ctx.lineTo(54, 46);
-          ctx.closePath();
-          ctx.fill();
-        }
-      });
-
-      makeTex(`tex_hd_tool_brush_t${tier}_${activeSkin}`, 128, (ctx) => {
-        ctx.fillStyle = accent.handle1;
-        ctx.beginPath();
-        ctx.roundRect(58, 56, 12, 58, 5);
-        ctx.fill();
-
-        ctx.fillStyle = accent.ring;
-        ctx.fillRect(54, 44, 20, 13);
-
-        ctx.fillStyle = tier === 4 ? '#38bdf8' : (tier === 3 ? '#fef3c7' : '#fde68a');
-        ctx.beginPath();
-        ctx.arc(64, 28, 20, Math.PI, 0);
-        ctx.fillRect(44, 28, 40, 16);
-        ctx.fill();
-      });
-
-      makeTex(`tex_hd_tool_solvent_t${tier}_${activeSkin}`, 128, (ctx) => {
-        ctx.fillStyle = activeSkin === 'jade' ? '#059669' : (activeSkin === 'gold' ? '#d97706' : (tier >= 3 ? '#0d9488' : '#38bdf8'));
-        ctx.beginPath();
-        ctx.roundRect(42, 42, 44, 68, 12);
-        ctx.fill();
-
-        ctx.fillStyle = accent.ring;
-        ctx.fillRect(55, 24, 18, 18);
-        ctx.fillRect(52, 16, 24, 9);
-      });
-
-      makeTex(`tex_hd_tool_polish_t${tier}_${activeSkin}`, 128, (ctx) => {
-        ctx.fillStyle = activeSkin === 'damascus' ? '#4338ca' : (activeSkin === 'jade' ? '#047857' : '#d97706');
-        ctx.beginPath();
-        ctx.roundRect(36, 48, 56, 56, 14);
-        ctx.fill();
-        ctx.strokeStyle = accent.ring;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(64, 38, 22, Math.PI * 1.1, Math.PI * 1.9);
-        ctx.stroke();
-      });
+      drawDetailedToolCanvas(ctx, 'glue', 1, activeSkin, 128);
     });
   }
 
@@ -618,18 +536,18 @@ export class RestoreScene extends Phaser.Scene {
       { id: 'tool_scraper', icon: this.getToolTextureForTier('tool_scraper'), label: 'Скребок' },
       { id: 'tool_brush', icon: this.getToolTextureForTier('tool_brush'), label: 'Кисть' },
       { id: 'tool_solvent', icon: this.getToolTextureForTier('tool_solvent'), label: 'Реагент' },
-      { id: 'tool_glue', icon: 'tex_hd_tool_glue', label: 'Клей' },
+      { id: 'tool_glue', icon: this.getToolTextureForTier('tool_glue'), label: 'Клей' },
       { id: 'tool_polish', icon: this.getToolTextureForTier('tool_polish'), label: 'Блеск' }
     ];
 
     const trayBgGfx = this.add.graphics().setDepth(180);
     trayBgGfx.fillGradientStyle(0x24180f, 0x24180f, 0x120b07, 0x120b07, 0.94);
-    trayBgGfx.fillRect(0, trayY - 52, width, 114);
+    trayBgGfx.fillRect(0, trayY - 52, width, 118);
     trayBgGfx.lineStyle(1.5, 0xc89d54, 0.65);
     trayBgGfx.lineBetween(0, trayY - 52, width, trayY - 52);
 
-    const stepX = (width * 0.90) / tools.length;
-    const startX = width * 0.05 + stepX / 2;
+    const stepX = (width * 0.92) / tools.length;
+    const startX = width * 0.04 + stepX / 2;
 
     this.traySlots = [];
 
@@ -649,19 +567,19 @@ export class RestoreScene extends Phaser.Scene {
           selected ? 0x2b1b0e : 0x170f09,
           1
         );
-        slotGfx.fillRoundedRect(-29, -34, 58, 68, 10);
+        slotGfx.fillRoundedRect(-31, -35, 62, 70, 10);
         slotGfx.lineStyle(selected ? 2 : 1.2, selected ? 0xfacc15 : 0x8c6239, 0.95);
-        slotGfx.strokeRoundedRect(-29, -34, 58, 68, 10);
+        slotGfx.strokeRoundedRect(-31, -35, 62, 70, 10);
       };
       drawSlot(isSelected);
 
-      const slotZone = this.add.zone(0, 0, 58, 68)
+      const slotZone = this.add.zone(0, 0, 62, 70)
         .setInteractive({ useHandCursor: true });
 
-      const iconImg = this.add.image(0, -8, t.icon).setScale(0.42);
+      const iconImg = this.add.image(0, -8, t.icon).setDisplaySize(48, 48);
 
-      const lbl = this.add.text(0, 22, t.label, {
-        fontSize: '12px',
+      const lbl = this.add.text(0, 23, t.label, {
+        fontSize: '10px',
         fontFamily: this.FONT_UI,
         color: isSelected ? '#facc15' : '#e6d5bc',
         fontStyle: 'bold',
@@ -807,7 +725,6 @@ export class RestoreScene extends Phaser.Scene {
       fallbackBg.fillStyle(0x0d0805, 1);
       fallbackBg.fillRect(0, 0, width, height);
 
-      // Новый путь .webp в папке assets/workbenches/
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         if (this.scene && this.scene.isActive()) {
@@ -1087,7 +1004,7 @@ export class RestoreScene extends Phaser.Scene {
         ease: 'Bounce.easeOut',
         onComplete: () => {
           if (idx === 0) {
-            this.selectTool('tool_glue', 'tex_hd_tool_glue', true);
+            this.selectTool('tool_glue', this.getToolTextureForTier('tool_glue'), true);
             this.toolWarning.setText(`Нанесите Клей на места сколов (${points.length} шт.)!`);
           }
         }
@@ -1168,7 +1085,7 @@ export class RestoreScene extends Phaser.Scene {
     if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
     this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(45);
-    const bannerW = width * 0.88;
+    const bannerW = width * 0.90;
     const bannerH = 46;
 
     const bannerGfx = this.add.graphics();
@@ -1177,30 +1094,31 @@ export class RestoreScene extends Phaser.Scene {
     bannerGfx.lineStyle(1.5, 0xc89d54, 0.9);
     bannerGfx.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
 
-    const btnX = width * 0.44 - 56;
+    const btnX = bannerW / 2 - 58;
+    const btnW = 104;
     const btnGfx = this.add.graphics();
     const drawBtn = (active) => {
       btnGfx.clear();
       btnGfx.fillStyle(active ? 0x16a34a : (hasLacquer ? 0xd99b26 : 0x1e3a8a), 1);
-      btnGfx.fillRoundedRect(btnX - 48, -15, 96, 30, 7);
+      btnGfx.fillRoundedRect(btnX - btnW / 2, -15, btnW, 30, 7);
       btnGfx.lineStyle(1, active ? 0x86efac : (hasLacquer ? 0xfef08a : 0x38bdf8), 0.95);
-      btnGfx.strokeRoundedRect(btnX - 48, -15, 96, 30, 7);
+      btnGfx.strokeRoundedRect(btnX - btnW / 2, -15, btnW, 30, 7);
     };
     drawBtn(false);
 
-    const kintsugiZone = this.add.zone(btnX, 0, 96, 30)
+    const kintsugiZone = this.add.zone(btnX, 0, btnW, 30)
       .setInteractive({ useHandCursor: true });
 
-    const kintsugiTxt = this.add.text(btnX, 0, hasLacquer ? '✨ КИНЦУГИ' : '🎬 ЛАК КИНЦУГИ', {
-      fontSize: '12px',
+    const kintsugiTxt = this.add.text(btnX, 0, hasLacquer ? '✨ КИНЦУГИ' : '🎬 ЛАК +1', {
+      fontSize: '11px',
       fontFamily: this.FONT_UI,
       color: hasLacquer ? '#1a1004' : '#ffffff',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5);
 
-    const infoTxt = this.add.text(-width * 0.44 + 12, 0, 'Золотой шов (+60% к цене):', {
-      fontSize: '12px',
+    const infoTxt = this.add.text(-bannerW / 2 + 12, 0, 'Золотой шов (+60% к цене):', {
+      fontSize: '11px',
       fontFamily: this.FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
@@ -1241,7 +1159,7 @@ export class RestoreScene extends Phaser.Scene {
     const taskTitle = task.hint || task.name || 'Очистите артефакт';
     this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${taskTitle}`);
 
-    const iconKey = reqTool === 'tool_glue' ? 'tex_hd_tool_glue' : this.getToolTextureForTier(reqTool);
+    const iconKey = this.getToolTextureForTier(reqTool);
     this.selectTool(reqTool, iconKey, true);
 
     if (task.type === 'break_and_assemble') {
@@ -1328,16 +1246,15 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
-      // Тактильная микропауза между этапами очистки (~650 мс) с плашкой подтверждения
       const stepBanner = this.add.container(this.centerX, this.centerY).setDepth(60).setScale(0.8).setAlpha(0);
       const pill = this.add.graphics();
       pill.fillStyle(0x140d08, 0.92);
-      pill.fillRoundedRect(-110, -20, 220, 40, 12);
+      pill.fillRoundedRect(-115, -20, 230, 40, 12);
       pill.lineStyle(1.5, 0x4ade80, 0.95);
-      pill.strokeRoundedRect(-110, -20, 220, 40, 12);
+      pill.strokeRoundedRect(-115, -20, 230, 40, 12);
 
       const pillTxt = this.add.text(0, 0, `✓ Этап ${this.currentTaskIndex + 1} завершён!`, {
-        fontSize: '14px',
+        fontSize: '13px',
         fontFamily: this.FONT_UI,
         color: '#86efac',
         fontStyle: 'bold',
