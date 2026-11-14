@@ -353,7 +353,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. КЛАССИЧЕСКИЙ ПЛАВНЫЙ ВВОД (КАК В ЛУЧШЕЙ ВЕРСИИ)
+    // 7. КЛАССИЧЕСКИЙ ПЛАВНЫЙ ВВОД
     const processInteraction = (pointer) => {
       if (this.isTaskTransition || this.isHelpOpen) return;
       if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
@@ -500,7 +500,7 @@ export class RestoreScene extends Phaser.Scene {
     });
   }
 
-  // Безопасная загрузка фона верстака БЕЗ this.load.reset()
+  // Штатная загрузка фона верстака без this.load.reset()
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
@@ -509,6 +509,7 @@ export class RestoreScene extends Phaser.Scene {
 
     const applyBgTexture = (key) => {
       if (!this.scene || !this.scene.isActive()) return;
+      if (!this.textures.exists(key)) return;
       if (this.workbenchBgImg) this.workbenchBgImg.destroy();
       this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
@@ -517,6 +518,9 @@ export class RestoreScene extends Phaser.Scene {
     if (this.textures.exists(activeSkin)) {
       applyBgTexture(activeSkin);
     } else {
+      if (this.textures.exists('workbench_bg_1')) {
+        applyBgTexture('workbench_bg_1');
+      }
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         applyBgTexture(activeSkin);
