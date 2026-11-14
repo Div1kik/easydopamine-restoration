@@ -241,11 +241,11 @@ export const Storage = {
     };
   },
 
-  getLevelRewardDetails(level) {
-    const bonusCoins = level * 150 + 100;
+getLevelRewardDetails(level) {
+    const bonusCoins = level * 65 + 80;
     let lacquerBonus = 0;
     if (level % 5 === 0) lacquerBonus = 2;
-    else if (level % 2 === 0) lacquerBonus = 1;
+    else if (level % 3 === 0) lacquerBonus = 1;
     return { bonusCoins, lacquerBonus };
   },
 
@@ -437,8 +437,8 @@ export const Storage = {
 
     let rawHourly = 0;
     validExhibits.forEach((item) => {
-      const baseSlotIncome = 15;
-      const valueBonus = (item.marketValue || 100) * 0.08;
+      const baseSlotIncome = 12;
+      const valueBonus = (item.marketValue || 100) * 0.045;
       let itemHourly = baseSlotIncome + valueBonus;
       if (hasAntiqueHall && (item.regionId === 'antique' || item.regionId === 'egypt')) {
         itemHourly *= 1.5;
