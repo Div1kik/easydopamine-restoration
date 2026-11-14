@@ -231,24 +231,22 @@ export class MenuScene extends Phaser.Scene {
   }
 
   lazyPreloadOwnedWorkbenches() {
-    this.time.delayedCall(1200, () => {
+    this.time.delayedCall(600, () => {
       if (!this.scene || !this.scene.isActive()) return;
 
-      const allSkins = [];
-      for (let i = 1; i <= 15; i++) {
-        const key = `workbench_bg_${i}`;
-        if (!this.textures.exists(key)) {
-          allSkins.push(key);
+      const active = Storage.getActiveWorkbenchSkin();
+      const owned = Storage.getOwnedWorkbenchSkins();
+      const toLoad = new Set([active, ...owned]);
+
+      let queued = false;
+      toLoad.forEach((key) => {
+        if (key && !this.textures.exists(key)) {
+          this.load.image(key, `assets/workbenches/${key}.webp`);
+          queued = true;
         }
-      }
-
-      if (allSkins.length === 0) return;
-
-      allSkins.forEach((key) => {
-        this.load.image(key, `assets/workbenches/${key}.webp`);
       });
 
-      if (!this.load.isLoading()) {
+      if (queued && !this.load.isLoading()) {
         this.load.start();
       }
     });
