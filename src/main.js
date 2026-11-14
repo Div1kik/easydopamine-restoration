@@ -89,33 +89,26 @@ function makeRetinaScene(SceneClass) {
 
       if (this.input) {
         this.input.setTopOnly(false);
-        this.input._touchActive = false;
         this.isDragging = false;
         this.isDraggingList = false;
 
-        // Оборачиваем this.input.on СТРОГО ОДИН РАЗ, чтобы при перезапуске сцены координаты не делились на 3 повторно
         if (!this.input._retinaWrapped) {
           this.input._retinaWrapped = true;
+          let touchActive = false;
           const origOn = this.input.on.bind(this.input);
 
           origOn('pointerdown', () => {
-            this.input._touchActive = true;
-            this.isDragging = false;
-            this.isDraggingList = false;
+            touchActive = true;
           });
 
           origOn('pointerup', () => {
-            this.input._touchActive = false;
-            setTimeout(() => {
-              this.isDragging = false;
-              this.isDraggingList = false;
-            }, 50);
+            touchActive = false;
           });
 
           this.input.on = (event, fn, context) => {
             if (typeof event === 'string' && event.startsWith('pointer')) {
               const safeFn = function (p, ...rest) {
-                const downState = (event === 'pointermove') ? (this.input._touchActive || p.isDown) : null;
+                const downState = (event === 'pointermove') ? (touchActive || p.isDown) : null;
                 return fn.call(context || this, wrapLogicalPointer(p, downState), ...rest);
               };
               return origOn(event, safeFn, context || this);
