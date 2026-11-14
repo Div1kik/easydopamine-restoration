@@ -238,17 +238,17 @@ export class MenuScene extends Phaser.Scene {
       const owned = Storage.getOwnedWorkbenchSkins();
       const toLoad = new Set([active, ...owned]);
 
-      let queued = false;
       toLoad.forEach((key) => {
         if (key && !this.textures.exists(key)) {
-          this.load.image(key, `assets/workbenches/${key}.webp`);
-          queued = true;
+          const img = new Image();
+          img.onload = () => {
+            if (img.naturalWidth > 0 && !this.textures.exists(key)) {
+              this.textures.addImage(key, img);
+            }
+          };
+          img.src = `assets/workbenches/${key}.webp`;
         }
       });
-
-      if (queued && !this.load.isLoading()) {
-        this.load.start();
-      }
     });
   }
 
