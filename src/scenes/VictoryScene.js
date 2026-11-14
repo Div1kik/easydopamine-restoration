@@ -22,6 +22,7 @@ export class VictoryScene extends Phaser.Scene {
     const isDuplicate = !!(data && data.isDuplicate);
     const isContract = !!(data && data.isContract);
     const isKintsugi = !!(data && data.isKintsugi);
+    const contractBonusXP = (data && data.contractBonusXP) ? data.contractBonusXP : 0;
 
     YandexSDK.onRestorationCompleted();
 
@@ -33,9 +34,9 @@ export class VictoryScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
-    // Заголовок победы
-    const title = this.add.text(width / 2, height * 0.085, 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!', {
-      fontSize: '21px',
+    const titleText = isContract ? 'СРОЧНЫЙ ЗАКАЗ ВЫПОЛНЕН!' : 'РЕСТАВРАЦИЯ ЗАВЕРШЕНА!';
+    const title = this.add.text(width / 2, height * 0.085, titleText, {
+      fontSize: '20px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -51,17 +52,15 @@ export class VictoryScene extends Phaser.Scene {
       ease: 'Quad.easeOut'
     });
 
-    // Аккуратная корона из 3 ювелирных звёзд (без гигантского размера и наползания на артефакт)
     const starSpacing = 54;
     const starStartX = width / 2 - starSpacing;
     const baseStarY = height * 0.165;
-    const targetStarScale = 0.36; // 128 * 0.36 = 46px
+    const targetStarScale = 0.36;
 
     for (let i = 0; i < 3; i++) {
       const isFilled = (i < starsCount);
       const starKey = isFilled ? 'icon_star' : 'icon_star_empty';
       const posX = starStartX + i * starSpacing;
-      // Центральная звезда чуть выше боковых (дуга)
       const posY = baseStarY - (i === 1 ? 8 : 0);
 
       const star = this.add.image(posX, posY, starKey)
@@ -111,18 +110,17 @@ export class VictoryScene extends Phaser.Scene {
       });
     }
 
-    // Артефакт (с безопасным отступом от звёзд сверху и названия снизу)
     const tex = this.textures.exists(artifact.textureKey)
       ? artifact.textureKey
       : 'art_egypt_scarab';
 
-    const artCenterY = height * 0.37;
+    const artCenterY = height * 0.365;
     const artImg = this.add.image(width / 2, artCenterY, tex)
       .setScale(0)
       .setDepth(10);
 
-    if (isKintsugi) {
-      const glow = this.add.ellipse(width / 2, artCenterY, 190, 220, 0xfacc15, 0.25)
+    if (isKintsugi || isContract) {
+      const glow = this.add.ellipse(width / 2, artCenterY, 190, 220, isContract ? 0x38bdf8 : 0xfacc15, 0.24)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(9);
 
@@ -130,7 +128,7 @@ export class VictoryScene extends Phaser.Scene {
         targets: glow,
         scaleX: 1.07,
         scaleY: 1.07,
-        alpha: 0.36,
+        alpha: 0.35,
         duration: 1400,
         yoyo: true,
         repeat: -1,
@@ -138,7 +136,7 @@ export class VictoryScene extends Phaser.Scene {
       });
     }
 
-    const baseArtScale = 0.56;
+    const baseArtScale = 0.55;
     this.tweens.add({
       targets: artImg,
       scale: baseArtScale,
@@ -159,8 +157,7 @@ export class VictoryScene extends Phaser.Scene {
       }
     });
 
-    // Название
-    this.add.text(width / 2, height * 0.535, artifact.name, {
+    this.add.text(width / 2, height * 0.53, artifact.name, {
       fontSize: '19px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
@@ -168,24 +165,29 @@ export class VictoryScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5).setDepth(10);
 
-    // Оценка и бейдж
     const baseVal = artifact.marketValue || 100;
-    let valueDesc = `Музейная оценка: +${baseVal} монет`;
-    if (isKintsugi) valueDesc += ' (Кинцуги +60%)';
-    else if (isContract) valueDesc += ' (Премия гильдии)';
-    else if (isDuplicate) valueDesc += ' (Повтор -35%)';
+    let valueDesc = isContract
+      ? `Гонорар заказчика: +${baseVal} монет (передано в коллекцию)`
+      : `Музейная оценка: +${baseVal} монет (в Зал Славы)`;
 
-    const valTxt = this.add.text(width / 2, height * 0.573, valueDesc, {
-      fontSize: '13px',
+    if (!isContract) {
+      if (isKintsugi) valueDesc = `Оценка с Кинцуги (+60%): +${baseVal} монет`;
+      else if (isDuplicate) valueDesc = `Повторная находка (-35%): +${baseVal} монет`;
+    } else if (isKintsugi) {
+      valueDesc = `Гонорар + Кинцуги: +${baseVal} монет (передано заказчику)`;
+    }
+
+    const valTxt = this.add.text(width / 2, height * 0.568, valueDesc, {
+      fontSize: '12px',
       fontFamily: FONT_UI,
-      color: isKintsugi ? '#facc15' : '#86efac',
+      color: isContract ? '#38bdf8' : (isKintsugi ? '#facc15' : '#86efac'),
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0.5).setDepth(10);
 
-    // Кнопка Удвоить оценку экспоната за рекламу
+    // Кнопка Удвоить награду за рекламу
     let doubled = false;
-    const adBtnY = height * 0.63;
+    const adBtnY = height * 0.628;
     const adBtnW = width * 0.84;
     const adBtnH = 42;
 
@@ -199,8 +201,12 @@ export class VictoryScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(22);
 
-    const adTxt = this.add.text(width / 2, adBtnY, `УДВОИТЬ ОЦЕНКУ (+${baseVal} В КАЗНУ)`, {
-      fontSize: '13px',
+    const adLabel = isContract
+      ? `🎬 УДВОИТЬ ГОНОРАР (+${baseVal} В КАЗНУ)`
+      : `🎬 УДВОИТЬ ОЦЕНКУ (+${baseVal} В КАЗНУ)`;
+
+    const adTxt = this.add.text(width / 2, adBtnY, adLabel, {
+      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#1a1004',
       fontStyle: 'bold',
@@ -220,12 +226,12 @@ export class VictoryScene extends Phaser.Scene {
         adGfx.strokeRoundedRect(width / 2 - adBtnW / 2, adBtnY - adBtnH / 2, adBtnW, adBtnH, 10);
         adTxt.setColor('#86efac');
         adTxt.setText(`ПОЛУЧЕНО +${baseVal} МОНЕТ В КАЗНУ!`);
-        valTxt.setText(`Итоговая ценность: ${baseVal * 2} монет`);
+        valTxt.setText(`Итоговая награда: ${baseVal * 2} монет`);
       });
     });
 
-    // Прогресс Опыта
-    this.createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI);
+    // Прогресс Опыта (учитывает скалируемый bonusXP для срочного контракта)
+    this.createExperienceBar(width, height, isContract, contractBonusXP, starsCount, isKintsugi, dpr, FONT_UI);
 
     const goToScene = (targetScene) => {
       if (this.isNavigating) return;
@@ -236,7 +242,6 @@ export class VictoryScene extends Phaser.Scene {
       this.scene.start(targetScene);
     };
 
-    // Кнопка: В главное меню
     const menuBtnY = height * 0.815;
     const menuGfx = this.add.graphics().setDepth(20);
     menuGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
@@ -258,7 +263,6 @@ export class VictoryScene extends Phaser.Scene {
 
     menuZone.on('pointerdown', () => goToScene('MenuScene'));
 
-    // Кнопка: Следующий артефакт
     const nextBtnY = height * 0.892;
     const nextGfx = this.add.graphics().setDepth(20);
     nextGfx.fillGradientStyle(0x15803d, 0x15803d, 0x14532d, 0x14532d, 1);
@@ -281,7 +285,7 @@ export class VictoryScene extends Phaser.Scene {
     nextZone.on('pointerdown', () => goToScene('EraSelectScene'));
   }
 
-  createExperienceBar(width, height, isContract, starsCount, isKintsugi, dpr, FONT_UI) {
+  createExperienceBar(width, height, isContract, contractBonusXP, starsCount, isKintsugi, dpr, FONT_UI) {
     const xpBoxY = height * 0.715;
     const barW = width * 0.82;
 
@@ -289,7 +293,7 @@ export class VictoryScene extends Phaser.Scene {
     if (starsCount === 2) baseXp = 70;
     else if (starsCount === 1) baseXp = 45;
 
-    let xpAward = isContract ? (baseXp + 85) : baseXp;
+    let xpAward = isContract ? (baseXp + (contractBonusXP || 110)) : baseXp;
     if (isKintsugi) xpAward += 50;
 
     const initialLvl = Storage.getLevelData();
