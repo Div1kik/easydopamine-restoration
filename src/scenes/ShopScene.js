@@ -2,7 +2,6 @@ import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
-import { TextureLoader } from '../utils/TextureLoader.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -27,7 +26,6 @@ export class ShopScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
-    // Верхняя шапка (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 114);
@@ -68,7 +66,6 @@ export class ShopScene extends Phaser.Scene {
     this.setupScrollHandlers();
     this.renderShopItems();
 
-    // Нижняя панель (depth 30 перекрывает низ списка)
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
@@ -106,7 +103,8 @@ export class ShopScene extends Phaser.Scene {
 
   preloadWorkbenchInBackground(skinId) {
     if (!skinId || this.textures.exists(skinId)) return;
-    TextureLoader.loadImage(this, skinId, `assets/workbenches/${skinId}.webp`);
+    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
+    this.load.start();
   }
 
   updateHeaderBalance() {
@@ -226,7 +224,6 @@ export class ShopScene extends Phaser.Scene {
     return key;
   }
 
-  // Проверка строгой цепочки улучшений (Tier II -> Tier III -> Tier IV)
   checkUpgradePrerequisite(item) {
     if (!item.reqKey) return { allowed: true, reason: '' };
     const prevOwned = localStorage.getItem(item.reqKey) === 'true';
@@ -248,27 +245,22 @@ export class ShopScene extends Phaser.Scene {
 
     if (this.activeTab === 'tools') {
       const upgrades = [
-        // СКРЕБОК (цепочка II -> III -> IV)
         { key: 'tool_upg_scraper_2', toolType: 'scraper', tier: 2, title: 'Скребок II: Бронза', desc: 'Шире лезвие (+27% радиус)', price: 180 },
         { key: 'tool_upg_scraper_3', reqKey: 'tool_upg_scraper_2', reqLabel: 'НУЖЕН СКРЕБОК II', toolType: 'scraper', tier: 3, title: 'Скребок III: Дамаск', desc: 'Скол породы за 1 проход!', price: 620 },
         { key: 'tool_upg_scraper_4', reqKey: 'tool_upg_scraper_3', reqLabel: 'НУЖЕН СКРЕБОК III', toolType: 'scraper', tier: 4, title: 'Скребок IV: Алмазный', desc: 'Максимальный захват пласта', price: 2650 },
 
-        // КИСТЬ (цепочка II -> III -> IV)
         { key: 'tool_upg_brush_2', toolType: 'brush', tier: 2, title: 'Кисть II: Соболиная', desc: 'Широкий веер (+22% радиус)', price: 160 },
         { key: 'tool_upg_brush_3', reqKey: 'tool_upg_brush_2', reqLabel: 'НУЖНА КИСТЬ II', toolType: 'brush', tier: 3, title: 'Кисть III: Антистатик', desc: 'Сметает пыль за 1 взмах!', price: 560 },
         { key: 'tool_upg_brush_4', reqKey: 'tool_upg_brush_3', reqLabel: 'НУЖНА КИСТЬ III', toolType: 'brush', tier: 4, title: 'Кисть IV: Императорская', desc: 'Мгновенная чистка рельефа', price: 2400 },
 
-        // РЕАГЕНТ (цепочка II -> III -> IV)
         { key: 'tool_upg_solvent_2', toolType: 'solvent', tier: 2, title: 'Реагент II: Эфир', desc: 'Увеличенная зона реакции', price: 250 },
         { key: 'tool_upg_solvent_3', reqKey: 'tool_upg_solvent_2', reqLabel: 'НУЖЕН РЕАГЕНТ II', toolType: 'solvent', tier: 3, title: 'Реагент III: Аква-Регия', desc: 'Снимает окислы за 1 касание!', price: 780 },
         { key: 'tool_upg_solvent_4', reqKey: 'tool_upg_solvent_3', reqLabel: 'НУЖЕН РЕАГЕНТ III', toolType: 'solvent', tier: 4, title: 'Реагент IV: Эликсир', desc: 'Глубокое очищение патины', price: 3200 },
 
-        // ПОЛИРОЛЬ (цепочка II -> III -> IV)
         { key: 'tool_upg_polish_2', toolType: 'polish', tier: 2, title: 'Полироль II: Замша', desc: 'Широкий бархатный диск', price: 230 },
         { key: 'tool_upg_polish_3', reqKey: 'tool_upg_polish_2', reqLabel: 'НУЖНА ПОЛИРОЛЬ II', toolType: 'polish', tier: 3, title: 'Полироль III: Алмазная', desc: 'Зеркальный глянец за 1 проход!', price: 720 },
         { key: 'tool_upg_polish_4', reqKey: 'tool_upg_polish_3', reqLabel: 'НУЖНА ПОЛИРОЛЬ III', toolType: 'polish', tier: 4, title: 'Полироль IV: Солнечный воск', desc: 'Максимальный радиус полировки', price: 2950 },
 
-        // ЗОЛОТОЙ ЛАК КИНЦУГИ
         { key: 'kintsugi_pack_1', isConsumable: true, count: 1, toolType: 'glue', tier: 1, title: 'Золотой лак Кинцуги (1 шт.)', desc: '+60% к цене склеенного артефакта', price: 500 },
         { key: 'kintsugi_pack_3', isConsumable: true, count: 3, toolType: 'glue', tier: 1, title: 'Набор Кинцуги (3 шт.)', desc: 'Выгодный запас для редких сколов', price: 1300 }
       ];
@@ -431,7 +423,6 @@ export class ShopScene extends Phaser.Scene {
     const cardW = width * 0.92;
     let curY = 8;
 
-    // 1. Сундук Искателя (1650 монет, 4 уникальных верстака внутри, открытие по тапу)
     const chestH = 128;
     const chestCont = this.add.container(width / 2, curY + chestH / 2);
 
@@ -525,7 +516,6 @@ export class ShopScene extends Phaser.Scene {
     this.listContainer.add(chestCont);
     curY += chestH + 16;
 
-    // 2. Скины инструментов
     const toolSkinsTitle = this.add.text(width * 0.04, curY, '✨ СТИЛЬ ИНСТРУМЕНТОВ', {
       fontSize: '13px',
       fontFamily: FONT_UI,
@@ -642,7 +632,7 @@ export class ShopScene extends Phaser.Scene {
 
     curY += 10;
 
-    // 3. Интерьер мастерской (отсортировано по эпохам и цене + 4 эксклюзива в сундуке)
+    // 3. Интерьер мастерской (сбалансированные цены по эпохам + 4 эксклюзива в сундуке)
     const wbTitle = this.add.text(width * 0.04, curY, '🏛 ИНТЕРЬЕР МАСТЕРСКОЙ (15 СТОЛОВ)', {
       fontSize: '13px',
       fontFamily: FONT_UI,
@@ -674,7 +664,6 @@ export class ShopScene extends Phaser.Scene {
     const ownedWorkbenches = Storage.getOwnedWorkbenchSkins();
     const activeWorkbench = Storage.getActiveWorkbenchSkin();
 
-    // Тихо предзагружаем выбранный и все купленные столы
     this.preloadWorkbenchInBackground(activeWorkbench);
     ownedWorkbenches.forEach((wbId) => this.preloadWorkbenchInBackground(wbId));
 
@@ -770,7 +759,6 @@ export class ShopScene extends Phaser.Scene {
     this.minListY = Math.min(this.listTopY, this.listBottomY - (curY + 24));
   }
 
-  // Интерактивное поэтапное открытие «Сундука Искателя» по тапу на экран
   openLootboxInteractive() {
     if (this.isModalOpen) return;
     this.isModalOpen = true;
@@ -816,7 +804,7 @@ export class ShopScene extends Phaser.Scene {
       rewardSubtitle = 'Используйте при склейке для +60% к цене!';
       rewardColor = '#fde047';
     } else {
-      const coinGain = Phaser.Math.Between(15, 26) * 50; // 750 .. 1300 монет
+      const coinGain = Phaser.Math.Between(15, 26) * 50;
       Storage.addCoins(coinGain);
       rewardType = 'coins';
       rewardIcon = '🪙';
