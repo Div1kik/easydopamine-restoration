@@ -24,30 +24,7 @@ export class MenuScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
     }
 
-    // Тихо предзагружаем активный и купленные фоны верстаков в фоне
-    lazyPreloadOwnedWorkbenches() {
-    this.time.delayedCall(1200, () => {
-      if (!this.scene || !this.scene.isActive()) return;
-
-      const allSkins = [];
-      for (let i = 1; i <= 15; i++) {
-        const key = `workbench_bg_${i}`;
-        if (!this.textures.exists(key)) {
-          allSkins.push(key);
-        }
-      }
-
-      if (allSkins.length === 0) return;
-
-      allSkins.forEach((key) => {
-        this.load.image(key, `assets/workbenches/${key}.webp`);
-      });
-
-      if (!this.load.isLoading()) {
-        this.load.start();
-      }
-    });
-  }
+    this.lazyPreloadOwnedWorkbenches();
 
     // Верхние кнопки: Звук, Музыка и Обучение по желанию (?)
     this.createTopUtilityButtons(width, height, textRes, FONT_UI);
@@ -254,19 +231,27 @@ export class MenuScene extends Phaser.Scene {
   }
 
   lazyPreloadOwnedWorkbenches() {
-    const owned = Storage.getOwnedWorkbenchSkins();
-    const active = Storage.getActiveWorkbenchSkin();
-    const toLoad = new Set([...owned, active]);
-    let queued = false;
-    toLoad.forEach((key) => {
-      if (key && !this.textures.exists(key)) {
+    this.time.delayedCall(1200, () => {
+      if (!this.scene || !this.scene.isActive()) return;
+
+      const allSkins = [];
+      for (let i = 1; i <= 15; i++) {
+        const key = `workbench_bg_${i}`;
+        if (!this.textures.exists(key)) {
+          allSkins.push(key);
+        }
+      }
+
+      if (allSkins.length === 0) return;
+
+      allSkins.forEach((key) => {
         this.load.image(key, `assets/workbenches/${key}.webp`);
-        queued = true;
+      });
+
+      if (!this.load.isLoading()) {
+        this.load.start();
       }
     });
-    if (queued) {
-      this.load.start();
-    }
   }
 
   drawStyledBox(x, y, w, h, opts) {
@@ -714,7 +699,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    // Навигационные кнопки Назад / Далее и Закрыть
     const navY = modalH / 2 - 78;
     const halfBtnW = (modalW - 44) / 2;
 
