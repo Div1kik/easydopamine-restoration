@@ -1,16 +1,18 @@
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
-import { TOOL_SKINS, drawDetailedToolCanvas, drawFullToolSetPreview } from '../utils/ToolArt.js';
+import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
     super('ShopScene');
   }
 
-  create(data) {
+  create() {
     const { width, height } = this.scale;
-    this.dpr = 3;
+    const textRes = 3;
+    this.textRes = textRes;
+    this.isModalOpen = false;
 
     const FONT_TITLE = '"Cormorant Garamond", Georgia, serif';
     const FONT_UI = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -19,109 +21,51 @@ export class ShopScene extends Phaser.Scene {
     if (this.textures.exists('shop_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'shop_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
-      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0906, 0.34).setDepth(0);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 0.36).setDepth(0);
     } else {
-      const bg = this.add.graphics().setDepth(0);
-      bg.fillGradientStyle(0x21160d, 0x21160d, 0x0d0805, 0x0d0805, 1);
-      bg.fillRect(0, 0, width, height);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
-    this.returnToRestore = data && data.returnToRestore;
-    this.activeTab = 'tools';
-
-    this.generateDetailedShopIcons();
-
-    // Верхняя шапка лавки (depth 18 перекрывает прокручиваемый список depth 5)
+    // Верхняя шапка (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
-    headerBg.fillRect(0, 0, width, 110);
+    headerBg.fillRect(0, 0, width, 114);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
-    headerBg.lineBetween(0, 110, width, 110);
+    headerBg.lineBetween(0, 114, width, 114);
 
-    this.add.text(width / 2, 22, 'ЛАВКА МАСТЕРА', {
-      fontSize: '21px',
+    this.add.text(width / 2, 22, '🕯 ЛАВКА МАСТЕРА', {
+      fontSize: '20px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
       letterSpacing: 1.5,
-      resolution: this.dpr
+      resolution: textRes
     }).setOrigin(0.5).setDepth(20);
 
-    this.coinsText = this.add.text(width / 2, 48, '', {
-      fontSize: '12.5px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      resolution: this.dpr
-    }).setOrigin(0.5).setDepth(20);
-    this.updateCoinsDisplay();
+    const coins = Storage.getCoins();
+    const lacquer = Storage.getKintsugiLacquer();
+    this.coinsText = this.add.text(
+      width / 2,
+      48,
+      `Казна: ${coins} 🪙   |   Лак Кинцуги: ${lacquer} ✨`,
+      {
+        fontSize: '12px',
+        fontFamily: FONT_UI,
+        color: '#facc15',
+        fontStyle: 'bold',
+        resolution: textRes
+      }
+    ).setOrigin(0.5).setDepth(20);
 
-    // 3 вкладки: Инструменты | Стиль | Музей
-    const tabW = (width * 0.90) / 3;
-    const tabH = 34;
-    const startX = width * 0.05 + tabW / 2;
-    const tabY = 82;
+    this.activeTab = 'tools';
+    this.createCategoryTabs(width, 86);
 
-    this.tabToolsBg = this.add.rectangle(startX, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(20);
-    this.tabToolsTxt = this.add.text(startX, tabY, 'Инструменты', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      fontStyle: 'bold',
-      resolution: this.dpr
-    }).setOrigin(0.5).setDepth(21);
-
-    this.tabStyleBg = this.add.rectangle(startX + tabW, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(20);
-    this.tabStyleTxt = this.add.text(startX + tabW, tabY, 'Стиль', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      fontStyle: 'bold',
-      resolution: this.dpr
-    }).setOrigin(0.5).setDepth(21);
-
-    this.tabMuseumBg = this.add.rectangle(startX + tabW * 2, tabY, tabW - 4, tabH, 0x1e130b, 0.85)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(20);
-    this.tabMuseumTxt = this.add.text(startX + tabW * 2, tabY, 'Музей', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      fontStyle: 'bold',
-      resolution: this.dpr
-    }).setOrigin(0.5).setDepth(21);
-
-    this.tabToolsBg.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.activeTab = 'tools';
-      this.refreshTabs();
-      this.renderContent();
-    });
-
-    this.tabStyleBg.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.activeTab = 'style';
-      this.refreshTabs();
-      this.renderContent();
-    });
-
-    this.tabMuseumBg.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.activeTab = 'museum';
-      this.refreshTabs();
-      this.renderContent();
-    });
-
-    this.listTopY = 118;
+    this.listTopY = 120;
     this.listBottomY = height - 68;
-    this.listHeight = this.listBottomY - this.listTopY;
+    this.listContainer = this.add.container(0, this.listTopY).setDepth(5);
 
-    this.itemsContainer = this.add.container(0, this.listTopY).setDepth(5);
-
-    this.setupScroll();
-    this.refreshTabs();
-    this.renderContent();
+    this.setupScrollHandlers();
+    this.renderShopItems();
 
     // Нижняя панель (depth 30 перекрывает низ списка)
     const footerBg = this.add.graphics().setDepth(30);
@@ -144,832 +88,921 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(33);
 
-    const backLabel = this.returnToRestore ? 'Вернуться к артефакту' : 'В главное меню';
-    this.add.text(width / 2, btnY, backLabel, {
-      fontSize: '14.5px',
+    this.add.text(width / 2, btnY, 'В главное меню', {
+      fontSize: '14px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
-      resolution: this.dpr
+      resolution: textRes
     }).setOrigin(0.5).setDepth(32);
 
     backZone.on('pointerdown', () => {
+      if (this.isModalOpen) return;
       if (AudioManager.playClick) AudioManager.playClick();
-      if (this.returnToRestore) {
-        this.scene.start('RestoreScene');
-      } else {
-        this.scene.start('MenuScene');
-      }
+      this.scene.start('MenuScene');
     });
   }
 
-  generateDetailedShopIcons() {
-    const activeSkin = Storage.getActiveToolSkin();
-    const types = ['scraper', 'brush', 'solvent', 'polish'];
-    types.forEach((type) => {
-      [2, 3, 4].forEach((tier) => {
-        const key = `shop_tool_${type}_${tier}_${activeSkin}`;
-        if (this.textures.exists(key)) return;
-        const cvs = this.textures.createCanvas(key, 192, 192);
-        const ctx = cvs.getContext();
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        drawDetailedToolCanvas(ctx, type, tier, activeSkin, 192);
-        cvs.refresh();
+  // Фоновая загрузка текстуры верстака, чтобы при переходе на верстак не было задержек
+  preloadWorkbenchInBackground(skinId) {
+    if (!skinId || this.textures.exists(skinId)) return;
+    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
+    this.load.start();
+  }
+
+  updateHeaderBalance() {
+    const coins = Storage.getCoins();
+    const lacquer = Storage.getKintsugiLacquer();
+    this.coinsText.setText(`Казна: ${coins} 🪙   |   Лак Кинцуги: ${lacquer} ✨`);
+  }
+
+  createCategoryTabs(width, y) {
+    const tabs = [
+      { id: 'tools', label: 'Инструменты' },
+      { id: 'cosmetics', label: 'Стиль' },
+      { id: 'museum', label: 'Музей' }
+    ];
+
+    const tabW = (width * 0.90) / tabs.length - 6;
+    const tabH = 32;
+    const spacing = 8;
+    const startX = width / 2 - ((tabW + spacing) * tabs.length - spacing) / 2 + tabW / 2;
+
+    this.tabItems = [];
+
+    tabs.forEach((t, i) => {
+      const tx = startX + i * (tabW + spacing);
+      const isSelected = (t.id === this.activeTab);
+
+      const gfx = this.add.graphics().setDepth(20);
+      const drawTab = (selected) => {
+        gfx.clear();
+        gfx.fillStyle(selected ? 0xd99b26 : 0x24180f, selected ? 0.96 : 0.85);
+        gfx.fillRoundedRect(tx - tabW / 2, y - tabH / 2, tabW, tabH, 8);
+        gfx.lineStyle(selected ? 1.5 : 1, selected ? 0xfef08a : 0x8c6239, 0.9);
+        gfx.strokeRoundedRect(tx - tabW / 2, y - tabH / 2, tabW, tabH, 8);
+      };
+      drawTab(isSelected);
+
+      const txt = this.add.text(tx, y, t.label, {
+        fontSize: '12px',
+        fontFamily: this.FONT_UI,
+        color: isSelected ? '#1a1004' : '#fdf6e3',
+        fontStyle: 'bold',
+        resolution: this.textRes
+      }).setOrigin(0.5).setDepth(21);
+
+      const zone = this.add.zone(tx, y, tabW, tabH)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(22);
+
+      zone.on('pointerdown', () => {
+        if (this.isModalOpen) return;
+        if (this.activeTab === t.id) return;
+        if (AudioManager.playClick) AudioManager.playClick();
+        this.activeTab = t.id;
+        this.tabItems.forEach((item) => {
+          const active = (item.id === this.activeTab);
+          item.drawTab(active);
+          item.txt.setColor(active ? '#1a1004' : '#fdf6e3');
+        });
+        this.renderShopItems();
       });
-    });
 
-    TOOL_SKINS.forEach((skin) => {
-      const key = `skin_fullset_${skin.id}`;
-      if (this.textures.exists(key)) return;
-      const cvs = this.textures.createCanvas(key, 480, 108);
-      const ctx = cvs.getContext();
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      drawFullToolSetPreview(ctx, skin.id, 480, 108);
-      cvs.refresh();
+      this.tabItems.push({ id: t.id, drawTab, txt });
     });
   }
 
-  setupScroll() {
+  setupScrollHandlers() {
     let startY = 0;
-    let containerStartY = 0;
-    let pointerDownActive = false;
-    this.isDragging = false;
+    let listStartY = 0;
+    let pointerActive = false;
+    this.isDraggingList = false;
 
     this.input.on('pointerdown', (p) => {
+      if (this.isModalOpen) return;
       if (p.y >= this.listTopY && p.y <= this.listBottomY) {
-        pointerDownActive = true;
+        pointerActive = true;
         startY = p.y;
-        containerStartY = this.itemsContainer.y;
-        this.isDragging = false;
+        listStartY = this.listContainer.y;
+        this.isDraggingList = false;
       }
     });
 
     this.input.on('pointermove', (p) => {
-      if (!pointerDownActive) return;
+      if (!pointerActive || this.isModalOpen) return;
       const dy = p.y - startY;
       if (Math.abs(dy) > 6) {
-        this.isDragging = true;
+        this.isDraggingList = true;
       }
-      if (this.isDragging) {
-        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
-        this.itemsContainer.y = Phaser.Math.Clamp(containerStartY + dy, minScroll, this.listTopY);
+      if (this.isDraggingList) {
+        const minScroll = this.minListY !== undefined ? this.minListY : this.listTopY;
+        this.listContainer.y = Phaser.Math.Clamp(listStartY + dy, minScroll, this.listTopY);
       }
     });
 
     this.input.on('pointerup', () => {
-      pointerDownActive = false;
+      pointerActive = false;
     });
 
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      if (this.isModalOpen) return;
       if (pointer.y >= this.listTopY && pointer.y <= this.listBottomY) {
-        const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
-        this.itemsContainer.y = Phaser.Math.Clamp(this.itemsContainer.y - deltaY * 0.45, minScroll, this.listTopY);
+        const minScroll = this.minListY !== undefined ? this.minListY : this.listTopY;
+        this.listContainer.y = Phaser.Math.Clamp(this.listContainer.y - deltaY * 0.45, minScroll, this.listTopY);
       }
     });
   }
 
-  updateCoinsDisplay() {
-    const coins = Storage.getCoins();
-    const lacquer = Storage.getKintsugiLacquer();
-    this.coinsText.setText(`Казна: ${coins} монет   |   Лак Кинцуги: ${lacquer} шт.`);
+  getToolPreviewTexture(toolType, tier, skin) {
+    const key = `shop_preview_${toolType}_t${tier}_${skin}`;
+    if (!this.textures.exists(key)) {
+      const cvs = this.textures.createCanvas(key, 96, 96);
+      const ctx = cvs.getContext();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      drawDetailedToolCanvas(ctx, toolType, tier, skin, 96);
+      cvs.refresh();
+    }
+    return key;
   }
 
-  refreshTabs() {
-    const setTab = (bg, txt, active) => {
-      bg.setFillStyle(active ? 0xd99b26 : 0x24180f, active ? 0.96 : 0.82);
-      bg.setStrokeStyle(1.5, active ? 0xfef08a : 0x8c6239);
-      txt.setColor(active ? '#1a1004' : '#d6c3a5');
+  // Проверка строгой цепочки улучшений (Tier II -> Tier III -> Tier IV)
+  checkUpgradePrerequisite(item) {
+    if (!item.reqKey) return { allowed: true, reason: '' };
+    const prevOwned = localStorage.getItem(item.reqKey) === 'true';
+    if (prevOwned) return { allowed: true, reason: '' };
+    return {
+      allowed: false,
+      reason: item.reqLabel || 'Нужен пред. уровень'
     };
-
-    setTab(this.tabToolsBg, this.tabToolsTxt, this.activeTab === 'tools');
-    setTab(this.tabStyleBg, this.tabStyleTxt, this.activeTab === 'style');
-    setTab(this.tabMuseumBg, this.tabMuseumTxt, this.activeTab === 'museum');
   }
 
-  renderContent() {
-    this.itemsContainer.removeAll(true);
-    this.itemsContainer.y = this.listTopY;
+  renderShopItems() {
+    this.listContainer.removeAll(true);
+    this.listContainer.y = this.listTopY;
+
     const { width } = this.scale;
+    const textRes = this.textRes;
+    const FONT_UI = this.FONT_UI;
+    const activeToolSkin = Storage.getActiveToolSkin();
 
     if (this.activeTab === 'tools') {
-      this.generateDetailedShopIcons();
-      this.renderToolsUpgrades(width);
-    } else if (this.activeTab === 'style') {
-      this.generateDetailedShopIcons();
-      this.renderVisualStylesTab(width);
+      const upgrades = [
+        // СКРЕБОК (цепочка II -> III -> IV)
+        { key: 'tool_upg_scraper_2', toolType: 'scraper', tier: 2, title: 'Скребок II: Бронза', desc: 'Шире лезвие (+27% радиус)', price: 180 },
+        { key: 'tool_upg_scraper_3', reqKey: 'tool_upg_scraper_2', reqLabel: 'НУЖЕН СКРЕБОК II', toolType: 'scraper', tier: 3, title: 'Скребок III: Дамаск', desc: 'Скол породы за 1 проход!', price: 580 },
+        { key: 'tool_upg_scraper_4', reqKey: 'tool_upg_scraper_3', reqLabel: 'НУЖЕН СКРЕБОК III', toolType: 'scraper', tier: 4, title: 'Скребок IV: Алмазный', desc: 'Максимальный захват пласта', price: 1550 },
+
+        // КИСТЬ (цепочка II -> III -> IV)
+        { key: 'tool_upg_brush_2', toolType: 'brush', tier: 2, title: 'Кисть II: Соболиная', desc: 'Широкий веер (+22% радиус)', price: 160 },
+        { key: 'tool_upg_brush_3', reqKey: 'tool_upg_brush_2', reqLabel: 'НУЖНА КИСТЬ II', toolType: 'brush', tier: 3, title: 'Кисть III: Антистатик', desc: 'Сметает пыль за 1 взмах!', price: 520 },
+        { key: 'tool_upg_brush_4', reqKey: 'tool_upg_brush_3', reqLabel: 'НУЖНА КИСТЬ III', toolType: 'brush', tier: 4, title: 'Кисть IV: Императорская', desc: 'Мгновенная чистка рельефа', price: 1400 },
+
+        // РЕАГЕНТ (цепочка II -> III -> IV)
+        { key: 'tool_upg_solvent_2', toolType: 'solvent', tier: 2, title: 'Реагент II: Эфир', desc: 'Увеличенная зона реакции', price: 240 },
+        { key: 'tool_upg_solvent_3', reqKey: 'tool_upg_solvent_2', reqLabel: 'НУЖЕН РЕАГЕНТ II', toolType: 'solvent', tier: 3, title: 'Реагент III: Аква-Регия', desc: 'Снимает окислы за 1 касание!', price: 720 },
+        { key: 'tool_upg_solvent_4', reqKey: 'tool_upg_solvent_3', reqLabel: 'НУЖЕН РЕАГЕНТ III', toolType: 'solvent', tier: 4, title: 'Реагент IV: Эликсир', desc: 'Глубокое очищение патины', price: 1850 },
+
+        // ПОЛИРОЛЬ (цепочка II -> III -> IV)
+        { key: 'tool_upg_polish_2', toolType: 'polish', tier: 2, title: 'Полироль II: Замша', desc: 'Широкий бархатный диск', price: 220 },
+        { key: 'tool_upg_polish_3', reqKey: 'tool_upg_polish_2', reqLabel: 'НУЖНА ПОЛИРОЛЬ II', toolType: 'polish', tier: 3, title: 'Полироль III: Алмазная', desc: 'Зеркальный глянец за 1 проход!', price: 680 },
+        { key: 'tool_upg_polish_4', reqKey: 'tool_upg_polish_3', reqLabel: 'НУЖНА ПОЛИРОЛЬ III', toolType: 'polish', tier: 4, title: 'Полироль IV: Солнечный воск', desc: 'Максимальный радиус полировки', price: 1750 },
+
+        // ЗОЛОТОЙ ЛАК КИНЦУГИ
+        { key: 'kintsugi_pack_1', isConsumable: true, count: 1, toolType: 'glue', tier: 1, title: 'Золотой лак Кинцуги (1 шт.)', desc: '+60% к цене склеенного артефакта', price: 500 },
+        { key: 'kintsugi_pack_3', isConsumable: true, count: 3, toolType: 'glue', tier: 1, title: 'Набор Кинцуги (3 шт.)', desc: 'Выгодный запас для редких сколов', price: 1300 }
+      ];
+
+      this.renderCardList(upgrades, width, textRes, FONT_UI, activeToolSkin);
+    } else if (this.activeTab === 'cosmetics') {
+      this.renderCosmeticsTab(width, textRes, FONT_UI);
     } else if (this.activeTab === 'museum') {
-      this.renderMuseumExpansions(width);
+      const museumUpgrades = [
+        { key: 'museum_upg_pedestal_1', icon: '🏛', title: 'Бархатные витрины', desc: '+15% к пассивному доходу музея', price: 320 },
+        { key: 'museum_upg_pedestal_2', reqKey: 'museum_upg_pedestal_1', reqLabel: 'НУЖНЫ ВИТРИНЫ', icon: '💡', title: 'Музейная подсветка', desc: '+25% к доходу от посетителей', price: 950 },
+        { key: 'museum_upg_hall_antique', icon: '🏺', title: 'Крыло Древнего мира', desc: '+50% к доходу Египта и Античности', price: 1900 },
+        { key: 'museum_upg_hall_royal', reqKey: 'museum_upg_hall_antique', reqLabel: 'НУЖНО КРЫЛО', icon: '👑', title: 'Королевский купол', desc: '+50% ко всему пассивному доходу', price: 4200 }
+      ];
+
+      this.renderCardList(museumUpgrades, width, textRes, FONT_UI, activeToolSkin);
     }
   }
 
-  renderToolsUpgrades(width) {
-    const dpr = this.dpr;
-    const FONT_UI = this.FONT_UI;
-    const cardH = 92;
+  renderCardList(items, width, textRes, FONT_UI, activeToolSkin) {
     const cardW = width * 0.92;
-    const activeSkin = Storage.getActiveToolSkin();
-    let cardIdx = 0;
+    const cardH = 84;
+    const spacing = 10;
 
-    const tools = [
-      { id: 'scraper_2', name: 'Латунный скребок II', desc: '+20% к радиусу очистки слоя грязи', price: 200, icon: `shop_tool_scraper_2_${activeSkin}` },
-      { id: 'scraper_3', name: 'Хирургический скальпель III', desc: '+40% к радиусу очистки, быстрый срез', price: 650, icon: `shop_tool_scraper_3_${activeSkin}` },
-      { id: 'scraper_4', name: 'Ударный микро-скальпель IV', desc: 'Прецизионное снятие в одно касание', price: 1400, icon: `shop_tool_scraper_4_${activeSkin}` },
-      { id: 'brush_2', name: 'Колонковая кисть II', desc: 'Сметает пыль и сажу на реликвиях', price: 220, icon: `shop_tool_brush_2_${activeSkin}` },
-      { id: 'brush_3', name: 'Соболиная веерная кисть III', desc: 'Широкий охват снятия наслоений', price: 600, icon: `shop_tool_brush_3_${activeSkin}` },
-      { id: 'brush_4', name: 'Ионизирующая кисть IV', desc: 'Сдувает пыль за один лёгкий взмах', price: 1500, icon: `shop_tool_brush_4_${activeSkin}` },
-      { id: 'solvent_2', name: 'Нейтрализующий состав II', desc: 'Быстро растворяет минеральный налёт', price: 260, icon: `shop_tool_solvent_2_${activeSkin}` },
-      { id: 'solvent_3', name: 'Щадящая эмульсия III', desc: 'Глубокое расщепление въевшейся патины', price: 700, icon: `shop_tool_solvent_3_${activeSkin}` },
-      { id: 'solvent_4', name: 'Ультразвуковой спрей IV', desc: 'Мгновенное удаление налёта без следа', price: 1800, icon: `shop_tool_solvent_4_${activeSkin}` },
-      { id: 'polish_2', name: 'Пчелиный воск II', desc: 'Придаёт экспонатам благородный глянец', price: 300, icon: `shop_tool_polish_2_${activeSkin}` },
-      { id: 'polish_3', name: 'Паста ГОИ и микрофибра III', desc: '+15% к ювелирному блеску экспоната', price: 850, icon: `shop_tool_polish_3_${activeSkin}` },
-      { id: 'polish_4', name: 'Алмазная эмульсия IV', desc: 'Зеркальный блеск высшей музейной пробы', price: 2000, icon: `shop_tool_polish_4_${activeSkin}` }
-    ];
+    items.forEach((item, index) => {
+      const cardY = index * (cardH + spacing) + cardH / 2 + 6;
+      const isOwned = !item.isConsumable && (localStorage.getItem(item.key) === 'true');
+      const prereq = (!isOwned && !item.isConsumable) ? this.checkUpgradePrerequisite(item) : { allowed: true, reason: '' };
+      const isLocked = !isOwned && !prereq.allowed;
 
-    tools.forEach((tool) => {
-      const cardY = cardIdx * (cardH + 8) + cardH / 2;
-      const isBought = localStorage.getItem(`tool_upg_${tool.id}`) === 'true';
+      const cardCont = this.add.container(width / 2, cardY);
 
-      const card = this.add.container(width / 2, cardY);
+      const gfx = this.add.graphics();
+      gfx.fillGradientStyle(
+        isOwned ? 0x162b1d : (isLocked ? 0x17110d : 0x261a10),
+        isOwned ? 0x162b1d : (isLocked ? 0x17110d : 0x261a10),
+        isOwned ? 0x0e1c13 : (isLocked ? 0x100b08 : 0x170f09),
+        isOwned ? 0x0e1c13 : (isLocked ? 0x100b08 : 0x170f09),
+        isLocked ? 0.65 : 0.85
+      );
+      gfx.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+      gfx.lineStyle(1.3, isOwned ? 0x4ade80 : (isLocked ? 0x4a3525 : 0xc89d54), isLocked ? 0.55 : 0.88);
+      gfx.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
 
-      const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.78);
-      cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
-      cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      gfx.fillStyle(0x0d0805, 0.5);
+      gfx.fillRoundedRect(-cardW / 2 + 10, -28, 56, 56, 10);
 
-      cardBg.fillStyle(0x0d0805, 0.55);
-      cardBg.fillRoundedRect(-cardW / 2 + 10, -30, 60, 60, 9);
-
-      const icon = this.add.image(-cardW / 2 + 40, 0, tool.icon).setDisplaySize(54, 54);
-
-      const textMaxW = cardW - 184;
-      const title = this.add.text(-cardW / 2 + 80, -24, tool.name, {
-        fontSize: '13px',
-        fontFamily: FONT_UI,
-        color: '#fdf6e3',
-        fontStyle: 'bold',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const desc = this.add.text(-cardW / 2 + 80, 2, tool.desc, {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: '#e6d5bc',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const actionBtn = this.add.container(cardW / 2 - 48, 0);
-      const actionGfx = this.add.graphics();
-      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
-      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
-      actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
-      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
-
-      const actionZone = this.add.zone(0, 0, 80, 32);
-      if (!isBought) {
-        actionZone.setInteractive({ useHandCursor: true });
+      let iconObj;
+      if (item.toolType) {
+        const texKey = this.getToolPreviewTexture(item.toolType, item.tier, activeToolSkin);
+        iconObj = this.add.image(-cardW / 2 + 38, 0, texKey)
+          .setDisplaySize(46, 46)
+          .setAlpha(isLocked ? 0.45 : 1);
+      } else {
+        iconObj = this.add.text(-cardW / 2 + 38, 0, item.icon || '✨', {
+          fontSize: '26px',
+          resolution: textRes
+        }).setOrigin(0.5).setAlpha(isLocked ? 0.45 : 1);
       }
 
-      const actionTxt = this.add.text(0, 0, isBought ? 'КУПЛЕНО' : `${tool.price}`, {
-        fontSize: '12px',
-        fontFamily: FONT_UI,
-        color: isBought ? '#a89074' : '#1a1004',
-        fontStyle: 'bold',
-        resolution: dpr
-      }).setOrigin(0.5);
-
-      actionBtn.add([actionGfx, actionTxt, actionZone]);
-
-      if (!isBought) {
-        actionZone.on('pointerup', () => {
-          if (this.isDragging) return;
-          const coins = Storage.getCoins();
-          if (coins >= tool.price) {
-            Storage.addCoins(-tool.price);
-            localStorage.setItem(`tool_upg_${tool.id}`, 'true');
-            if (AudioManager.playCoin) AudioManager.playCoin();
-            this.updateCoinsDisplay();
-            this.renderContent();
-          } else if (AudioManager.playBreakSnap) {
-            AudioManager.playBreakSnap();
-          }
-        });
-      }
-
-      card.add([cardBg, icon, title, desc, actionBtn]);
-      this.itemsContainer.add(card);
-      cardIdx++;
-    });
-
-    const totalH = cardIdx * (cardH + 8) + 20;
-    this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
-  }
-
-  renderVisualStylesTab(width) {
-    const dpr = this.dpr;
-    const FONT_UI = this.FONT_UI;
-    const cardW = width * 0.92;
-    let curY = 8;
-
-    const secHeader1 = this.add.text(width / 2, curY + 12, 'СТИЛЬ ИНСТРУМЕНТОВ (ВСЕ 5 ПРИБОРОВ)', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-      resolution: dpr
-    }).setOrigin(0.5);
-    this.itemsContainer.add(secHeader1);
-    curY += 30;
-
-    const activeToolSkin = Storage.getActiveToolSkin();
-    const ownedToolSkins = Storage.getOwnedToolSkins();
-    const skinCardH = 122;
-
-    TOOL_SKINS.forEach((skin) => {
-      const cardY = curY + skinCardH / 2;
-      const isOwned = ownedToolSkins.includes(skin.id);
-      const isActive = activeToolSkin === skin.id;
-      const adProgress = parseInt(localStorage.getItem(`tool_skin_ads_${skin.id}`) || '0', 10);
-
-      const card = this.add.container(width / 2, cardY);
-      const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(isActive ? 0x3b2614 : 0x261a10, isActive ? 0x3b2614 : 0x261a10, 0x170f09, 0x170f09, 0.82);
-      cardBg.fillRoundedRect(-cardW / 2, -skinCardH / 2, cardW, skinCardH, 12);
-      cardBg.lineStyle(1.5, isActive ? 0xfacc15 : (isOwned ? 0x4ade80 : 0xc89d54), 0.9);
-      cardBg.strokeRoundedRect(-cardW / 2, -skinCardH / 2, cardW, skinCardH, 12);
-
-      cardBg.fillStyle(0x0d0805, 0.65);
-      cardBg.fillRoundedRect(-cardW / 2 + 10, -skinCardH / 2 + 8, cardW - 20, 48, 8);
-
-      const setPreview = this.add.image(0, -skinCardH / 2 + 32, `skin_fullset_${skin.id}`)
-        .setDisplaySize(cardW - 32, 44);
-
-      const textMaxW = cardW - 125;
-      const title = this.add.text(-cardW / 2 + 14, 4, skin.name, {
+      const textMaxW = cardW - 190;
+      const titleTxt = this.add.text(-cardW / 2 + 76, -15, item.title, {
         fontSize: '13px',
         fontFamily: FONT_UI,
-        color: isActive ? '#facc15' : '#fdf6e3',
+        color: isLocked ? '#8c735b' : '#fdf6e3',
         fontStyle: 'bold',
         wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
+        resolution: textRes
+      }).setOrigin(0, 0.5);
 
-      const desc = this.add.text(-cardW / 2 + 14, 24, skin.desc, {
-        fontSize: '11.5px',
+      const descTxt = this.add.text(-cardW / 2 + 76, 14, item.desc, {
+        fontSize: '11px',
         fontFamily: FONT_UI,
-        color: '#e6d5bc',
+        color: isLocked ? '#6b5643' : '#d6c3a5',
         wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
+        resolution: textRes
+      }).setOrigin(0, 0.5);
 
-      const btnX = cardW / 2 - 50;
-      const btnW = 86;
-      const btnCenterY = 26;
+      const btnW = 98;
+      const btnH = 34;
+      const btnX = cardW / 2 - btnW / 2 - 12;
+
+      const btnGfx = this.add.graphics();
+      if (isOwned) {
+        btnGfx.fillStyle(0x1e3322, 0.95);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+        btnGfx.lineStyle(1, 0x4ade80, 0.9);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      } else if (isLocked) {
+        btnGfx.fillStyle(0x1f1712, 0.95);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+        btnGfx.lineStyle(1, 0x5c4330, 0.8);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      } else {
+        btnGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+        btnGfx.lineStyle(1, 0xfef08a, 0.95);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      }
+
+      let btnStr = `${item.price} 🪙`;
+      let btnColor = '#1a1004';
+      let btnFontSize = '12.5px';
 
       if (isOwned) {
-        const btnGfx = this.add.graphics();
-        btnGfx.fillStyle(isActive ? 0x3b2614 : 0x1e3322, 0.96);
-        btnGfx.fillRoundedRect(btnX - btnW / 2, btnCenterY - 16, btnW, 32, 8);
-        btnGfx.lineStyle(1.2, isActive ? 0xfacc15 : 0x4ade80, 0.95);
-        btnGfx.strokeRoundedRect(btnX - btnW / 2, btnCenterY - 16, btnW, 32, 8);
-
-        const btnZone = this.add.zone(btnX, btnCenterY, btnW, 32);
-        if (!isActive) btnZone.setInteractive({ useHandCursor: true });
-
-        const btnTxt = this.add.text(btnX, btnCenterY, isActive ? 'НАДЕТО' : 'ВЫБРАТЬ', {
-          fontSize: '11.5px',
-          fontFamily: FONT_UI,
-          color: isActive ? '#facc15' : '#86efac',
-          fontStyle: 'bold',
-          resolution: dpr
-        }).setOrigin(0.5);
-
-        btnZone.on('pointerup', () => {
-          if (this.isDragging || isActive) return;
-          Storage.setActiveToolSkin(skin.id);
-          if (AudioManager.playClick) AudioManager.playClick();
-          this.renderContent();
-        });
-
-        card.add([cardBg, setPreview, title, desc, btnGfx, btnZone, btnTxt]);
-      } else {
-        const hasCoins = skin.priceCoins !== null && skin.priceCoins > 0;
-        const hasAds = skin.adsRequired > 0;
-
-        if (hasCoins && hasAds) {
-          const cGfx = this.add.graphics();
-          cGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
-          cGfx.fillRoundedRect(btnX - btnW / 2, btnCenterY - 26, btnW, 24, 6);
-          const cZone = this.add.zone(btnX, btnCenterY - 14, btnW, 24).setInteractive({ useHandCursor: true });
-          const cTxt = this.add.text(btnX, btnCenterY - 14, `${skin.priceCoins} мон.`, {
-            fontSize: '11px',
-            fontFamily: FONT_UI,
-            color: '#1a1004',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          cZone.on('pointerup', () => {
-            if (this.isDragging) return;
-            if (Storage.getCoins() >= skin.priceCoins) {
-              Storage.addCoins(-skin.priceCoins);
-              Storage.unlockToolSkin(skin.id);
-              Storage.setActiveToolSkin(skin.id);
-              if (AudioManager.playShine) AudioManager.playShine();
-              this.updateCoinsDisplay();
-              this.renderContent();
-            } else if (AudioManager.playBreakSnap) {
-              AudioManager.playBreakSnap();
-            }
-          });
-
-          const aGfx = this.add.graphics();
-          aGfx.fillStyle(0x1e3a8a, 1);
-          aGfx.fillRoundedRect(btnX - btnW / 2, btnCenterY + 2, btnW, 24, 6);
-          const aZone = this.add.zone(btnX, btnCenterY + 14, btnW, 24).setInteractive({ useHandCursor: true });
-          const aTxt = this.add.text(btnX, btnCenterY + 14, `Реклама ${adProgress}/${skin.adsRequired}`, {
-            fontSize: '10.5px',
-            fontFamily: FONT_UI,
-            color: '#ffffff',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          aZone.on('pointerup', () => {
-            if (this.isDragging) return;
-            YandexSDK.showRewarded(() => {
-              const nextAds = adProgress + 1;
-              localStorage.setItem(`tool_skin_ads_${skin.id}`, String(nextAds));
-              if (nextAds >= skin.adsRequired) {
-                Storage.unlockToolSkin(skin.id);
-                Storage.setActiveToolSkin(skin.id);
-                if (AudioManager.playShine) AudioManager.playShine();
-              } else if (AudioManager.playCoin) {
-                AudioManager.playCoin();
-              }
-              this.renderContent();
-            });
-          });
-
-          card.add([cardBg, setPreview, title, desc, cGfx, cZone, cTxt, aGfx, aZone, aTxt]);
-        } else if (hasCoins) {
-          const cGfx = this.add.graphics();
-          cGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
-          cGfx.fillRoundedRect(btnX - btnW / 2, btnCenterY - 16, btnW, 32, 8);
-          const cZone = this.add.zone(btnX, btnCenterY, btnW, 32).setInteractive({ useHandCursor: true });
-          const cTxt = this.add.text(btnX, btnCenterY, `${skin.priceCoins} мон.`, {
-            fontSize: '11.5px',
-            fontFamily: FONT_UI,
-            color: '#1a1004',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          cZone.on('pointerup', () => {
-            if (this.isDragging) return;
-            if (Storage.getCoins() >= skin.priceCoins) {
-              Storage.addCoins(-skin.priceCoins);
-              Storage.unlockToolSkin(skin.id);
-              Storage.setActiveToolSkin(skin.id);
-              if (AudioManager.playShine) AudioManager.playShine();
-              this.updateCoinsDisplay();
-              this.renderContent();
-            } else if (AudioManager.playBreakSnap) {
-              AudioManager.playBreakSnap();
-            }
-          });
-
-          card.add([cardBg, setPreview, title, desc, cGfx, cZone, cTxt]);
-        } else if (hasAds) {
-          const aGfx = this.add.graphics();
-          aGfx.fillStyle(0x1e3a8a, 1);
-          aGfx.fillRoundedRect(btnX - btnW / 2, btnCenterY - 16, btnW, 32, 8);
-          aGfx.lineStyle(1, 0x38bdf8, 0.95);
-          aGfx.strokeRoundedRect(btnX - btnW / 2, btnCenterY - 16, btnW, 32, 8);
-
-          const aZone = this.add.zone(btnX, btnCenterY, btnW, 32).setInteractive({ useHandCursor: true });
-          const aTxt = this.add.text(btnX, btnCenterY, `Реклама ${adProgress}/${skin.adsRequired}`, {
-            fontSize: '11px',
-            fontFamily: FONT_UI,
-            color: '#ffffff',
-            fontStyle: 'bold',
-            resolution: dpr
-          }).setOrigin(0.5);
-
-          aZone.on('pointerup', () => {
-            if (this.isDragging) return;
-            YandexSDK.showRewarded(() => {
-              const nextAds = adProgress + 1;
-              localStorage.setItem(`tool_skin_ads_${skin.id}`, String(nextAds));
-              if (nextAds >= skin.adsRequired) {
-                Storage.unlockToolSkin(skin.id);
-                Storage.setActiveToolSkin(skin.id);
-                if (AudioManager.playShine) AudioManager.playShine();
-              } else if (AudioManager.playCoin) {
-                AudioManager.playCoin();
-              }
-              this.renderContent();
-            });
-          });
-
-          card.add([cardBg, setPreview, title, desc, aGfx, aZone, aTxt]);
-        }
+        btnStr = 'КУПЛЕНО';
+        btnColor = '#86efac';
+        btnFontSize = '11px';
+      } else if (isLocked) {
+        btnStr = `🔒 ${prereq.reason}`;
+        btnColor = '#9c8265';
+        btnFontSize = '9.5px';
       }
 
-      this.itemsContainer.add(card);
-      curY += skinCardH + 10;
-    });
-
-    curY += 8;
-    const secHeader2 = this.add.text(width / 2, curY + 12, 'СТИЛЬ ВЕРСТАКА (СТОЛЫ МАСТЕРСКОЙ)', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-      resolution: dpr
-    }).setOrigin(0.5);
-    this.itemsContainer.add(secHeader2);
-    curY += 30;
-
-    const currentTier = Storage.getWorkshopTier();
-    const activeSkin = Storage.getActiveWorkbenchSkin();
-    const ownedSkins = Storage.getOwnedWorkbenchSkins();
-    const pityCount = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10);
-
-    const tiers = [
-      { id: 'workbench_bg_1', type: 'base', tier: 1, name: 'Сырой подвал', desc: 'Рабочий стол с тусклой свечой и тисками', price: 0 },
-      { id: 'workbench_bg_2', type: 'base', tier: 2, name: 'Чердак антиквара', desc: 'Уютный дубовый стол с керосиновой лампой', price: 600 },
-      { id: 'workbench_bg_3', type: 'base', tier: 3, name: 'Кабинет реставратора', desc: 'Стол из красного дерева с латунными приборами', price: 1800 },
-      { id: 'workbench_bg_4', type: 'base', tier: 4, name: 'Ювелирная мастерская', desc: 'Прецизионная мастерская с мрамором и золотом', price: 4500 },
-      { id: 'workbench_bg_9', type: 'era', name: 'Эпоха: Древний Египет', desc: 'Верстак из песчаника с амулетами и папирусами', price: 7500 },
-      { id: 'workbench_bg_10', type: 'era', name: 'Эпоха: Античность', desc: 'Мраморная плита с амфорами и оливковыми ветвями', price: 7500 },
-      { id: 'workbench_bg_11', type: 'era', name: 'Эпоха: Средневековье', desc: 'Тяжёлый дубовый верстак с книгами и витражами', price: 7500 },
-      { id: 'workbench_bg_12', type: 'era', name: 'Эпоха: Япония', desc: 'Лакированный стол с тушью и бамбуком', price: 7500 },
-      { id: 'workbench_bg_13', type: 'era', name: 'Эпоха: Ацтеки', desc: 'Массивное тропическое дерево с обсидианом', price: 7500 },
-      { id: 'workbench_bg_14', type: 'era', name: 'Эпоха: Викинги', desc: 'Северный дуб с мехами, рунами и щитами', price: 7500 },
-      { id: 'workbench_bg_15', type: 'era', name: 'Эпоха: Ренессанс', desc: 'Полированный орех с чертежами и красками', price: 7500 },
-      { id: 'workbench_bg_5', type: 'legendary', name: 'Эксклюзив: Алхимия', desc: 'Тайная каменная плита со светящимися зельями', price: null },
-      { id: 'workbench_bg_6', type: 'legendary', name: 'Эксклюзив: Киберпанк', desc: 'Лаборатория будущего с неонами и платами', price: null },
-      { id: 'workbench_bg_7', type: 'legendary', name: 'Эксклюзив: Батискаф', desc: 'Подводная станция с иллюминаторами и трубами', price: null },
-      { id: 'workbench_bg_8', type: 'legendary', name: 'Эксклюзив: Космос', desc: 'Орбитальная станция с видом на звёзды', price: null }
-    ];
-
-    const wbCardH = 88;
-
-    // Сундук Искателя
-    {
-      const cardY = curY + wbCardH / 2;
-      const boxCont = this.add.container(width / 2, cardY);
-
-      const boxBg = this.add.graphics();
-      boxBg.fillGradientStyle(0x3b1c0a, 0x3b1c0a, 0x1e0f06, 0x1e0f06, 0.85);
-      boxBg.fillRoundedRect(-cardW / 2, -wbCardH / 2, cardW, wbCardH, 11);
-      boxBg.lineStyle(2, 0xeab308, 0.95);
-      boxBg.strokeRoundedRect(-cardW / 2, -wbCardH / 2, cardW, wbCardH, 11);
-
-      const chestIcon = this.add.image(-cardW / 2 + 38, 0, 'lootbox_chest').setDisplaySize(48, 48);
-      const textMaxW = cardW - 180;
-
-      const title = this.add.text(-cardW / 2 + 74, -26, 'СУНДУК ИСКАТЕЛЯ', {
-        fontSize: '13px',
+      const btnLabel = this.add.text(btnX, 0, btnStr, {
+        fontSize: btnFontSize,
         fontFamily: FONT_UI,
-        color: '#fef08a',
+        color: btnColor,
         fontStyle: 'bold',
-        resolution: dpr
-      });
-
-      const desc = this.add.text(-cardW / 2 + 74, -2, `Шанс редкого стола (гарант ${pityCount}/15), лак Кинцуги или монеты`, {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: '#e6d5bc',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const lootboxPrice = 2200;
-      const openBtn = this.add.container(cardW / 2 - 48, 0);
-      const openGfx = this.add.graphics();
-      openGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 0.98);
-      openGfx.fillRoundedRect(-40, -16, 80, 32, 8);
-      openGfx.lineStyle(1.2, 0xfef08a, 0.95);
-      openGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
-
-      const openZone = this.add.zone(0, 0, 80, 32).setInteractive({ useHandCursor: true });
-      const openTxt = this.add.text(0, 0, `${lootboxPrice}`, {
-        fontSize: '12px',
-        fontFamily: FONT_UI,
-        color: '#1a1004',
-        fontStyle: 'bold',
-        resolution: dpr
+        align: 'center',
+        wordWrap: { width: btnW - 8 },
+        resolution: textRes
       }).setOrigin(0.5);
 
-      openBtn.add([openGfx, openTxt, openZone]);
+      const hitZone = this.add.zone(btnX, 0, btnW, btnH)
+        .setInteractive({ useHandCursor: !isOwned && !isLocked });
 
-      openZone.on('pointerup', () => {
-        if (this.isDragging) return;
-        const res = this.rollLootboxRebalanced(lootboxPrice);
-        if (res.success) {
+      hitZone.on('pointerup', () => {
+        if (this.isDraggingList || this.isModalOpen || isOwned) return;
+
+        if (isLocked) {
+          if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+          return;
+        }
+
+        if (Storage.getCoins() >= item.price) {
+          Storage.addCoins(-item.price);
+          if (item.isConsumable) {
+            Storage.addKintsugiLacquer(item.count || 1);
+          } else {
+            localStorage.setItem(item.key, 'true');
+          }
           if (AudioManager.playCoin) AudioManager.playCoin();
-          this.updateCoinsDisplay();
-          this.renderContent();
+          this.updateHeaderBalance();
+          this.renderShopItems();
         } else if (AudioManager.playBreakSnap) {
           AudioManager.playBreakSnap();
         }
       });
 
-      boxCont.add([boxBg, chestIcon, title, desc, openBtn]);
-      this.itemsContainer.add(boxCont);
-      curY += wbCardH + 8;
-    }
-
-    tiers.forEach((item) => {
-      const cardY = curY + wbCardH / 2;
-
-      const isBase = item.type === 'base';
-      const isExclusive = item.type === 'legendary';
-      const isBaseOwned = isBase && item.tier <= currentTier;
-      const canUpgradeBase = isBase && item.tier === currentTier + 1;
-      const isBaseLocked = isBase && item.tier > currentTier + 1;
-
-      const isCustomOwned = !isBase && ownedSkins.includes(item.id);
-      const isPurchased = isBaseOwned || isCustomOwned;
-      const isCurrentActive = activeSkin === item.id;
-      const isChestOnlyLocked = isExclusive && !isPurchased;
-
-      const card = this.add.container(width / 2, cardY);
-
-      const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(
-        isCurrentActive ? 0x3b2614 : (isExclusive ? 0x28182e : 0x261a10),
-        isCurrentActive ? 0x3b2614 : (isExclusive ? 0x28182e : 0x261a10),
-        0x170f09,
-        0x170f09,
-        isCurrentActive ? 0.82 : 0.72
-      );
-      cardBg.fillRoundedRect(-cardW / 2, -wbCardH / 2, cardW, wbCardH, 11);
-
-      let borderClr = 0xc89d54;
-      if (isCurrentActive) borderClr = 0xfacc15;
-      else if (isPurchased) borderClr = 0x4ade80;
-      else if (isExclusive) borderClr = 0xc084fc;
-      else if (isBaseLocked) borderClr = 0x5c3d22;
-
-      cardBg.lineStyle(isCurrentActive ? 1.8 : 1.2, borderClr, isBaseLocked ? 0.45 : 0.9);
-      cardBg.strokeRoundedRect(-cardW / 2, -wbCardH / 2, cardW, wbCardH, 11);
-
-      const textMaxW = cardW - 125;
-      const title = this.add.text(-cardW / 2 + 16, -24, item.name, {
-        fontSize: '13px',
-        fontFamily: FONT_UI,
-        color: isBaseLocked ? '#9c8265' : (isExclusive ? '#f3e8ff' : '#fdf6e3'),
-        fontStyle: 'bold',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const desc = this.add.text(-cardW / 2 + 16, 2, item.desc, {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: isBaseLocked ? '#7a6552' : '#e6d5bc',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const actionBtn = this.add.container(cardW / 2 - 48, 0);
-      const canBuy = canUpgradeBase || (!isBase && !isExclusive && !isPurchased);
-
-      const actionGfx = this.add.graphics();
-      let btnColor = 0x1a120b;
-      let strokeColor = 0x5c3d22;
-      if (isCurrentActive) {
-        btnColor = 0x3b2614;
-        strokeColor = 0xfacc15;
-      } else if (isPurchased) {
-        btnColor = 0x1e3322;
-        strokeColor = 0x4ade80;
-      } else if (isChestOnlyLocked) {
-        btnColor = 0x2e1738;
-        strokeColor = 0xc084fc;
-      } else if (canBuy) {
-        btnColor = 0xd99b26;
-        strokeColor = 0xfef08a;
-      }
-
-      actionGfx.fillStyle(btnColor, canBuy ? 0.98 : 0.88);
-      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
-      actionGfx.lineStyle(1, strokeColor, 0.95);
-      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
-
-      const actionZone = this.add.zone(0, 0, 80, 32);
-      if (!isBaseLocked && !isCurrentActive && !isChestOnlyLocked) {
-        actionZone.setInteractive({ useHandCursor: true });
-      }
-
-      let btnLabel = `TIER ${item.tier - 1}`;
-      if (isCurrentActive) btnLabel = 'АКТИВЕН';
-      else if (isPurchased) btnLabel = 'ВЫБРАТЬ';
-      else if (isChestOnlyLocked) btnLabel = 'В СУНДУКЕ';
-      else if (canBuy) btnLabel = `${item.price}`;
-
-      const actionTxt = this.add.text(0, 0, btnLabel, {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: isCurrentActive
-          ? '#facc15'
-          : (isPurchased ? '#86efac' : (isChestOnlyLocked ? '#e879f9' : (canBuy ? '#1a1004' : '#8c735b'))),
-        fontStyle: 'bold',
-        resolution: dpr
-      }).setOrigin(0.5);
-
-      actionBtn.add([actionGfx, actionTxt, actionZone]);
-
-      actionZone.on('pointerup', () => {
-        if (this.isDragging || isCurrentActive || isBaseLocked || isChestOnlyLocked) return;
-
-        if (isPurchased) {
-          if (AudioManager.playClick) AudioManager.playClick();
-          Storage.setActiveWorkbenchSkin(item.id);
-          this.renderContent();
-        } else if (canBuy) {
-          const coins = Storage.getCoins();
-          if (coins >= item.price) {
-            Storage.addCoins(-item.price);
-            if (isBase && Storage.setWorkshopTier) {
-              Storage.setWorkshopTier(item.tier);
-            }
-            Storage.unlockWorkbenchSkin(item.id);
-            Storage.setActiveWorkbenchSkin(item.id);
-            if (AudioManager.playCoin) AudioManager.playCoin();
-            this.updateCoinsDisplay();
-            this.renderContent();
-          } else if (AudioManager.playBreakSnap) {
-            AudioManager.playBreakSnap();
-          }
-        }
-      });
-
-      card.add([cardBg, title, desc, actionBtn]);
-      this.itemsContainer.add(card);
-      curY += wbCardH + 8;
+      cardCont.add([gfx, iconObj, titleTxt, descTxt, btnGfx, btnLabel, hitZone]);
+      this.listContainer.add(cardCont);
     });
 
-    const totalH = curY + 20;
-    this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
+    const totalH = items.length * (cardH + spacing) + 24;
+    this.minListY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
 
-  rollLootboxRebalanced(cost) {
-    const coins = Storage.getCoins();
-    if (coins < cost) return { success: false };
-    Storage.addCoins(-cost);
-
-    const exclusiveSkins = [
-      { id: 'workbench_bg_5', name: 'Эксклюзив: Алхимия' },
-      { id: 'workbench_bg_6', name: 'Эксклюзив: Киберпанк' },
-      { id: 'workbench_bg_7', name: 'Эксклюзив: Батискаф' },
-      { id: 'workbench_bg_8', name: 'Эксклюзив: Космос' }
-    ];
-    const eraSkins = [
-      { id: 'workbench_bg_9', name: 'Эпоха: Древний Египет' },
-      { id: 'workbench_bg_10', name: 'Эпоха: Античность' },
-      { id: 'workbench_bg_11', name: 'Эпоха: Средневековье' },
-      { id: 'workbench_bg_12', name: 'Эпоха: Япония' },
-      { id: 'workbench_bg_13', name: 'Эпоха: Ацтеки' },
-      { id: 'workbench_bg_14', name: 'Эпоха: Викинги' },
-      { id: 'workbench_bg_15', name: 'Эпоха: Ренессанс' }
-    ];
-
-    const owned = Storage.getOwnedWorkbenchSkins();
-    const unownedExclusive = exclusiveSkins.filter((s) => !owned.includes(s.id));
-    const unownedEra = eraSkins.filter((s) => !owned.includes(s.id));
-    const allUnowned = [...unownedExclusive, ...unownedEra];
-
-    let pity = parseInt(localStorage.getItem('lootbox_pity_count') || '0', 10) + 1;
-    const rand = Math.random() * 100;
-
-    if (pity >= 15 && allUnowned.length > 0) {
-      const win = allUnowned[Math.floor(Math.random() * allUnowned.length)];
-      Storage.unlockWorkbenchSkin(win.id);
-      localStorage.setItem('lootbox_pity_count', '0');
-      return { success: true, type: 'skin', id: win.id, name: win.name };
-    }
-    if (rand < 2.5 && unownedExclusive.length > 0) {
-      const win = unownedExclusive[Math.floor(Math.random() * unownedExclusive.length)];
-      Storage.unlockWorkbenchSkin(win.id);
-      localStorage.setItem('lootbox_pity_count', '0');
-      return { success: true, type: 'skin', id: win.id, name: win.name };
-    }
-    if (rand < 7.5 && unownedEra.length > 0) {
-      const win = unownedEra[Math.floor(Math.random() * unownedEra.length)];
-      Storage.unlockWorkbenchSkin(win.id);
-      localStorage.setItem('lootbox_pity_count', '0');
-      return { success: true, type: 'skin', id: win.id, name: win.name };
-    }
-
-    localStorage.setItem('lootbox_pity_count', String(pity));
-    if (rand < 30) {
-      const lac = Math.random() < 0.75 ? 1 : 2;
-      Storage.addKintsugiLacquer(lac);
-      return { success: true, type: 'lacquer', amount: lac, name: `Золотой лак (${lac} шт.)` };
-    }
-
-    const reward = Math.round((450 + Math.random() * 650) / 10) * 10;
-    Storage.addCoins(reward);
-    return { success: true, type: 'coins', amount: reward, name: `${reward} монет` };
-  }
-
-  renderMuseumExpansions(width) {
-    const dpr = this.dpr;
-    const FONT_UI = this.FONT_UI;
-
-    const expansions = [
-      { id: 'pedestal_1', name: 'Бархатный постамент IV', desc: '+1 слот витрины и +15% к оффлайн-билетам', price: 1200 },
-      { id: 'pedestal_2', name: 'Стеклянный купол с подсветкой V', desc: '+1 слот витрины и +25% к оффлайн-билетам', price: 2800 },
-      { id: 'hall_antique', name: 'Зал Средиземноморья', desc: 'Удваивает пассивную выручку от античных реликвий', price: 5800 },
-      { id: 'hall_royal', name: 'Королевская галерея славы', desc: 'Престиж музея максимального уровня: +50% ко всей казне', price: 14000 }
-    ];
-
-    const cardH = 88;
+  renderCosmeticsTab(width, textRes, FONT_UI) {
     const cardW = width * 0.92;
+    let curY = 8;
 
-    expansions.forEach((exp, i) => {
-      const cardY = i * (cardH + 8) + cardH / 2;
-      const isBought = localStorage.getItem(`museum_upg_${exp.id}`) === 'true';
+    // 1. Сундук Искателя (Сбалансированная цена 1650, интерактивное открытие по тапу)
+    const chestH = 128;
+    const chestCont = this.add.container(width / 2, curY + chestH / 2);
 
-      const card = this.add.container(width / 2, cardY);
+    const chestGfx = this.add.graphics();
+    chestGfx.fillGradientStyle(0x332011, 0x332011, 0x1a1008, 0x1a1008, 0.92);
+    chestGfx.fillRoundedRect(-cardW / 2, -chestH / 2, cardW, chestH, 14);
+    chestGfx.lineStyle(1.8, 0xfacc15, 0.95);
+    chestGfx.strokeRoundedRect(-cardW / 2, -chestH / 2, cardW, chestH, 14);
 
-      const cardBg = this.add.graphics();
-      cardBg.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.78);
-      cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
-      cardBg.lineStyle(1.3, isBought ? 0x4ade80 : 0xc89d54, 0.85);
-      cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+    const chestImg = this.add.image(-cardW / 2 + 52, -4, 'lootbox_chest').setDisplaySize(78, 78);
 
-      const textMaxW = cardW - 125;
-      const name = this.add.text(-cardW / 2 + 16, -24, exp.name, {
+    const pityCount = parseInt(localStorage.getItem(Storage.KEYS.TOOL_BOX_PITY) || '0', 10);
+    const chestTitle = this.add.text(-cardW / 2 + 102, -42, '🎁 СУНДУК ИСКАТЕЛЯ', {
+      fontSize: '14px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0, 0.5);
+
+    const chestDesc = this.add.text(
+      -cardW / 2 + 102,
+      -10,
+      `Редкие верстаки (шанс 12%), Лак Кинцуги или 750–1300 🪙\nГарант редкого верстака: ${pityCount}/10`,
+      {
+        fontSize: '10.5px',
+        fontFamily: FONT_UI,
+        color: '#f5e6c8',
+        wordWrap: { width: cardW - 116 },
+        lineSpacing: 3,
+        resolution: textRes
+      }
+    ).setOrigin(0, 0.5);
+
+    // Кнопка открыть за монеты (1650)
+    const openBtnW = 148;
+    const openBtnH = 34;
+    const openBtnX = -cardW / 2 + 102 + openBtnW / 2;
+    const openBtnY = 34;
+
+    const openGfx = this.add.graphics();
+    openGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    openGfx.fillRoundedRect(openBtnX - openBtnW / 2, openBtnY - openBtnH / 2, openBtnW, openBtnH, 8);
+    openGfx.lineStyle(1, 0xfef08a, 0.95);
+    openGfx.strokeRoundedRect(openBtnX - openBtnW / 2, openBtnY - openBtnH / 2, openBtnW, openBtnH, 8);
+
+    const openZone = this.add.zone(openBtnX, openBtnY, openBtnW, openBtnH).setInteractive({ useHandCursor: true });
+    const openTxt = this.add.text(openBtnX, openBtnY, 'ОТКРЫТЬ (1650 🪙)', {
+      fontSize: '11px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    openZone.on('pointerup', () => {
+      if (this.isDraggingList || this.isModalOpen) return;
+      if (Storage.getCoins() >= 1650) {
+        Storage.addCoins(-1650);
+        this.updateHeaderBalance();
+        this.openLootboxInteractive();
+      } else if (AudioManager.playBreakSnap) {
+        AudioManager.playBreakSnap();
+      }
+    });
+
+    // Кнопка открыть за рекламу
+    const adBtnW = 112;
+    const adBtnX = openBtnX + openBtnW / 2 + 10 + adBtnW / 2;
+    const adGfx = this.add.graphics();
+    adGfx.fillStyle(0x1e3a8a, 1);
+    adGfx.fillRoundedRect(adBtnX - adBtnW / 2, openBtnY - openBtnH / 2, adBtnW, openBtnH, 8);
+    adGfx.lineStyle(1, 0x38bdf8, 0.95);
+    adGfx.strokeRoundedRect(adBtnX - adBtnW / 2, openBtnY - openBtnH / 2, adBtnW, openBtnH, 8);
+
+    const adZone = this.add.zone(adBtnX, openBtnY, adBtnW, openBtnH).setInteractive({ useHandCursor: true });
+    const adTxt = this.add.text(adBtnX, openBtnY, '🎬 БЕСПЛАТНО', {
+      fontSize: '10.5px',
+      fontFamily: FONT_UI,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    adZone.on('pointerup', () => {
+      if (this.isDraggingList || this.isModalOpen) return;
+      YandexSDK.showRewarded(() => {
+        this.openLootboxInteractive();
+      });
+    });
+
+    chestCont.add([chestGfx, chestImg, chestTitle, chestDesc, openGfx, openTxt, openZone, adGfx, adTxt, adZone]);
+    this.listContainer.add(chestCont);
+    curY += chestH + 16;
+
+    // 2. Скины инструментов
+    const toolSkinsTitle = this.add.text(width * 0.04, curY, '✨ СТИЛЬ ИНСТРУМЕНТОВ', {
+      fontSize: '13px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: textRes
+    });
+    this.listContainer.add(toolSkinsTitle);
+    curY += 26;
+
+    const toolSkins = [
+      { id: 'default', title: 'Классика гильдии', desc: 'Традиционная сталь и тёплый орех', price: 0 },
+      { id: 'gold', title: 'Царское золото', desc: 'Чеканный золотой сплав и красный бархат', price: 1100 },
+      { id: 'jade', title: 'Императорский нефрит', desc: 'Резной зелёный камень и золотая гравировка', price: 1650 },
+      { id: 'obsidian', title: 'Обсидиан ацтеков', desc: 'Чёрное вулканическое стекло и бирюза', price: 2200 },
+      { id: 'cyber', title: 'Хроно-неон', desc: 'Технологичный титан с лазурным свечением', price: 2900 }
+    ];
+
+    const ownedToolSkins = Storage.getOwnedToolSkins();
+    const activeToolSkin = Storage.getActiveToolSkin();
+
+    toolSkins.forEach((skin) => {
+      const cardH = 74;
+      const cy = curY + cardH / 2;
+      const owned = ownedToolSkins.includes(skin.id);
+      const isSelected = (activeToolSkin === skin.id);
+
+      const cont = this.add.container(width / 2, cy);
+      const gfx = this.add.graphics();
+      gfx.fillGradientStyle(
+        isSelected ? 0x3b2614 : 0x24180f,
+        isSelected ? 0x3b2614 : 0x24180f,
+        0x160f0a,
+        0x160f0a,
+        0.88
+      );
+      gfx.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+      gfx.lineStyle(isSelected ? 1.8 : 1.2, isSelected ? 0xfacc15 : 0x8c6239, 0.9);
+      gfx.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 11);
+
+      const previewTex = this.getToolPreviewTexture('scraper', 3, skin.id);
+      const icon = this.add.image(-cardW / 2 + 36, 0, previewTex).setDisplaySize(44, 44);
+
+      const tTxt = this.add.text(-cardW / 2 + 70, -13, skin.title, {
         fontSize: '13px',
         fontFamily: FONT_UI,
         color: '#fdf6e3',
         fontStyle: 'bold',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
+        resolution: textRes
+      }).setOrigin(0, 0.5);
+
+      const dTxt = this.add.text(-cardW / 2 + 70, 12, skin.desc, {
+        fontSize: '11px',
+        fontFamily: FONT_UI,
+        color: '#d6c3a5',
+        wordWrap: { width: cardW - 180 },
+        resolution: textRes
+      }).setOrigin(0, 0.5);
+
+      const btnW = 92;
+      const btnH = 32;
+      const btnX = cardW / 2 - btnW / 2 - 12;
+
+      const btnGfx = this.add.graphics();
+      if (isSelected) {
+        btnGfx.fillStyle(0x16a34a, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      } else if (owned) {
+        btnGfx.fillStyle(0x332215, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+        btnGfx.lineStyle(1, 0xc89d54, 0.9);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      } else {
+        btnGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 8);
+      }
+
+      const btnTxt = this.add.text(
+        btnX,
+        0,
+        isSelected ? 'ВЫБРАНО' : (owned ? 'ВЫБРАТЬ' : `${skin.price} 🪙`),
+        {
+          fontSize: '11.5px',
+          fontFamily: FONT_UI,
+          color: isSelected ? '#ffffff' : (owned ? '#fdf6e3' : '#1a1004'),
+          fontStyle: 'bold',
+          resolution: textRes
+        }
+      ).setOrigin(0.5);
+
+      const zone = this.add.zone(btnX, 0, btnW, btnH).setInteractive({ useHandCursor: true });
+      zone.on('pointerup', () => {
+        if (this.isDraggingList || this.isModalOpen) return;
+        if (owned) {
+          Storage.setActiveToolSkin(skin.id);
+          if (AudioManager.playClick) AudioManager.playClick();
+          this.renderShopItems();
+        } else if (Storage.getCoins() >= skin.price) {
+          Storage.addCoins(-skin.price);
+          Storage.unlockToolSkin(skin.id);
+          Storage.setActiveToolSkin(skin.id);
+          if (AudioManager.playCoin) AudioManager.playCoin();
+          this.updateHeaderBalance();
+          this.renderShopItems();
+        } else if (AudioManager.playBreakSnap) {
+          AudioManager.playBreakSnap();
+        }
       });
 
-      const desc = this.add.text(-cardW / 2 + 16, 2, exp.desc, {
+      cont.add([gfx, icon, tTxt, dTxt, btnGfx, btnTxt, zone]);
+      this.listContainer.add(cont);
+      curY += cardH + 8;
+    });
+
+    curY += 10;
+
+    // 3. Интерьер мастерской (15 фонов верстака с фоновой предзагрузкой)
+    const wbTitle = this.add.text(width * 0.04, curY, '🏛 ИНТЕРЬЕР МАСТЕРСКОЙ (15 СТОЛОВ)', {
+      fontSize: '13px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: textRes
+    });
+    this.listContainer.add(wbTitle);
+    curY += 26;
+
+    const workbenches = [
+      { id: 'workbench_bg_1', title: 'Дубовый верстак ученика', price: 0 },
+      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 320 },
+      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 540 },
+      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 780 },
+      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1050 },
+      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 1350 },
+      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 1700 },
+      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 2100 },
+      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 2500 },
+      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 2950 },
+      { id: 'workbench_bg_11', title: 'Павильон Нефритового Дракона', price: 0, lootboxOnly: true },
+      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 3400 },
+      { id: 'workbench_bg_13', title: 'Храм Золотого Скарабея', price: 0, lootboxOnly: true },
+      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 3900 },
+      { id: 'workbench_bg_15', title: 'Чертог Хранителя Вечности', price: 0, lootboxOnly: true }
+    ];
+
+    const ownedWorkbenches = Storage.getOwnedWorkbenchSkins();
+    const activeWorkbench = Storage.getActiveWorkbenchSkin();
+
+    // Тихо предзагружаем выбранный и все купленные столы
+    this.preloadWorkbenchInBackground(activeWorkbench);
+    ownedWorkbenches.forEach((wbId) => this.preloadWorkbenchInBackground(wbId));
+
+    workbenches.forEach((wb) => {
+      const cardH = 64;
+      const cy = curY + cardH / 2;
+      const owned = ownedWorkbenches.includes(wb.id);
+      const isSelected = (activeWorkbench === wb.id);
+
+      const cont = this.add.container(width / 2, cy);
+      const gfx = this.add.graphics();
+      gfx.fillGradientStyle(
+        isSelected ? 0x3b2614 : 0x24180f,
+        isSelected ? 0x3b2614 : 0x24180f,
+        0x160f0a,
+        0x160f0a,
+        0.88
+      );
+      gfx.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 10);
+      gfx.lineStyle(isSelected ? 1.8 : 1.1, isSelected ? 0xfacc15 : 0x8c6239, 0.9);
+      gfx.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 10);
+
+      const tTxt = this.add.text(-cardW / 2 + 14, 0, wb.title, {
+        fontSize: '12.5px',
+        fontFamily: FONT_UI,
+        color: '#fdf6e3',
+        fontStyle: 'bold',
+        wordWrap: { width: cardW - 140 },
+        resolution: textRes
+      }).setOrigin(0, 0.5);
+
+      const btnW = 104;
+      const btnH = 30;
+      const btnX = cardW / 2 - btnW / 2 - 12;
+
+      const btnGfx = this.add.graphics();
+      if (isSelected) {
+        btnGfx.fillStyle(0x16a34a, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+      } else if (owned) {
+        btnGfx.fillStyle(0x332215, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+        btnGfx.lineStyle(1, 0xc89d54, 0.9);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+      } else if (wb.lootboxOnly) {
+        btnGfx.fillStyle(0x3b1d54, 0.95);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+        btnGfx.lineStyle(1, 0xd8b4fe, 0.9);
+        btnGfx.strokeRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+      } else {
+        btnGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+        btnGfx.fillRoundedRect(btnX - btnW / 2, -btnH / 2, btnW, btnH, 7);
+      }
+
+      const labelText = isSelected
+        ? 'АКТИВЕН'
+        : (owned ? 'ВЫБРАТЬ' : (wb.lootboxOnly ? 'В СУНДУКЕ' : `${wb.price} 🪙`));
+
+      const btnTxt = this.add.text(btnX, 0, labelText, {
+        fontSize: '11px',
+        fontFamily: FONT_UI,
+        color: isSelected ? '#ffffff' : (owned ? '#fdf6e3' : (wb.lootboxOnly ? '#e9d5ff' : '#1a1004')),
+        fontStyle: 'bold',
+        resolution: textRes
+      }).setOrigin(0.5);
+
+      const zone = this.add.zone(btnX, 0, btnW, btnH).setInteractive({ useHandCursor: !wb.lootboxOnly || owned });
+      zone.on('pointerup', () => {
+        if (this.isDraggingList || this.isModalOpen) return;
+        if (owned) {
+          Storage.setActiveWorkbenchSkin(wb.id);
+          this.preloadWorkbenchInBackground(wb.id);
+          if (AudioManager.playClick) AudioManager.playClick();
+          this.renderShopItems();
+        } else if (!wb.lootboxOnly && Storage.getCoins() >= wb.price) {
+          Storage.addCoins(-wb.price);
+          Storage.unlockWorkbenchSkin(wb.id);
+          Storage.setActiveWorkbenchSkin(wb.id);
+          this.preloadWorkbenchInBackground(wb.id);
+          if (AudioManager.playCoin) AudioManager.playCoin();
+          this.updateHeaderBalance();
+          this.renderShopItems();
+        } else if (AudioManager.playBreakSnap) {
+          AudioManager.playBreakSnap();
+        }
+      });
+
+      cont.add([gfx, tTxt, btnGfx, btnTxt, zone]);
+      this.listContainer.add(cont);
+      curY += cardH + 8;
+    });
+
+    this.minListY = Math.min(this.listTopY, this.listBottomY - (curY + 24));
+  }
+
+  // Интерактивное поэтапное открытие «Сундука Искателя» по тапу на экран
+  openLootboxInteractive() {
+    if (this.isModalOpen) return;
+    this.isModalOpen = true;
+
+    const { width, height } = this.scale;
+    const textRes = this.textRes;
+    const FONT_UI = this.FONT_UI;
+
+    const rareWorkbenches = [
+      { id: 'workbench_bg_11', name: 'Павильон Нефритового Дракона' },
+      { id: 'workbench_bg_13', name: 'Храм Золотого Скарабея' },
+      { id: 'workbench_bg_15', name: 'Чертог Хранителя Вечности' }
+    ];
+
+    const owned = Storage.getOwnedWorkbenchSkins();
+    const unownedRare = rareWorkbenches.filter((w) => !owned.includes(w.id));
+
+    let pity = parseInt(localStorage.getItem(Storage.KEYS.TOOL_BOX_PITY) || '0', 10) + 1;
+    let rewardType = 'coins';
+    let rewardTitle = '';
+    let rewardSubtitle = '';
+    let rewardIcon = '🪙';
+    let rewardColor = '#facc15';
+
+    if (unownedRare.length > 0 && (pity >= 10 || Math.random() < 0.12)) {
+      const won = unownedRare[Math.floor(Math.random() * unownedRare.length)];
+      Storage.unlockWorkbenchSkin(won.id);
+      Storage.setActiveWorkbenchSkin(won.id);
+      this.preloadWorkbenchInBackground(won.id);
+      pity = 0;
+      rewardType = 'rare_workbench';
+      rewardIcon = '🏛';
+      rewardTitle = won.name;
+      rewardSubtitle = 'ЭКСКЛЮЗИВНЫЙ ВЕРСТАК АКТИВИРОВАН!';
+      rewardColor = '#e9d5ff';
+    } else if (Math.random() < 0.42) {
+      const lacquerGain = Math.random() < 0.35 ? 2 : 1;
+      Storage.addKintsugiLacquer(lacquerGain);
+      rewardType = 'lacquer';
+      rewardIcon = '✨';
+      rewardTitle = `Золотой лак Кинцуги ×${lacquerGain}`;
+      rewardSubtitle = 'Используйте при склейке для +60% к цене!';
+      rewardColor = '#fde047';
+    } else {
+      const coinGain = Phaser.Math.Between(15, 26) * 50; // 750 .. 1300 монет
+      Storage.addCoins(coinGain);
+      rewardType = 'coins';
+      rewardIcon = '🪙';
+      rewardTitle = `+${coinGain} монет в казну`;
+      rewardSubtitle = 'Сокровища древней экспедиции';
+      rewardColor = '#86efac';
+    }
+
+    localStorage.setItem(Storage.KEYS.TOOL_BOX_PITY, pity.toString());
+    this.updateHeaderBalance();
+
+    const modalItems = [];
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x060402, 0.92)
+      .setDepth(120)
+      .setInteractive();
+    modalItems.push(overlay);
+
+    // Золотой луч за сундуком
+    const glowCircle = this.add.circle(width / 2, height * 0.43, 130, 0xfacc15, 0.14)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(121);
+    modalItems.push(glowCircle);
+
+    const topBanner = this.add.text(width / 2, height * 0.18, '🎁 СУНДУК ИСКАТЕЛЯ', {
+      fontSize: '18px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      letterSpacing: 1.5,
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(125);
+    modalItems.push(topBanner);
+
+    const chestSprite = this.add.image(width / 2, height * 0.43, 'lootbox_chest')
+      .setScale(0.95)
+      .setDepth(124);
+    modalItems.push(chestSprite);
+
+    const tapHint = this.add.text(width / 2, height * 0.62, '👆 НАЖМИТЕ НА СУНДУК, ЧТОБЫ СОРВАТЬ ПЕЧАТЬ', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      wordWrap: { width: width * 0.84 },
+      align: 'center',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(125);
+    modalItems.push(tapHint);
+
+    this.tweens.add({
+      targets: tapHint,
+      alpha: 0.45,
+      duration: 650,
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Шаг 1: 2 тапа по сундуку -> тряска -> вспышка и появление карточки награды
+    let tapStage = 0;
+
+    const revealReward = () => {
+      this.tweens.killTweensOf(tapHint);
+      tapHint.setVisible(false);
+
+      if (AudioManager.playShine) AudioManager.playShine();
+      this.cameras.main.shake(160, 0.008);
+
+      const burst = this.add.circle(width / 2, height * 0.43, 30, 0xfffbeb, 0.9)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(126);
+      modalItems.push(burst);
+
+      this.tweens.add({
+        targets: burst,
+        scale: 7,
+        alpha: 0,
+        duration: 450,
+        ease: 'Quad.easeOut'
+      });
+
+      this.tweens.add({
+        targets: chestSprite,
+        y: height * 0.30,
+        scale: 0.65,
+        duration: 360,
+        ease: 'Back.easeOut'
+      });
+
+      // Карточка выпавшей награды в стиле игры
+      const cardCont = this.add.container(width / 2, height * 0.56).setDepth(128).setScale(0);
+      modalItems.push(cardCont);
+
+      const cardW = width * 0.84;
+      const cardH = 190;
+      const cardBg = this.add.graphics();
+      cardBg.fillGradientStyle(0x2b1d12, 0x2b1d12, 0x160f0a, 0x160f0a, 0.98);
+      cardBg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 14);
+      cardBg.lineStyle(2, rewardType === 'rare_workbench' ? 0xd8b4fe : 0xfacc15, 0.95);
+      cardBg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 14);
+
+      const iconTxt = this.add.text(0, -52, rewardIcon, {
+        fontSize: '36px',
+        resolution: textRes
+      }).setOrigin(0.5);
+
+      const rTitle = this.add.text(0, -8, rewardTitle, {
+        fontSize: '15.5px',
+        fontFamily: FONT_UI,
+        color: rewardColor,
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: cardW - 24 },
+        resolution: textRes
+      }).setOrigin(0.5);
+
+      const rSub = this.add.text(0, 22, rewardSubtitle, {
         fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#e6d5bc',
-        wordWrap: { width: textMaxW },
-        resolution: dpr
-      });
-
-      const actionBtn = this.add.container(cardW / 2 - 48, 0);
-      const actionGfx = this.add.graphics();
-      actionGfx.fillStyle(isBought ? 0x2b1d12 : 0xd99b26, isBought ? 0.88 : 0.98);
-      actionGfx.fillRoundedRect(-40, -16, 80, 32, 8);
-      actionGfx.lineStyle(1, isBought ? 0x8c6239 : 0xfef08a, 0.95);
-      actionGfx.strokeRoundedRect(-40, -16, 80, 32, 8);
-
-      const actionZone = this.add.zone(0, 0, 80, 32);
-      if (!isBought) {
-        actionZone.setInteractive({ useHandCursor: true });
-      }
-
-      const actionTxt = this.add.text(0, 0, isBought ? 'КУПЛЕНО' : `${exp.price}`, {
-        fontSize: '12px',
-        fontFamily: FONT_UI,
-        color: isBought ? '#a89074' : '#1a1004',
-        fontStyle: 'bold',
-        resolution: dpr
+        align: 'center',
+        wordWrap: { width: cardW - 28 },
+        resolution: textRes
       }).setOrigin(0.5);
 
-      actionBtn.add([actionGfx, actionTxt, actionZone]);
+      const okBtnW = cardW * 0.72;
+      const okBtnH = 38;
+      const okY = 62;
+      const okGfx = this.add.graphics();
+      okGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+      okGfx.fillRoundedRect(-okBtnW / 2, okY - okBtnH / 2, okBtnW, okBtnH, 10);
+      okGfx.lineStyle(1, 0xfef08a, 0.95);
+      okGfx.strokeRoundedRect(-okBtnW / 2, okY - okBtnH / 2, okBtnW, okBtnH, 10);
 
-      if (!isBought) {
-        actionZone.on('pointerup', () => {
-          if (this.isDragging) return;
-          const coins = Storage.getCoins();
-          if (coins >= exp.price) {
-            Storage.addCoins(-exp.price);
-            localStorage.setItem(`museum_upg_${exp.id}`, 'true');
-            if (AudioManager.playCoin) AudioManager.playCoin();
-            this.updateCoinsDisplay();
-            this.renderContent();
-          } else if (AudioManager.playBreakSnap) {
-            AudioManager.playBreakSnap();
-          }
+      const okTxt = this.add.text(0, okY, 'ЗАБРАТЬ НАГРАДУ', {
+        fontSize: '12.5px',
+        fontFamily: FONT_UI,
+        color: '#1a1004',
+        fontStyle: 'bold',
+        resolution: textRes
+      }).setOrigin(0.5);
+
+      const okZone = this.add.zone(0, okY, okBtnW, okBtnH).setInteractive({ useHandCursor: true });
+
+      cardCont.add([cardBg, iconTxt, rTitle, rSub, okGfx, okTxt, okZone]);
+
+      this.tweens.add({
+        targets: cardCont,
+        scale: 1,
+        duration: 360,
+        delay: 140,
+        ease: 'Back.easeOut'
+      });
+
+      okZone.on('pointerup', () => {
+        if (AudioManager.playClick) AudioManager.playClick();
+        modalItems.forEach((m) => {
+          if (m && m.destroy) m.destroy();
         });
+        this.time.delayedCall(120, () => {
+          this.isModalOpen = false;
+          this.renderShopItems();
+        });
+      });
+    };
+
+    overlay.on('pointerdown', () => {
+      if (tapStage >= 2) return;
+      tapStage++;
+
+      if (tapStage === 1) {
+        if (AudioManager.playClick) AudioManager.playClick();
+        tapHint.setText('👆 ЕЩЁ ОДИН ТАП, ЧТОБЫ ОТКРЫТЬ!');
+        this.tweens.add({
+          targets: chestSprite,
+          angle: { from: -7, to: 7 },
+          scale: 1.08,
+          duration: 75,
+          yoyo: true,
+          repeat: 2,
+          onComplete: () => chestSprite.setAngle(0)
+        });
+      } else if (tapStage === 2) {
+        revealReward();
       }
-
-      card.add([cardBg, name, desc, actionBtn]);
-      this.itemsContainer.add(card);
     });
-
-    const totalH = expansions.length * (cardH + 8) + 20;
-    this.minScrollY = Math.min(this.listTopY, this.listBottomY - totalH);
   }
 }
