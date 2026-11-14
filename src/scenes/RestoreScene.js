@@ -19,7 +19,6 @@ export class RestoreScene extends Phaser.Scene {
 
     YandexSDK.notifyGameplayStart();
 
-    // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
     this._tempTextureKeys = [];
     this.events.once('shutdown', () => {
       this.isPointerActive = false;
@@ -78,7 +77,8 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.65);
     }
 
-    if (Storage.setActiveSession) {
+    // Обычную находку сохраняем в активную сессию; срочный контракт в сессию не пишем
+    if (!this.activeContract && Storage.setActiveSession) {
       Storage.setActiveSession(this.artifactData.regionId || reqRegion, this.artifactData.id);
     }
 
@@ -91,6 +91,7 @@ export class RestoreScene extends Phaser.Scene {
     this.activeTool = null;
     this.isTaskTransition = false;
     this.isPointerActive = false;
+    this.isHelpOpen = false;
     this.mistakesCount = 0;
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
@@ -115,7 +116,6 @@ export class RestoreScene extends Phaser.Scene {
     this.centerX = Math.floor(width / 2);
     this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
 
-    // Строгая пропорция 4:5 (под холст 640x800)
     const maxArtH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 320));
     const maxArtW = Math.floor(Math.min(width * 0.76, 260));
     if (maxArtH * 0.8 <= maxArtW) {
@@ -147,20 +147,20 @@ export class RestoreScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0, 0.5).setDepth(205);
 
-    const btnSize = 34;
-    const rightMargin = 14;
+    const btnSize = 32;
+    const rightMargin = 12;
 
     const menuBtnGfx = this.add.graphics().setDepth(204);
     menuBtnGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
-    menuBtnGfx.fillRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
+    menuBtnGfx.fillRoundedRect(width - rightMargin - 62, systemTopPad + 7, 62, btnSize, 8);
     menuBtnGfx.lineStyle(1.2, 0xc89d54, 0.9);
-    menuBtnGfx.strokeRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
+    menuBtnGfx.strokeRoundedRect(width - rightMargin - 62, systemTopPad + 7, 62, btnSize, 8);
 
-    const menuBtn = this.add.zone(width - rightMargin - 33, systemTopPad + 23, 66, btnSize)
+    const menuBtn = this.add.zone(width - rightMargin - 31, systemTopPad + 23, 62, btnSize)
       .setInteractive({ useHandCursor: true })
       .setDepth(206);
 
-    this.add.text(width - rightMargin - 33, systemTopPad + 23, 'Меню', {
+    this.add.text(width - rightMargin - 31, systemTopPad + 23, 'Меню', {
       fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#fdf6e3',
@@ -169,20 +169,42 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(205);
 
     menuBtn.on('pointerdown', () => {
+      if (this.isHelpOpen) return;
       YandexSDK.notifyGameplayStop();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('MenuScene');
     });
 
-    const musicX = width - rightMargin - 66 - 8 - btnSize / 2;
-    const musicBtn = this.add.circle(musicX, systemTopPad + 23, 16, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
+    // Кнопка ? (Памятка по верстаку по желанию)
+    const helpX = width - rightMargin - 62 - 6 - btnSize / 2;
+    const helpBtn = this.add.circle(helpX, systemTopPad + 23, 15, 0x2b1d12)
+      .setStrokeStyle(1.3, 0xfacc15, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(205);
+
+    this.add.text(helpX, systemTopPad + 23, '?', {
+      fontSize: '14px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(206);
+
+    helpBtn.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.showWorkbenchHelpModal(width, height, dpr, FONT_UI);
+    });
+
+    const musicX = helpX - btnSize - 4;
+    const musicBtn = this.add.circle(musicX, systemTopPad + 23, 15, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
       .setStrokeStyle(1.3, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(205);
 
     const musicIcon = this.add.text(musicX, systemTopPad + 23, AudioManager.isMusicOn() ? '🎵' : '🔇', {
-      fontSize: '13px',
+      fontSize: '12.5px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -195,14 +217,14 @@ export class RestoreScene extends Phaser.Scene {
       if (AudioManager.playClick) AudioManager.playClick();
     });
 
-    const sfxX = musicX - btnSize - 6;
-    const sfxBtn = this.add.circle(sfxX, systemTopPad + 23, 16, AudioManager.isSfxOn() ? 0x2b1d12 : 0x160f0a)
+    const sfxX = musicX - btnSize - 4;
+    const sfxBtn = this.add.circle(sfxX, systemTopPad + 23, 15, AudioManager.isSfxOn() ? 0x2b1d12 : 0x160f0a)
       .setStrokeStyle(1.3, AudioManager.isSfxOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
       .setDepth(205);
 
     const sfxIcon = this.add.text(sfxX, systemTopPad + 23, AudioManager.isSfxOn() ? '🔊' : '🔈', {
-      fontSize: '13px',
+      fontSize: '12.5px',
       resolution: dpr
     }).setOrigin(0.5).setDepth(206);
 
@@ -237,13 +259,13 @@ export class RestoreScene extends Phaser.Scene {
     const currentRegionName = regionNamesMap[this.artifactData.regionId] || this.artifactData.regionName || '';
 
     let badgeText = currentRegionName.toUpperCase();
-    if (this.activeContract) badgeText = '📜 СРОЧНЫЙ КОНТРАКТ';
+    if (this.activeContract) badgeText = '📜 СРОЧНЫЙ ЗАКАЗ (ДЛЯ ЗАКАЗЧИКА)';
     else if (this.isDuplicate) badgeText = 'ПОВТОРНАЯ НАХОДКА (-35%)';
 
     const badgeTxt = this.add.text(width / 2, 7, badgeText, {
       fontSize: '10px',
       fontFamily: FONT_UI,
-      color: this.isDuplicate ? '#fda4af' : '#e2b866',
+      color: this.activeContract ? '#38bdf8' : (this.isDuplicate ? '#fda4af' : '#e2b866'),
       fontStyle: 'bold',
       letterSpacing: 1,
       resolution: dpr
@@ -332,19 +354,18 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД С ЗАЩИТОЙ ОТ НУЛЕВЫХ КООРДИНАТ
+    // 7. ИНТЕРАКТИВНЫЙ ВВОД
     const isValidWorkspacePoint = (pointer) => {
-      if (!pointer) return false;
+      if (!pointer || this.isHelpOpen) return false;
       const px = pointer.x;
       const py = pointer.y;
       if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-      // Защита от стартового (0, 0) на сенсорных экранах, чтобы инструмент не улетал в верхний угол
       if (px <= 1 && py <= 1) return false;
       return py >= workspaceTop && py <= trayTopLimit;
     };
 
     const processInteraction = (pointer) => {
-      if (this.isTaskTransition) return;
+      if (this.isTaskTransition || this.isHelpOpen) return;
       if (!isValidWorkspacePoint(pointer)) return;
 
       const px = pointer.x;
@@ -353,7 +374,6 @@ export class RestoreScene extends Phaser.Scene {
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (!currentTask) return;
 
-      // Если активен этап склейки
       if (currentTask.type === 'break_and_assemble') {
         if (this.activeDraggedShard) {
           this.dragShardTo(this.activeDraggedShard, px, py);
@@ -441,7 +461,7 @@ export class RestoreScene extends Phaser.Scene {
     };
 
     this.input.on('pointerdown', (p) => {
-      if (this.isTaskTransition) return;
+      if (this.isTaskTransition || this.isHelpOpen) return;
       if (!isValidWorkspacePoint(p)) return;
 
       this.isPointerActive = true;
@@ -471,8 +491,7 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (p) => {
-      if (this.isTaskTransition) return;
-      // Не полагаемся только на p.isDown, используем и наш флаг this.isPointerActive
+      if (this.isTaskTransition || this.isHelpOpen) return;
       if (!this.isPointerActive && !p.isDown) return;
 
       if (this.activeDraggedShard) {
@@ -505,6 +524,168 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerup', stopPointer);
     this.input.on('pointerout', stopPointer);
+  }
+
+  // Надёжная загрузка фона верстака со сбросом очереди загрузчика (решает проблему с Японией/Викингами)
+  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
+
+    const applyBgTexture = (key) => {
+      if (!this.scene || !this.scene.isActive()) return;
+      if (this.workbenchBgImg) this.workbenchBgImg.destroy();
+      this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
+      this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
+    };
+
+    if (this.textures.exists(activeSkin)) {
+      applyBgTexture(activeSkin);
+    } else {
+      const fallbackBg = this.add.graphics().setDepth(0.5);
+      fallbackBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x0d0805, 0x0d0805, 1);
+      fallbackBg.fillRect(0, 0, width, height);
+
+      // Сбрасываем зависшие загрузки и загружаем нужный фон верстака
+      this.load.reset();
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+      this.load.once(`filecomplete-image-${activeSkin}`, () => {
+        applyBgTexture(activeSkin);
+      });
+      this.load.once('loaderror', () => {
+        if (activeSkin !== 'workbench_bg_1') {
+          if (this.textures.exists('workbench_bg_1')) {
+            applyBgTexture('workbench_bg_1');
+          } else {
+            this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
+            this.load.once('filecomplete-image-workbench_bg_1', () => applyBgTexture('workbench_bg_1'));
+            this.load.start();
+          }
+        }
+      });
+      this.load.start();
+    }
+
+    const artW = this.artW || 260;
+    const artH = this.artH || 320;
+    const maxMatW = width - 56;
+    const maxMatH = (bottomBound - topBound) - 44;
+
+    const matW = Math.min(artW + 46, maxMatW);
+    const matH = Math.min(artH + 46, maxMatH);
+    const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
+
+    this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
+
+    const matGfx = this.add.graphics();
+    const halfW = matW / 2;
+    const halfH = matH / 2;
+
+    const palettes = {
+      1: { fill: 0x261a11, border: 0x6e472b, line: 0x8c5a37 },
+      2: { fill: 0x3b2615, border: 0x9c663a, line: 0xc2864e },
+      3: { fill: 0x16382b, border: 0xc89d54, line: 0xe2b866 },
+      4: { fill: 0x291d14, border: 0xfacc15, line: 0xfef08a }
+    };
+    const palette = palettes[tier] || palettes[1];
+
+    matGfx.fillStyle(palette.fill, 0.22);
+    matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
+
+    matGfx.lineStyle(2, palette.border, 0.85);
+    matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
+
+    matGfx.lineStyle(1, palette.line, 0.3);
+    matGfx.strokeRoundedRect(-halfW + 5, -halfH + 5, matW - 10, matH - 10, 12);
+
+    const rivets = [
+      { x: -halfW + 11, y: -halfH + 11 },
+      { x: halfW - 11, y: -halfH + 11 },
+      { x: -halfW + 11, y: halfH - 11 },
+      { x: halfW - 11, y: halfH - 11 }
+    ];
+    rivets.forEach((r) => {
+      matGfx.fillStyle(palette.border, 0.9);
+      matGfx.fillCircle(r.x, r.y, 2.5);
+    });
+
+    this.matContainer.add(matGfx);
+  }
+
+  // Памятка реставратора на верстаке (по кнопке ?)
+  showWorkbenchHelpModal(width, height, dpr, FONT_UI) {
+    if (this.isHelpOpen) return;
+    this.isHelpOpen = true;
+
+    const items = [];
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.88)
+      .setDepth(250)
+      .setInteractive();
+    items.push(overlay);
+
+    const boxW = width * 0.88;
+    const boxH = 340;
+    const card = this.add.container(width / 2, height / 2).setDepth(251);
+    items.push(card);
+
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.98);
+    bg.fillRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 14);
+    bg.lineStyle(1.5, 0xc89d54, 0.92);
+    bg.strokeRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 14);
+
+    const title = this.add.text(0, -boxH / 2 + 26, '⚒ ПАМЯТКА РЕСТАВРАТОРА', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const tips = [
+      '1. Выбирайте нужный прибор на нижней панели (Скребок, Кисть, Реагент, Блеск) и водите пальцем по артефакту.',
+      '2. Если на экспонате есть сколы: выберите Клей, промажьте красные лунки, а затем перетащите осколки на места.',
+      '3. Перед вклейкой осколков можно нажать «✨ КИНЦУГИ» — золотой шов повысит ценность реликвии на +60%.',
+      '4. Обычные находки попадают в Зал Славы (Музей) и приносят пассивный доход, а срочные заказы сразу уходят клиенту за щедрый гонорар.'
+    ];
+
+    const bodyTxt = this.add.text(0, -10, tips.join('\n\n'), {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#f5e6c8',
+      wordWrap: { width: boxW - 32 },
+      lineSpacing: 4,
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const okW = boxW * 0.68;
+    const okH = 38;
+    const okY = boxH / 2 - 30;
+    const okGfx = this.add.graphics();
+    okGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    okGfx.fillRoundedRect(-okW / 2, okY - okH / 2, okW, okH, 10);
+
+    const okTxt = this.add.text(0, okY, 'ПОНЯТНО', {
+      fontSize: '13px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const okZone = this.add.zone(0, okY, okW, okH).setInteractive({ useHandCursor: true });
+    card.add([bg, title, bodyTxt, okGfx, okTxt, okZone]);
+
+    okZone.on('pointerup', () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      items.forEach((it) => {
+        if (it && it.destroy) it.destroy();
+      });
+      this.time.delayedCall(100, () => {
+        this.isHelpOpen = false;
+      });
+    });
   }
 
   dragShardTo(shardObj, x, y) {
@@ -758,8 +939,8 @@ export class RestoreScene extends Phaser.Scene {
       slotCont.add([slotGfx, iconImg, lbl, slotZone]);
 
       slotZone.on('pointerdown', () => {
+        if (this.isHelpOpen) return;
         this.selectTool(t.id, t.icon, true);
-        // Визуально показываем выбранный инструмент над центром верстака на 0.45 сек
         if (this.toolSprite && this.toolSprite.active) {
           this.toolSprite.setPosition(this.centerX, this.centerY);
           this.toolSprite.setAlpha(0.85);
@@ -822,7 +1003,6 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playCloth) AudioManager.playCloth();
 
-    // Страховочный таймер: гарантированно разрешает ввод через 350 мс даже при просадке FPS
     this.time.delayedCall(350, () => {
       this.isTaskTransition = false;
     });
@@ -956,89 +1136,6 @@ export class RestoreScene extends Phaser.Scene {
 
     cvs.refresh();
     return tempKey;
-  }
-
-  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
-    const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = Storage.getActiveWorkbenchSkin
-      ? Storage.getActiveWorkbenchSkin()
-      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
-
-    const applyBgTexture = (key) => {
-      if (this.workbenchBgImg) this.workbenchBgImg.destroy();
-      this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
-      this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
-    };
-
-    if (this.textures.exists(activeSkin)) {
-      applyBgTexture(activeSkin);
-    } else {
-      const fallbackBg = this.add.graphics().setDepth(0.5);
-      fallbackBg.fillStyle(0x0d0805, 1);
-      fallbackBg.fillRect(0, 0, width, height);
-
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      this.load.once(`filecomplete-image-${activeSkin}`, () => {
-        if (this.scene && this.scene.isActive()) {
-          applyBgTexture(activeSkin);
-        }
-      });
-      this.load.once('loaderror', (file) => {
-        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
-          this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
-          this.load.once('filecomplete-image-workbench_bg_1', () => {
-            if (this.scene && this.scene.isActive()) applyBgTexture('workbench_bg_1');
-          });
-          this.load.start();
-        }
-      });
-      this.load.start();
-    }
-
-    const artW = this.artW || 260;
-    const artH = this.artH || 320;
-    const maxMatW = width - 56;
-    const maxMatH = (bottomBound - topBound) - 44;
-
-    const matW = Math.min(artW + 46, maxMatW);
-    const matH = Math.min(artH + 46, maxMatH);
-    const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
-
-    this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
-
-    const matGfx = this.add.graphics();
-    const halfW = matW / 2;
-    const halfH = matH / 2;
-
-    const palettes = {
-      1: { fill: 0x261a11, border: 0x6e472b, line: 0x8c5a37 },
-      2: { fill: 0x3b2615, border: 0x9c663a, line: 0xc2864e },
-      3: { fill: 0x16382b, border: 0xc89d54, line: 0xe2b866 },
-      4: { fill: 0x291d14, border: 0xfacc15, line: 0xfef08a }
-    };
-    const palette = palettes[tier] || palettes[1];
-
-    matGfx.fillStyle(palette.fill, 0.22);
-    matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
-
-    matGfx.lineStyle(2, palette.border, 0.85);
-    matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
-
-    matGfx.lineStyle(1, palette.line, 0.3);
-    matGfx.strokeRoundedRect(-halfW + 5, -halfH + 5, matW - 10, matH - 10, 12);
-
-    const rivets = [
-      { x: -halfW + 11, y: -halfH + 11 },
-      { x: halfW - 11, y: -halfH + 11 },
-      { x: -halfW + 11, y: halfH - 11 },
-      { x: halfW - 11, y: halfH - 11 }
-    ];
-    rivets.forEach((r) => {
-      matGfx.fillStyle(palette.border, 0.9);
-      matGfx.fillCircle(r.x, r.y, 2.5);
-    });
-
-    this.matContainer.add(matGfx);
   }
 
   processGlueAction(pointer) {
@@ -1307,6 +1404,7 @@ export class RestoreScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
 
     kintsugiZone.on('pointerdown', () => {
+      if (this.isHelpOpen) return;
       if (!hasLacquer) {
         YandexSDK.showRewarded(() => {
           Storage.addKintsugiLacquer(1);
@@ -1447,38 +1545,50 @@ export class RestoreScene extends Phaser.Scene {
       }
 
       const kintsugiBonus = this.hasKintsugiMastery ? 1.6 : 1.0;
-      const finalPrice = Math.max(15, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
+      const baseReward = this.activeContract
+        ? (this.activeContract.rewardCoins || 150)
+        : (this.artifactData.marketValue || 100);
+      const finalPrice = Math.max(15, Math.round(baseReward * qualityMultiplier * kintsugiBonus));
       this.artifactData.marketValue = finalPrice;
       this.artifactData.isKintsugi = this.hasKintsugiMastery;
 
+      let contractBonusXP = 0;
+
       try {
-        Storage.addArtifactToInventory({
-          instanceId: `art_${Date.now()}`,
-          templateId: this.artifactData.id,
-          regionId: this.artifactData.regionId,
-          regionName: this.artifactData.regionName || 'Древний Египет',
-          name: this.artifactData.name,
-          museumDesc: this.artifactData.description || this.artifactData.museumDesc || '',
-          textureKey: this.artifactData.textureKey,
-          marketValue: finalPrice,
-          stars: earnedStars,
-          isKintsugi: this.hasKintsugiMastery
-        });
+        if (this.activeContract) {
+          // Срочный заказ: награда зачисляется в казну, предмет передаётся заказчику и НЕ попадает в музей
+          Storage.addCoins(finalPrice);
+          contractBonusXP = this.activeContract.bonusXP || 110;
+          if (Storage.completeDailyContract) Storage.completeDailyContract();
+        } else {
+          // Обычная реставрация: предмет помещается в Зал Славы (Музей) и списывается со склада экспедиции
+          Storage.addArtifactToInventory({
+            instanceId: `art_${Date.now()}`,
+            templateId: this.artifactData.id,
+            regionId: this.artifactData.regionId,
+            regionName: this.artifactData.regionName || 'Древний Египет',
+            name: this.artifactData.name,
+            museumDesc: this.artifactData.description || this.artifactData.museumDesc || '',
+            textureKey: this.artifactData.textureKey,
+            marketValue: finalPrice,
+            stars: earnedStars,
+            isKintsugi: this.hasKintsugiMastery
+          });
 
-        Storage.addHistoryEntry({
-          templateId: this.artifactData.id,
-          name: this.artifactData.name,
-          date: Date.now()
-        });
+          Storage.addHistoryEntry({
+            templateId: this.artifactData.id,
+            name: this.artifactData.name,
+            date: Date.now()
+          });
 
-        if (!this.activeContract && Storage.decrementArtifactStock) {
-          Storage.decrementArtifactStock(this.artifactData.regionId, this.artifactData.id);
+          if (Storage.decrementArtifactStock) {
+            Storage.decrementArtifactStock(this.artifactData.regionId, this.artifactData.id);
+          }
+
+          if (Storage.setActiveSession) Storage.setActiveSession(null);
         }
-
-        if (Storage.setActiveSession) Storage.setActiveSession(null);
-        if (this.activeContract && Storage.completeDailyContract) Storage.completeDailyContract();
       } catch (e) {
-        console.warn('Inventory save error:', e);
+        console.warn('Reward/Inventory save error:', e);
       }
 
       this.time.delayedCall(450, () => {
@@ -1487,6 +1597,7 @@ export class RestoreScene extends Phaser.Scene {
           stars: earnedStars,
           isDuplicate: this.isDuplicate,
           isContract: !!this.activeContract,
+          contractBonusXP,
           isKintsugi: this.hasKintsugiMastery
         });
       });
