@@ -249,25 +249,25 @@ export class ShopScene extends Phaser.Scene {
 
     if (this.activeTab === 'tools') {
       const upgrades = [
-        // СКРЕБОК (цепочка II -> III -> IV)
+        // СКРЕБОК (цепочка II -> III -> IV, ребаланс цен Tier IV)
         { key: 'tool_upg_scraper_2', toolType: 'scraper', tier: 2, title: 'Скребок II: Бронза', desc: 'Шире лезвие (+27% радиус)', price: 180 },
-        { key: 'tool_upg_scraper_3', reqKey: 'tool_upg_scraper_2', reqLabel: 'НУЖЕН СКРЕБОК II', toolType: 'scraper', tier: 3, title: 'Скребок III: Дамаск', desc: 'Скол породы за 1 проход!', price: 580 },
-        { key: 'tool_upg_scraper_4', reqKey: 'tool_upg_scraper_3', reqLabel: 'НУЖЕН СКРЕБОК III', toolType: 'scraper', tier: 4, title: 'Скребок IV: Алмазный', desc: 'Максимальный захват пласта', price: 1550 },
+        { key: 'tool_upg_scraper_3', reqKey: 'tool_upg_scraper_2', reqLabel: 'НУЖЕН СКРЕБОК II', toolType: 'scraper', tier: 3, title: 'Скребок III: Дамаск', desc: 'Скол породы за 1 проход!', price: 620 },
+        { key: 'tool_upg_scraper_4', reqKey: 'tool_upg_scraper_3', reqLabel: 'НУЖЕН СКРЕБОК III', toolType: 'scraper', tier: 4, title: 'Скребок IV: Алмазный', desc: 'Максимальный захват пласта', price: 2650 },
 
         // КИСТЬ (цепочка II -> III -> IV)
         { key: 'tool_upg_brush_2', toolType: 'brush', tier: 2, title: 'Кисть II: Соболиная', desc: 'Широкий веер (+22% радиус)', price: 160 },
-        { key: 'tool_upg_brush_3', reqKey: 'tool_upg_brush_2', reqLabel: 'НУЖНА КИСТЬ II', toolType: 'brush', tier: 3, title: 'Кисть III: Антистатик', desc: 'Сметает пыль за 1 взмах!', price: 520 },
-        { key: 'tool_upg_brush_4', reqKey: 'tool_upg_brush_3', reqLabel: 'НУЖНА КИСТЬ III', toolType: 'brush', tier: 4, title: 'Кисть IV: Императорская', desc: 'Мгновенная чистка рельефа', price: 1400 },
+        { key: 'tool_upg_brush_3', reqKey: 'tool_upg_brush_2', reqLabel: 'НУЖНА КИСТЬ II', toolType: 'brush', tier: 3, title: 'Кисть III: Антистатик', desc: 'Сметает пыль за 1 взмах!', price: 560 },
+        { key: 'tool_upg_brush_4', reqKey: 'tool_upg_brush_3', reqLabel: 'НУЖНА КИСТЬ III', toolType: 'brush', tier: 4, title: 'Кисть IV: Императорская', desc: 'Мгновенная чистка рельефа', price: 2400 },
 
         // РЕАГЕНТ (цепочка II -> III -> IV)
-        { key: 'tool_upg_solvent_2', toolType: 'solvent', tier: 2, title: 'Реагент II: Эфир', desc: 'Увеличенная зона реакции', price: 240 },
-        { key: 'tool_upg_solvent_3', reqKey: 'tool_upg_solvent_2', reqLabel: 'НУЖЕН РЕАГЕНТ II', toolType: 'solvent', tier: 3, title: 'Реагент III: Аква-Регия', desc: 'Снимает окислы за 1 касание!', price: 720 },
-        { key: 'tool_upg_solvent_4', reqKey: 'tool_upg_solvent_3', reqLabel: 'НУЖЕН РЕАГЕНТ III', toolType: 'solvent', tier: 4, title: 'Реагент IV: Эликсир', desc: 'Глубокое очищение патины', price: 1850 },
+        { key: 'tool_upg_solvent_2', toolType: 'solvent', tier: 2, title: 'Реагент II: Эфир', desc: 'Увеличенная зона реакции', price: 250 },
+        { key: 'tool_upg_solvent_3', reqKey: 'tool_upg_solvent_2', reqLabel: 'НУЖЕН РЕАГЕНТ II', toolType: 'solvent', tier: 3, title: 'Реагент III: Аква-Регия', desc: 'Снимает окислы за 1 касание!', price: 780 },
+        { key: 'tool_upg_solvent_4', reqKey: 'tool_upg_solvent_3', reqLabel: 'НУЖЕН РЕАГЕНТ III', toolType: 'solvent', tier: 4, title: 'Реагент IV: Эликсир', desc: 'Глубокое очищение патины', price: 3200 },
 
         // ПОЛИРОЛЬ (цепочка II -> III -> IV)
-        { key: 'tool_upg_polish_2', toolType: 'polish', tier: 2, title: 'Полироль II: Замша', desc: 'Широкий бархатный диск', price: 220 },
-        { key: 'tool_upg_polish_3', reqKey: 'tool_upg_polish_2', reqLabel: 'НУЖНА ПОЛИРОЛЬ II', toolType: 'polish', tier: 3, title: 'Полироль III: Алмазная', desc: 'Зеркальный глянец за 1 проход!', price: 680 },
-        { key: 'tool_upg_polish_4', reqKey: 'tool_upg_polish_3', reqLabel: 'НУЖНА ПОЛИРОЛЬ III', toolType: 'polish', tier: 4, title: 'Полироль IV: Солнечный воск', desc: 'Максимальный радиус полировки', price: 1750 },
+        { key: 'tool_upg_polish_2', toolType: 'polish', tier: 2, title: 'Полироль II: Замша', desc: 'Широкий бархатный диск', price: 230 },
+        { key: 'tool_upg_polish_3', reqKey: 'tool_upg_polish_2', reqLabel: 'НУЖНА ПОЛИРОЛЬ II', toolType: 'polish', tier: 3, title: 'Полироль III: Алмазная', desc: 'Зеркальный глянец за 1 проход!', price: 720 },
+        { key: 'tool_upg_polish_4', reqKey: 'tool_upg_polish_3', reqLabel: 'НУЖНА ПОЛИРОЛЬ III', toolType: 'polish', tier: 4, title: 'Полироль IV: Солнечный воск', desc: 'Максимальный радиус полировки', price: 2950 },
 
         // ЗОЛОТОЙ ЛАК КИНЦУГИ
         { key: 'kintsugi_pack_1', isConsumable: true, count: 1, toolType: 'glue', tier: 1, title: 'Золотой лак Кинцуги (1 шт.)', desc: '+60% к цене склеенного артефакта', price: 500 },
@@ -279,10 +279,10 @@ export class ShopScene extends Phaser.Scene {
       this.renderCosmeticsTab(width, textRes, FONT_UI);
     } else if (this.activeTab === 'museum') {
       const museumUpgrades = [
-        { key: 'museum_upg_pedestal_1', icon: '🏛', title: 'Бархатные витрины', desc: '+15% к пассивному доходу музея', price: 320 },
-        { key: 'museum_upg_pedestal_2', reqKey: 'museum_upg_pedestal_1', reqLabel: 'НУЖНЫ ВИТРИНЫ', icon: '💡', title: 'Музейная подсветка', desc: '+25% к доходу от посетителей', price: 950 },
-        { key: 'museum_upg_hall_antique', icon: '🏺', title: 'Крыло Древнего мира', desc: '+50% к доходу Египта и Античности', price: 1900 },
-        { key: 'museum_upg_hall_royal', reqKey: 'museum_upg_hall_antique', reqLabel: 'НУЖНО КРЫЛО', icon: '👑', title: 'Королевский купол', desc: '+50% ко всему пассивному доходу', price: 4200 }
+        { key: 'museum_upg_pedestal_1', icon: '🏛', title: 'Бархатные витрины', desc: '+15% к пассивному доходу музея', price: 340 },
+        { key: 'museum_upg_pedestal_2', reqKey: 'museum_upg_pedestal_1', reqLabel: 'НУЖНЫ ВИТРИНЫ', icon: '💡', title: 'Музейная подсветка', desc: '+25% к доходу от посетителей', price: 1050 },
+        { key: 'museum_upg_hall_antique', icon: '🏺', title: 'Крыло Древнего мира', desc: '+50% к доходу Египта и Античности', price: 2100 },
+        { key: 'museum_upg_hall_royal', reqKey: 'museum_upg_hall_antique', reqLabel: 'НУЖНО КРЫЛО', icon: '👑', title: 'Королевский купол', desc: '+50% ко всему пассивному доходу', price: 4600 }
       ];
 
       this.renderCardList(museumUpgrades, width, textRes, FONT_UI, activeToolSkin);
@@ -432,7 +432,7 @@ export class ShopScene extends Phaser.Scene {
     const cardW = width * 0.92;
     let curY = 8;
 
-    // 1. Сундук Искателя (Сбалансированная цена 1650, интерактивное открытие по тапу)
+    // 1. Сундук Искателя (1650 монет, интерактивное открытие по тапу)
     const chestH = 128;
     const chestCont = this.add.container(width / 2, curY + chestH / 2);
 
@@ -467,7 +467,6 @@ export class ShopScene extends Phaser.Scene {
       }
     ).setOrigin(0, 0.5);
 
-    // Кнопка открыть за монеты (1650)
     const openBtnW = 148;
     const openBtnH = 34;
     const openBtnX = -cardW / 2 + 102 + openBtnW / 2;
@@ -499,7 +498,6 @@ export class ShopScene extends Phaser.Scene {
       }
     });
 
-    // Кнопка открыть за рекламу
     const adBtnW = 112;
     const adBtnX = openBtnX + openBtnW / 2 + 10 + adBtnW / 2;
     const adGfx = this.add.graphics();
@@ -541,10 +539,10 @@ export class ShopScene extends Phaser.Scene {
 
     const toolSkins = [
       { id: 'default', title: 'Классика гильдии', desc: 'Традиционная сталь и тёплый орех', price: 0 },
-      { id: 'gold', title: 'Царское золото', desc: 'Чеканный золотой сплав и красный бархат', price: 1100 },
-      { id: 'jade', title: 'Императорский нефрит', desc: 'Резной зелёный камень и золотая гравировка', price: 1650 },
-      { id: 'obsidian', title: 'Обсидиан ацтеков', desc: 'Чёрное вулканическое стекло и бирюза', price: 2200 },
-      { id: 'cyber', title: 'Хроно-неон', desc: 'Технологичный титан с лазурным свечением', price: 2900 }
+      { id: 'gold', title: 'Царское золото', desc: 'Чеканный золотой сплав и красный бархат', price: 1200 },
+      { id: 'jade', title: 'Императорский нефрит', desc: 'Резной зелёный камень и золотая гравировка', price: 1850 },
+      { id: 'obsidian', title: 'Обсидиан ацтеков', desc: 'Чёрное вулканическое стекло и бирюза', price: 2600 },
+      { id: 'cyber', title: 'Хроно-неон', desc: 'Технологичный титан с лазурным свечением', price: 3500 }
     ];
 
     const ownedToolSkins = Storage.getOwnedToolSkins();
@@ -645,7 +643,7 @@ export class ShopScene extends Phaser.Scene {
 
     curY += 10;
 
-    // 3. Интерьер мастерской (15 фонов верстака с фоновой предзагрузкой)
+    // 3. Интерьер мастерской (15 фонов верстака с ребалансом цен для лейтгейма)
     const wbTitle = this.add.text(width * 0.04, curY, '🏛 ИНТЕРЬЕР МАСТЕРСКОЙ (15 СТОЛОВ)', {
       fontSize: '13px',
       fontFamily: FONT_UI,
@@ -658,19 +656,19 @@ export class ShopScene extends Phaser.Scene {
 
     const workbenches = [
       { id: 'workbench_bg_1', title: 'Дубовый верстак ученика', price: 0 },
-      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 320 },
-      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 540 },
-      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 780 },
-      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1050 },
-      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 1350 },
-      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 1700 },
-      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 2100 },
-      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 2500 },
-      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 2950 },
+      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 350 },
+      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 620 },
+      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 950 },
+      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1350 },
+      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 1850 },
+      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 2450 },
+      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 3200 },
+      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 3900 },
+      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 4400 },
       { id: 'workbench_bg_11', title: 'Павильон Нефритового Дракона', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 3400 },
+      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 4800 },
       { id: 'workbench_bg_13', title: 'Храм Золотого Скарабея', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 3900 },
+      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 6500 },
       { id: 'workbench_bg_15', title: 'Чертог Хранителя Вечности', price: 0, lootboxOnly: true }
     ];
 
@@ -836,7 +834,6 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive();
     modalItems.push(overlay);
 
-    // Золотой луч за сундуком
     const glowCircle = this.add.circle(width / 2, height * 0.43, 130, 0xfacc15, 0.14)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setDepth(121);
@@ -876,7 +873,6 @@ export class ShopScene extends Phaser.Scene {
       repeat: -1
     });
 
-    // Шаг 1: 2 тапа по сундуку -> тряска -> вспышка и появление карточки награды
     let tapStage = 0;
 
     const revealReward = () => {
@@ -907,7 +903,6 @@ export class ShopScene extends Phaser.Scene {
         ease: 'Back.easeOut'
       });
 
-      // Карточка выпавшей награды в стиле игры
       const cardCont = this.add.container(width / 2, height * 0.56).setDepth(128).setScale(0);
       modalItems.push(cardCont);
 
