@@ -19,9 +19,11 @@ export class RestoreScene extends Phaser.Scene {
 
     YandexSDK.notifyGameplayStart();
 
+    // Гарантируем непрозрачный базовый фон, чтобы предыдущая сцена никогда не просвечивала
+    this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 1).setDepth(0);
+
     this._tempTextureKeys = [];
     this.events.once('shutdown', () => {
-      this.isPointerActive = false;
       this.activeDraggedShard = null;
       if (this.dirtLayer) {
         this.dirtLayer.destroy();
@@ -77,7 +79,6 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.65);
     }
 
-    // Обычную находку сохраняем в активную сессию; срочный контракт в сессию не пишем
     if (!this.activeContract && Storage.setActiveSession) {
       Storage.setActiveSession(this.artifactData.regionId || reqRegion, this.artifactData.id);
     }
@@ -90,7 +91,6 @@ export class RestoreScene extends Phaser.Scene {
     this.lastTouchPos = null;
     this.activeTool = null;
     this.isTaskTransition = false;
-    this.isPointerActive = false;
     this.isHelpOpen = false;
     this.mistakesCount = 0;
     this.isKintsugiMode = false;
@@ -176,7 +176,6 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Кнопка ? (Памятка по верстаку по желанию)
     const helpX = width - rightMargin - 62 - 6 - btnSize / 2;
     const helpBtn = this.add.circle(helpX, systemTopPad + 23, 15, 0x2b1d12)
       .setStrokeStyle(1.3, 0xfacc15, 0.9)
@@ -354,38 +353,25 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ИНТЕРАКТИВНЫЙ ВВОД
-    const isValidWorkspacePoint = (pointer) => {
-      if (!pointer || this.isHelpOpen) return false;
-      const px = pointer.x;
-      const py = pointer.y;
-      if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-      if (px <= 1 && py <= 1) return false;
-      return py >= workspaceTop && py <= trayTopLimit;
-    };
-
+    // 7. КЛАССИЧЕСКИЙ ПЛАВНЫЙ ВВОД (КАК В ЛУЧШЕЙ ВЕРСИИ)
     const processInteraction = (pointer) => {
       if (this.isTaskTransition || this.isHelpOpen) return;
-      if (!isValidWorkspacePoint(pointer)) return;
-
-      const px = pointer.x;
-      const py = pointer.y;
+      if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (!currentTask) return;
 
       if (currentTask.type === 'break_and_assemble') {
         if (this.activeDraggedShard) {
-          this.dragShardTo(this.activeDraggedShard, px, py);
+          this.dragShardTo(this.activeDraggedShard, pointer.x, pointer.y);
         } else {
           this.processGlueAction(pointer);
         }
         return;
       }
 
-      this.toolSprite.setPosition(px, py);
-      this.toolSprite.setAlpha(1);
-      this.animateToolUnderFinger(px, py);
+      this.toolSprite.setPosition(pointer.x, pointer.y);
+      this.animateToolUnderFinger(pointer.x, pointer.y);
 
       if (this.activeTool !== currentTask.requiredTool) {
         this.toolWarning.setText(`⚠️ Нужен: ${this.getToolName(currentTask.requiredTool)}!`);
@@ -400,8 +386,8 @@ export class RestoreScene extends Phaser.Scene {
 
       this.toolWarning.setText('');
 
-      const localX = px - this.topLeftX;
-      const localY = py - this.topLeftY;
+      const localX = pointer.x - this.topLeftX;
+      const localY = pointer.y - this.topLeftY;
 
       if (localX < 0 || localX > this.artW || localY < 0 || localY > this.artH) return;
 
@@ -412,7 +398,7 @@ export class RestoreScene extends Phaser.Scene {
       if (this.dirtLayer) {
         this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
       }
-      this.emitDustFX(px, py);
+      this.emitDustFX(pointer.x, pointer.y);
 
       const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
       const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
@@ -452,7 +438,6 @@ export class RestoreScene extends Phaser.Scene {
 
       if (ratio >= 0.89 && !this.isTaskTransition) {
         this.isTaskTransition = true;
-        this.isPointerActive = false;
         this.progressBarFill.width = maxBarW;
         if (this.dirtLayer) this.dirtLayer.clear();
         this.toolSprite.setAlpha(0);
@@ -462,9 +447,8 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p) => {
       if (this.isTaskTransition || this.isHelpOpen) return;
-      if (!isValidWorkspacePoint(p)) return;
+      if (p.y > trayTopLimit || p.y < workspaceTop) return;
 
-      this.isPointerActive = true;
       this.lastTouchPos = { x: p.x, y: p.y };
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
@@ -485,27 +469,20 @@ export class RestoreScene extends Phaser.Scene {
         }
       }
 
-      this.toolSprite.setPosition(p.x, p.y);
       this.toolSprite.setAlpha(1);
       processInteraction(p);
     });
 
     this.input.on('pointermove', (p) => {
-      if (this.isTaskTransition || this.isHelpOpen) return;
-      if (!this.isPointerActive && !p.isDown) return;
-
+      if (!p.isDown || this.isTaskTransition || this.isHelpOpen) return;
       if (this.activeDraggedShard) {
-        if (isValidWorkspacePoint(p)) {
-          this.dragShardTo(this.activeDraggedShard, p.x, p.y);
-        }
+        this.dragShardTo(this.activeDraggedShard, p.x, p.y);
         return;
       }
-
       processInteraction(p);
     });
 
-    const stopPointer = () => {
-      this.isPointerActive = false;
+    this.input.on('pointerup', () => {
       this.lastTouchPos = null;
       if (this.activeDraggedShard) {
         const shard = this.activeDraggedShard;
@@ -520,13 +497,10 @@ export class RestoreScene extends Phaser.Scene {
           duration: 140
         });
       }
-    };
-
-    this.input.on('pointerup', stopPointer);
-    this.input.on('pointerout', stopPointer);
+    });
   }
 
-  // Надёжная загрузка фона верстака со сбросом очереди загрузчика (решает проблему с Японией/Викингами)
+  // Безопасная загрузка фона верстака БЕЗ this.load.reset()
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
@@ -543,18 +517,12 @@ export class RestoreScene extends Phaser.Scene {
     if (this.textures.exists(activeSkin)) {
       applyBgTexture(activeSkin);
     } else {
-      const fallbackBg = this.add.graphics().setDepth(0.5);
-      fallbackBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x0d0805, 0x0d0805, 1);
-      fallbackBg.fillRect(0, 0, width, height);
-
-      // Сбрасываем зависшие загрузки и загружаем нужный фон верстака
-      this.load.reset();
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         applyBgTexture(activeSkin);
       });
-      this.load.once('loaderror', () => {
-        if (activeSkin !== 'workbench_bg_1') {
+      this.load.once('loaderror', (file) => {
+        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
           if (this.textures.exists('workbench_bg_1')) {
             applyBgTexture('workbench_bg_1');
           } else {
@@ -613,7 +581,6 @@ export class RestoreScene extends Phaser.Scene {
     this.matContainer.add(matGfx);
   }
 
-  // Памятка реставратора на верстаке (по кнопке ?)
   showWorkbenchHelpModal(width, height, dpr, FONT_UI) {
     if (this.isHelpOpen) return;
     this.isHelpOpen = true;
@@ -941,17 +908,6 @@ export class RestoreScene extends Phaser.Scene {
       slotZone.on('pointerdown', () => {
         if (this.isHelpOpen) return;
         this.selectTool(t.id, t.icon, true);
-        if (this.toolSprite && this.toolSprite.active) {
-          this.toolSprite.setPosition(this.centerX, this.centerY);
-          this.toolSprite.setAlpha(0.85);
-          this.tweens.killTweensOf(this.toolSprite);
-          this.tweens.add({
-            targets: this.toolSprite,
-            alpha: 0,
-            delay: 280,
-            duration: 180
-          });
-        }
       });
 
       this.traySlots.push({
@@ -1426,7 +1382,6 @@ export class RestoreScene extends Phaser.Scene {
   startTask(taskIdx, animateLayer = true) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
-    this.isPointerActive = false;
     this.activeDraggedShard = null;
     this.cleanedGrid.fill(0);
     this.cleanedScore = 0;
@@ -1556,12 +1511,10 @@ export class RestoreScene extends Phaser.Scene {
 
       try {
         if (this.activeContract) {
-          // Срочный заказ: награда зачисляется в казну, предмет передаётся заказчику и НЕ попадает в музей
           Storage.addCoins(finalPrice);
           contractBonusXP = this.activeContract.bonusXP || 110;
           if (Storage.completeDailyContract) Storage.completeDailyContract();
         } else {
-          // Обычная реставрация: предмет помещается в Зал Славы (Музей) и списывается со склада экспедиции
           Storage.addArtifactToInventory({
             instanceId: `art_${Date.now()}`,
             templateId: this.artifactData.id,
