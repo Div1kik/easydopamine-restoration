@@ -1,7 +1,6 @@
 import { Storage } from '../utils/Storage.js';
 import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
-import { TextureLoader } from '../utils/TextureLoader.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,13 +8,22 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Грузим ТОЛЬКО главный экран и текущий верстак — игра открывается мгновенно
     this.load.image('menu_bg', 'assets/backgrounds/menu_bg.png');
+    this.load.image('museum_bg', 'assets/backgrounds/museum_bg.png');
+    this.load.image('shop_bg', 'assets/backgrounds/shop_bg.png');
+    this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
+    this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
     this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+
+    ARTIFACT_TEMPLATES.forEach((art) => {
+      if (art.textureKey) {
+        this.load.image(art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
+      }
+    });
   }
 
   create() {
@@ -55,26 +63,29 @@ export class BootScene extends Phaser.Scene {
       cvs.refresh();
     }
 
-    // Фоновая подгрузка остальных экранов и артефактов без задержки входа в меню
-    this.time.delayedCall(200, () => {
-      ['museum_bg', 'shop_bg', 'expedition_bg', 'victory_bg'].forEach((bgKey) => {
-        TextureLoader.loadImage(this, bgKey, `assets/backgrounds/${bgKey}.png`);
-      });
+    if (!this.textures.exists('toolbox_chest')) {
+      const cvs = this.textures.createCanvas('toolbox_chest', 192, 192);
+      const ctx = cvs.getContext();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
-      // Сначала грузим стартовый Египет и текущую сессию
-      const priorityArts = ARTIFACT_TEMPLATES.filter((a) => a.regionId === 'egypt');
-      const otherArts = ARTIFACT_TEMPLATES.filter((a) => a.regionId !== 'egypt');
+      const bodyGrad = ctx.createLinearGradient(20, 40, 20, 152);
+      bodyGrad.addColorStop(0, '#1e293b');
+      bodyGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.roundRect(22, 40, 148, 112, 20);
+      ctx.fill();
 
-      priorityArts.forEach((art) => {
-        TextureLoader.loadImage(this, art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
-      });
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 6;
+      ctx.stroke();
 
-      this.time.delayedCall(1200, () => {
-        otherArts.forEach((art) => {
-          TextureLoader.loadImage(this, art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
-        });
-      });
-    });
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(82, 58, 28, 76);
+
+      cvs.refresh();
+    }
 
     YandexSDK.notifyLoadingReady();
     this.scene.start('MenuScene');
@@ -180,6 +191,28 @@ export class BootScene extends Phaser.Scene {
       ctx.beginPath();
       ctx.arc(12, 12, 10, 0, Math.PI * 2);
       ctx.fill();
+    });
+
+    const W = 640;
+    const H = 800;
+    const cx = 320;
+    const cy = 400;
+
+    ARTIFACT_TEMPLATES.forEach((art, index) => {
+      make(art.textureKey, W, H, (ctx) => {
+        const hue = (index * 37) % 360;
+        const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 200);
+        grad.addColorStop(0, `hsl(${hue}, 65%, 65%)`);
+        grad.addColorStop(0.6, `hsl(${hue}, 55%, 42%)`);
+        grad.addColorStop(1, `hsl(${hue}, 45%, 22%)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(cx - 140, cy - 190, 280, 380, 42);
+        ctx.fill();
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 10;
+        ctx.stroke();
+      });
     });
   }
 }
