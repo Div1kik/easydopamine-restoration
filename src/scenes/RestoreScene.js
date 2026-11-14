@@ -84,52 +84,41 @@ export class RestoreScene extends Phaser.Scene {
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
-    const applyBgTexture = (key) => {
-      if (!this.scene || !this.scene.isActive()) return;
-      if (!this.textures.exists(key)) return;
+    const isTextureValid = (key) => {
+      if (!this.textures.exists(key)) return false;
       const tex = this.textures.get(key);
       const src = tex && tex.getSourceImage ? tex.getSourceImage() : null;
-      if (!src || src.width <= 1) return;
+      return Boolean(src && src.width > 1 && src.height > 1);
+    };
+
+    const applyBgTexture = (key) => {
+      if (!this.scene || !this.scene.isActive()) return;
+      if (!isTextureValid(key)) return;
 
       if (this.workbenchBgImg) this.workbenchBgImg.destroy();
       this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
     };
 
-    if (this.textures.exists(activeSkin)) {
+    if (isTextureValid(activeSkin)) {
       applyBgTexture(activeSkin);
-    }
+    } else {
+      if (this.textures.exists(activeSkin)) {
+        this.textures.remove(activeSkin);
+      }
 
-    if (!this.workbenchBgImg) {
-      if (this.textures.exists('workbench_bg_1')) {
+      if (isTextureValid('workbench_bg_1')) {
         applyBgTexture('workbench_bg_1');
       }
 
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalWidth > 0) {
-          if (this.textures.exists(activeSkin)) {
-            this.textures.remove(activeSkin);
-          }
-          this.textures.addImage(activeSkin, img);
-          applyBgTexture(activeSkin);
-        }
-      };
-      img.onerror = () => {
-        if (activeSkin !== 'workbench_bg_1' && !this.workbenchBgImg) {
-          const fallbackImg = new Image();
-          fallbackImg.onload = () => {
-            if (fallbackImg.naturalWidth > 0) {
-              if (!this.textures.exists('workbench_bg_1')) {
-                this.textures.addImage('workbench_bg_1', fallbackImg);
-              }
-              applyBgTexture('workbench_bg_1');
-            }
-          };
-          fallbackImg.src = 'assets/workbenches/workbench_bg_1.webp';
-        }
-      };
-      img.src = `assets/workbenches/${activeSkin}.webp`;
+      this.load.once(`filecomplete-image-${activeSkin}`, () => {
+        applyBgTexture(activeSkin);
+      });
+
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+      if (!this.load.isLoading()) {
+        this.load.start();
+      }
     }
 
     const artW = this.artW || 260;
