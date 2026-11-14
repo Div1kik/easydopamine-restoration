@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
     this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
+    // Грузим только текущий активный верстак для мгновенного запуска игры
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
@@ -87,9 +88,7 @@ export class BootScene extends Phaser.Scene {
       cvs.refresh();
     }
 
-    // Сообщаем Яндекс Играм, что все ассеты загружены и игра готова к старту
     YandexSDK.notifyLoadingReady();
-
     this.scene.start('MenuScene');
   }
 
@@ -122,7 +121,6 @@ export class BootScene extends Phaser.Scene {
       return pts;
     };
 
-    // Ювелирная объёмная звезда с 10 гранями и золотой окантовкой
     make('icon_star', 128, 128, (ctx) => {
       const cx = 64;
       const cy = 66;
@@ -168,7 +166,6 @@ export class BootScene extends Phaser.Scene {
       ctx.stroke();
     });
 
-    // Пустая звезда в едином ювелирном стиле
     make('icon_star_empty', 128, 128, (ctx) => {
       const cx = 64;
       const cy = 66;
@@ -197,27 +194,29 @@ export class BootScene extends Phaser.Scene {
       ctx.fill();
     });
 
-    // Страховочные процедурные текстуры 640x800 на случай, если какой-то .webp не загрузится
+    // Заглушки создаются ТОЛЬКО если реальный .webp файл не загрузился
     const W = 640;
     const H = 800;
     const cx = 320;
     const cy = 400;
 
     ARTIFACT_TEMPLATES.forEach((art, index) => {
-      make(art.textureKey, W, H, (ctx) => {
-        const hue = (index * 37) % 360;
-        const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 200);
-        grad.addColorStop(0, `hsl(${hue}, 65%, 65%)`);
-        grad.addColorStop(0.6, `hsl(${hue}, 55%, 42%)`);
-        grad.addColorStop(1, `hsl(${hue}, 45%, 22%)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(cx - 140, cy - 190, 280, 380, 42);
-        ctx.fill();
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 10;
-        ctx.stroke();
-      });
+      if (!this.textures.exists(art.textureKey)) {
+        make(art.textureKey, W, H, (ctx) => {
+          const hue = (index * 37) % 360;
+          const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 200);
+          grad.addColorStop(0, `hsl(${hue}, 65%, 65%)`);
+          grad.addColorStop(0.6, `hsl(${hue}, 55%, 42%)`);
+          grad.addColorStop(1, `hsl(${hue}, 45%, 22%)`);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.roundRect(cx - 140, cy - 190, 280, 380, 42);
+          ctx.fill();
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 10;
+          ctx.stroke();
+        });
+      }
     });
   }
 }
