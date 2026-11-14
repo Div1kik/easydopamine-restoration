@@ -2,7 +2,9 @@ import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
-import { ToolArt } from '../utils/ToolArt.js';
+import * as ToolArtModule from '../utils/ToolArt.js';
+
+const ToolArt = ToolArtModule.ToolArt || ToolArtModule.default || ToolArtModule;
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -22,7 +24,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 1).setDepth(0);
 
-    // Подбор шаблона артефакта
     let template = this.templateId
       ? ARTIFACT_TEMPLATES.find((t) => t.id === this.templateId)
       : null;
@@ -37,17 +38,14 @@ export class RestoreScene extends Phaser.Scene {
       Storage.setActiveSession(this.regionId, this.template.id);
     }
 
-    // Размеры и зона рабочего стола
     this.artW = 260;
     this.artH = 320;
     const topBound = 132;
     const bottomBound = height - 134;
     this.centerY = (topBound + bottomBound) / 2;
 
-    // Фон верстака + подложка
     this.renderWorkbenchBackdrop(width, height, topBound, bottomBound);
 
-    // Состояние этапов реставрации
     this.steps = [
       { id: 'scraper', name: 'Скребок', hint: 'Сколоть окаменевший пласт породы' },
       { id: 'brush', name: 'Кисть', hint: 'Смести минеральную пыль и песок' },
@@ -63,16 +61,9 @@ export class RestoreScene extends Phaser.Scene {
     this.stepProgress = 0;
     this.isCompleted = false;
 
-    // Отрисовка самого артефакта и слоёв загрязнений
     this.setupArtifactLayers(width, this.centerY);
-
-    // Верхний HUD (казна, название, прогресс шага, кнопки звука и меню)
     this.createTopHud(width, textRes, FONT_UI);
-
-    // Нижняя панель инструментов
     this.createBottomToolbar(width, height, textRes, FONT_UI);
-
-    // Интерактив на рабочем поле
     this.setupWorkInteractions(width, height, topBound, bottomBound);
 
     if (AudioManager.playMusic) AudioManager.playMusic('workshop');
@@ -180,13 +171,11 @@ export class RestoreScene extends Phaser.Scene {
     }
     this.artContainer.add(this.artSprite);
 
-    // Слой налёта / окислов (снимается реагентом)
     this.tarnishOverlay = this.add.graphics();
     this.tarnishOverlay.fillStyle(0x2d3a2e, 0.62);
     this.tarnishOverlay.fillRoundedRect(-this.artW * 0.36, -this.artH * 0.4, this.artW * 0.72, this.artH * 0.8, 36);
     this.artContainer.add(this.tarnishOverlay);
 
-    // Слой пыли и песка (сметается кистью)
     this.dustOverlay = this.add.graphics();
     this.dustOverlay.fillStyle(0x8c7355, 0.74);
     for (let i = 0; i < 42; i++) {
@@ -197,7 +186,6 @@ export class RestoreScene extends Phaser.Scene {
     }
     this.artContainer.add(this.dustOverlay);
 
-    // Слой окаменевшей породы (скалывается скребком)
     this.crustNodes = [];
     for (let i = 0; i < 28; i++) {
       const rx = Phaser.Math.Between(-85, 85);
@@ -209,7 +197,6 @@ export class RestoreScene extends Phaser.Scene {
       this.crustNodes.push(chunk);
     }
 
-    // Слой трещин (склеивается клеем / кинцуги)
     this.crackGfx = this.add.graphics();
     this.crackGfx.lineStyle(3, 0x140d08, 0.92);
     this.crackGfx.beginPath();
@@ -225,7 +212,6 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   createTopHud(width, textRes, FONT_UI) {
-    // Верхняя плашка монет и кнопок
     const coins = Storage.getCoins();
     const coinBox = this.add.graphics().setDepth(20);
     coinBox.fillStyle(0x1f140c, 0.92);
@@ -241,7 +227,6 @@ export class RestoreScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5).setDepth(21);
 
-    // Кнопка Меню
     const menuBtn = this.add.graphics().setDepth(20);
     menuBtn.fillStyle(0x2b1d12, 0.95);
     menuBtn.fillRoundedRect(width - 74, 14, 60, 30, 8);
@@ -264,7 +249,6 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Кнопка ?
     const helpCircle = this.add.circle(width - 96, 29, 14, 0x2b1d12)
       .setStrokeStyle(1.2, 0xfacc15, 0.9)
       .setInteractive({ useHandCursor: true })
@@ -282,7 +266,6 @@ export class RestoreScene extends Phaser.Scene {
       this.showQuickTip();
     });
 
-    // Плашка названия артефакта и текущего шага
     const infoW = width - 28;
     const infoGfx = this.add.graphics().setDepth(20);
     infoGfx.fillStyle(0x1f140c, 0.92);
@@ -324,14 +307,12 @@ export class RestoreScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5).setDepth(21);
 
-    // Прогресс-бар текущего этапа
     this.progressBarBg = this.add.graphics().setDepth(21);
     this.progressBarBg.fillStyle(0x0d0805, 0.95);
     this.progressBarBg.fillRoundedRect(width / 2 - 110, 112, 220, 4, 2);
 
     this.progressBarFill = this.add.graphics().setDepth(22);
 
-    // Кнопка Кинцуги (появляется на шаге склейки)
     this.kintsugiBtn = this.add.container(width / 2, 146).setDepth(25).setVisible(false);
     const kBg = this.add.graphics();
     kBg.fillGradientStyle(0xfacc15, 0xfacc15, 0xb47814, 0xb47814, 1);
