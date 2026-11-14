@@ -122,15 +122,15 @@ export const Storage = {
     return false;
   },
 
-  // --- БАЛАНС ЭПОХ (РЕНЕССАНС НА 25 УРОВНЕ) ---
+  // --- СБАЛАНСИРОВАННЫЙ БАЛАНС ЭПОХ ---
   REGION_UNLOCK_REQS: {
-    egypt: { minLevel: 1, cost: 0, expeditionCost: 90, name: 'Древний Египет' },
-    antique: { minLevel: 3, cost: 250, expeditionCost: 220, name: 'Античность' },
-    europe: { minLevel: 6, cost: 750, expeditionCost: 480, name: 'Средневековье' },
-    japan: { minLevel: 10, cost: 1800, expeditionCost: 950, name: 'Япония' },
-    aztec: { minLevel: 15, cost: 4200, expeditionCost: 1750, name: 'Ацтеки' },
-    vikings: { minLevel: 20, cost: 9000, expeditionCost: 2800, name: 'Викинги' },
-    renaissance: { minLevel: 25, cost: 18000, expeditionCost: 4500, name: 'Ренессанс' }
+    egypt: { minLevel: 1, cost: 0, expeditionCost: 80, name: 'Древний Египет' },
+    antique: { minLevel: 3, cost: 220, expeditionCost: 190, name: 'Античность' },
+    europe: { minLevel: 6, cost: 650, expeditionCost: 420, name: 'Средневековье' },
+    japan: { minLevel: 10, cost: 1450, expeditionCost: 820, name: 'Япония' },
+    aztec: { minLevel: 15, cost: 3200, expeditionCost: 1450, name: 'Ацтеки' },
+    vikings: { minLevel: 20, cost: 6800, expeditionCost: 2300, name: 'Викинги' },
+    renaissance: { minLevel: 25, cost: 13500, expeditionCost: 3600, name: 'Ренессанс' }
   },
 
   getUnlockedRegions() {
@@ -355,15 +355,27 @@ export const Storage = {
     return true;
   },
 
-  // --- КОНТРАКТЫ ---
+  // --- СРОЧНЫЕ КОНТРАКТЫ (ЛЮБОЙ ПРЕДМЕТ ИЗ ИГРЫ + НАГРАДА ОТ УРОВНЯ ИГРОКА) ---
+  computeContractRewardsForLevel(level) {
+    const safeLvl = Math.max(1, level || 1);
+    const rewardCoins = Math.round((130 + safeLvl * 52 + Math.pow(safeLvl, 1.35) * 14) / 5) * 5;
+    const bonusXP = Math.round((95 + safeLvl * 16) / 5) * 5;
+    return { rewardCoins, bonusXP };
+  },
+
   getDailyContract(templates, forceRefresh = false) {
     const now = Date.now();
+    const currentLevel = this.getLevelData().level;
+    const scaled = this.computeContractRewardsForLevel(currentLevel);
+
     if (!forceRefresh) {
       try {
         const raw = localStorage.getItem(this.KEYS.ACTIVE_CONTRACT);
         if (raw) {
           const contract = JSON.parse(raw);
           if (contract && contract.nextAvailableAt > now) {
+            contract.rewardCoins = scaled.rewardCoins;
+            contract.bonusXP = scaled.bonusXP;
             return contract;
           }
         }
@@ -372,19 +384,14 @@ export const Storage = {
 
     if (!templates || templates.length === 0) return null;
 
-    const unlocked = this.getUnlockedRegions();
-    const pool = templates.filter(t => unlocked.includes(t.regionId));
-    const target = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : templates[0];
+    // Может выпасть любой предмет из всей игры
+    const target = templates[Math.floor(Math.random() * templates.length)];
 
     const clients = [
       'Мэр Александрии', 'Королевский музей', 'Частный коллекционер', 'Гильдия архивариусов', 'Императорский посол'
     ];
     const client = clients[Math.floor(Math.random() * clients.length)];
-
-    const basePrice = target.marketValue || 100;
-    const bonusReward = Math.round(basePrice * 0.50) + 90;
-    const contractPrice = basePrice + bonusReward;
-    const cooldownDuration = 90 * 60 * 1000;
+    const cooldownDuration = 60 * 60 * 1000;
 
     const newContract = {
       id: 'ctr_' + now,
@@ -393,8 +400,8 @@ export const Storage = {
       title: target.name,
       name: target.name,
       client,
-      rewardCoins: contractPrice,
-      bonusXP: 110,
+      rewardCoins: scaled.rewardCoins,
+      bonusXP: scaled.bonusXP,
       completed: false,
       createdAt: now,
       nextAvailableAt: now + cooldownDuration
@@ -410,13 +417,38 @@ export const Storage = {
       if (raw) {
         const contract = JSON.parse(raw);
         contract.completed = true;
-        contract.nextAvailableAt = Date.now() + 90 * 60 * 1000;
+        contract.nextAvailableAt = Date.now() + 60 * 60 * 1000;
         localStorage.setItem(this.KEYS.ACTIVE_CONTRACT, JSON.stringify(contract));
       }
     } catch {}
   },
 
-  // --- ОФФЛАЙН ДОХОД ---
+  // --- ОФФЛАЙН И ПАССИВНЫЙ ДОХОД МУЗЕЯ (С УЧЁТОМ ЦЕННОСТИ ЭКСПОНАТОВ) ---
+  getMuseumHourlyIncome() {
+    const inventory = this.getInventory();
+    const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
+    if (validExhibits.length === 0) return 0;
+
+    let mult = 1.0;
+    if (localStorage.getItem('museum_upg_pedestal_1') === 'true') mult += 0.15;
+    if (localStorage.getItem('museum_upg_pedestal_2') === 'true') mult += 0.25;
+    if (localStorage.getItem('museum_upg_hall_royal') === 'true') mult += 0.50;
+    const hasAntiqueHall = localStorage.getItem('museum_upg_hall_antique') === 'true';
+
+    let rawHourly = 0;
+    validExhibits.forEach((item) => {
+      const baseSlotIncome = 15;
+      const valueBonus = (item.marketValue || 100) * 0.08;
+      let itemHourly = baseSlotIncome + valueBonus;
+      if (hasAntiqueHall && (item.regionId === 'antique' || item.regionId === 'egypt')) {
+        itemHourly *= 1.5;
+      }
+      rawHourly += itemHourly;
+    });
+
+    return Math.round(rawHourly * mult);
+  },
+
   updateOfflineTimestamp() {
     localStorage.setItem(this.KEYS.LAST_OFFLINE_TIME, Date.now().toString());
   },
@@ -432,19 +464,11 @@ export const Storage = {
     if (diffMinutes < 5) return { coins: 0, minutes: diffMinutes };
 
     const cappedMinutes = Math.min(diffMinutes, 480);
-    const inventory = this.getInventory();
-    const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
-    const count = validExhibits.length;
+    const hourlyIncome = this.getMuseumHourlyIncome();
+    if (hourlyIncome <= 0) return { coins: 0, minutes: cappedMinutes };
 
-    if (count === 0) return { coins: 0, minutes: cappedMinutes, exhibitsCount: 0 };
-
-    let mult = 1.0;
-    if (localStorage.getItem('museum_upg_pedestal_1') === 'true') mult += 0.15;
-    if (localStorage.getItem('museum_upg_pedestal_2') === 'true') mult += 0.25;
-    if (localStorage.getItem('museum_upg_hall_royal') === 'true') mult += 0.50;
-
-    const earnedCoins = Math.floor((cappedMinutes / 10) * count * 2.5 * mult);
-    return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes, exhibitsCount: count };
+    const earnedCoins = Math.floor((cappedMinutes / 60) * hourlyIncome);
+    return { coins: Math.max(0, earnedCoins), minutes: cappedMinutes };
   },
 
   // --- ИНВЕНТАРЬ И СЕССИЯ ---
