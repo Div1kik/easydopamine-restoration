@@ -522,20 +522,14 @@ export class RestoreScene extends Phaser.Scene {
         applyBgTexture('workbench_bg_1');
       }
 
-      // Подписываемся на завершение загрузки И глобально в менеджере текстур, И в загрузчике сцены
-      const onTextureReady = (key) => {
-        if (key === activeSkin) {
-          this.textures.off('addtexture', onTextureReady);
-          applyBgTexture(activeSkin);
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > 0 && !this.textures.exists(activeSkin)) {
+          this.textures.addImage(activeSkin, img);
         }
+        applyBgTexture(activeSkin);
       };
-      this.textures.on('addtexture', onTextureReady);
-      this.events.once('shutdown', () => this.textures.off('addtexture', onTextureReady));
-
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      if (!this.load.isLoading()) {
-        this.load.start();
-      }
+      img.src = `assets/workbenches/${activeSkin}.webp`;
     }
 
     const artW = this.artW || 260;
