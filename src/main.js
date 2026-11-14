@@ -89,44 +89,53 @@ function makeRetinaScene(SceneClass) {
 
       if (this.input) {
         this.input.setTopOnly(false);
+        this.input._touchActive = false;
+        this.isDragging = false;
+        this.isDraggingList = false;
 
-        let touchActive = false;
-        const origOn = this.input.on.bind(this.input);
+        // Оборачиваем this.input.on СТРОГО ОДИН РАЗ, чтобы при перезапуске сцены координаты не делились на 3 повторно
+        if (!this.input._retinaWrapped) {
+          this.input._retinaWrapped = true;
+          const origOn = this.input.on.bind(this.input);
 
-        origOn('pointerdown', () => {
-          touchActive = true;
-          this.isDragging = false;
-          this.isDraggingList = false;
-        });
-
-        origOn('pointerup', () => {
-          touchActive = false;
-          setTimeout(() => {
+          origOn('pointerdown', () => {
+            this.input._touchActive = true;
             this.isDragging = false;
             this.isDraggingList = false;
-          }, 50);
-        });
+          });
 
-        this.input.on = (event, fn, context) => {
-          if (typeof event === 'string' && event.startsWith('pointer')) {
-            const safeFn = function (p, ...rest) {
-              const downState = (event === 'pointermove') ? (touchActive || p.isDown) : null;
-              return fn.call(context || this, wrapLogicalPointer(p, downState), ...rest);
-            };
-            return origOn(event, safeFn, context);
-          }
-          return origOn(event, fn, context);
-        };
+          origOn('pointerup', () => {
+            this.input._touchActive = false;
+            setTimeout(() => {
+              this.isDragging = false;
+              this.isDraggingList = false;
+            }, 50);
+          });
+
+          this.input.on = (event, fn, context) => {
+            if (typeof event === 'string' && event.startsWith('pointer')) {
+              const safeFn = function (p, ...rest) {
+                const downState = (event === 'pointermove') ? (this.input._touchActive || p.isDown) : null;
+                return fn.call(context || this, wrapLogicalPointer(p, downState), ...rest);
+              };
+              return origOn(event, safeFn, context || this);
+            }
+            return origOn(event, fn, context);
+          };
+        }
       }
 
-      this.scale = new Proxy(this.sys.scale, {
-        get(target, prop) {
-          if (prop === 'width') return BASE_WIDTH;
-          if (prop === 'height') return LOGICAL_HEIGHT;
-          const val = target[prop];
-          return typeof val === 'function' ? val.bind(target) : val;
-        }
-      });
+      if (!this._scaleRetinaWrapped && this.sys && this.sys.scale) {
+        this._scaleRetinaWrapped = true;
+        this.scale = new Proxy(this.sys.scale, {
+          get(target, prop) {
+            if (prop === 'width') return BASE_WIDTH;
+            if (prop === 'height') return LOGICAL_HEIGHT;
+            const val = target[prop];
+            return typeof val === 'function' ? val.bind(target) : val;
+          }
+        });
+      }
 
       if (super.init) super.init(data);
     }
