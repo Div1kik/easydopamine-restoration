@@ -25,7 +25,29 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // Тихо предзагружаем активный и купленные фоны верстаков в фоне
-    this.lazyPreloadOwnedWorkbenches();
+    lazyPreloadOwnedWorkbenches() {
+    this.time.delayedCall(1200, () => {
+      if (!this.scene || !this.scene.isActive()) return;
+
+      const allSkins = [];
+      for (let i = 1; i <= 15; i++) {
+        const key = `workbench_bg_${i}`;
+        if (!this.textures.exists(key)) {
+          allSkins.push(key);
+        }
+      }
+
+      if (allSkins.length === 0) return;
+
+      allSkins.forEach((key) => {
+        this.load.image(key, `assets/workbenches/${key}.webp`);
+      });
+
+      if (!this.load.isLoading()) {
+        this.load.start();
+      }
+    });
+  }
 
     // Верхние кнопки: Звук, Музыка и Обучение по желанию (?)
     this.createTopUtilityButtons(width, height, textRes, FONT_UI);
