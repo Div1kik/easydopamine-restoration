@@ -16,7 +16,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
       ? data.artifact
       : { name: 'Реликвия', regionName: 'Музей', textureKey: 'art_egypt_scarab' };
 
-    // Фон витрины
     if (this.textures.exists('museum_bg')) {
       const bg = this.add.image(width / 2, height / 2, 'museum_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
@@ -25,7 +24,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
-    // Верхняя шапка
     const headerBg = this.add.graphics().setDepth(10);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.94);
     headerBg.fillRect(0, 0, width, 86);
@@ -49,11 +47,9 @@ export class ArtifactDetailScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5).setDepth(12);
 
-    // Геометрия подиума и экспоната
     const stageCenterY = height * 0.31;
     const pedestalY = height * 0.465;
 
-    // Мягкое музейное свечение за экспонатом
     const aura = this.add.circle(width / 2, stageCenterY, 125, 0xfacc15, 0.08).setDepth(2);
     this.tweens.add({
       targets: aura,
@@ -65,7 +61,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
-    // Тень и пьедестал витрины
     this.shadowEllipse = this.add.ellipse(width / 2, pedestalY - 2, 165, 22, 0x000000, 0.55).setDepth(3);
 
     const pedestalGfx = this.add.graphics().setDepth(3);
@@ -79,7 +74,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
     pedestalGfx.lineStyle(1.8, 0xc89d54, 0.9);
     pedestalGfx.strokeEllipse(width / 2, pedestalY, 214, 30);
 
-    // Контейнер экспоната (строго 4:5 -> 208 x 260)
     const tex = this.textures.exists(art.textureKey) ? art.textureKey : 'art_egypt_scarab';
     this.baseW = 208;
     this.baseH = 260;
@@ -89,7 +83,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
     this.artifactSprite = this.add.image(0, 0, tex)
       .setDisplaySize(this.baseW, this.baseH);
 
-    // Световой блик, реагирующий на угол поворота
     this.glintSprite = this.add.image(0, 0, tex)
       .setDisplaySize(this.baseW, this.baseH)
       .setTint(0xfffbeb)
@@ -98,19 +91,17 @@ export class ArtifactDetailScene extends Phaser.Scene {
 
     this.artifactContainer.add([this.artifactSprite, this.glintSprite]);
 
-    // Подсказка и кнопка сброса ракурса
-    this.hintText = this.add.text(width / 2, height * 0.515, '↔ Вращайте свайпом   •   ↕ Масштаб', {
+    this.hintText = this.add.text(width / 2, height * 0.515, '↔ Осмотр ракурса   •   ↕ Масштаб', {
       fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#d6c3a5',
       resolution: dpr
     }).setOrigin(0.5).setDepth(10);
 
-    // Состояние объёмного осмотра
-    this.yaw = 0;         // Горизонтальный угол (-0.85 .. +0.85 рад)
-    this.pitch = 0;       // Вертикальный наклон (-0.25 .. +0.25 рад)
-    this.zoomFactor = 1;  // Масштаб (0.85 .. 1.32)
-    this.autoSpin = true; // Лёгкое покачивание до первого касания
+    this.yaw = 0;
+    this.pitch = 0;
+    this.zoomFactor = 1;
+    this.autoSpin = true;
     this.isInspecting = false;
     this.lastInspectPos = { x: 0, y: 0 };
 
@@ -132,36 +123,34 @@ export class ArtifactDetailScene extends Phaser.Scene {
       const dy = pointer.y - this.lastInspectPos.y;
       this.lastInspectPos = { x: pointer.x, y: pointer.y };
 
-      this.yaw = Phaser.Math.Clamp(this.yaw + dx * 0.0085, -0.92, 0.92);
-      this.pitch = Phaser.Math.Clamp(this.pitch + dy * 0.004, -0.22, 0.22);
+      // Ограниченный угол (±0.38 рад), чтобы не было видно плоского края
+      this.yaw = Phaser.Math.Clamp(this.yaw + dx * 0.005, -0.38, 0.38);
+      this.pitch = Phaser.Math.Clamp(this.pitch + dy * 0.0025, -0.14, 0.14);
       this.apply3DTransform();
     });
 
     this.input.on('pointerup', () => {
       if (this.isInspecting) {
         this.isInspecting = false;
-        // Мягко возвращаем экспонат в центральный парадный ракурс, если отклонение небольшое
         this.tweens.add({
           targets: this,
           yaw: 0,
           pitch: 0,
-          duration: 520,
+          duration: 480,
           ease: 'Back.easeOut',
           onUpdate: () => this.apply3DTransform()
         });
       }
     });
 
-    // Зум колёсиком мыши
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
       if (pointer.y >= inspectTop && pointer.y <= inspectBottom) {
         this.autoSpin = false;
-        this.zoomFactor = Phaser.Math.Clamp(this.zoomFactor - deltaY * 0.0008, 0.85, 1.32);
+        this.zoomFactor = Phaser.Math.Clamp(this.zoomFactor - deltaY * 0.0008, 0.88, 1.28);
         this.apply3DTransform();
       }
     });
 
-    // Историческая карточка внизу
     const cardTopY = height * 0.55;
     const cardH = 132;
     const cardGfx = this.add.graphics().setDepth(10);
@@ -201,7 +190,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
       resolution: dpr
     }).setDepth(12);
 
-    // Кнопка продажи аукциону с бонусом +50% за рекламу
     if (art.instanceId) {
       const bonusPrice = Math.round((art.marketValue || 100) * 1.5);
       const sellAdY = height * 0.785;
@@ -233,7 +221,6 @@ export class ArtifactDetailScene extends Phaser.Scene {
       });
     }
 
-    // Кнопка возврата в музей
     const backY = height * 0.885;
     const backGfx = this.add.graphics().setDepth(10);
     backGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
@@ -262,22 +249,17 @@ export class ArtifactDetailScene extends Phaser.Scene {
   apply3DTransform() {
     if (!this.artifactContainer) return;
 
-    // Перспективное сжатие по X при повороте вокруг вертикальной оси
-    const cosYaw = Math.max(0.38, Math.cos(this.yaw));
-    const cosPitch = Math.max(0.82, Math.cos(this.pitch));
+    const cosYaw = Math.max(0.91, Math.cos(this.yaw));
+    const cosPitch = Math.max(0.94, Math.cos(this.pitch));
 
     this.artifactContainer.scaleX = cosYaw * this.zoomFactor;
     this.artifactContainer.scaleY = cosPitch * this.zoomFactor;
+    this.artifactContainer.rotation = Math.sin(this.yaw) * 0.06;
 
-    // Лёгкий диагональный наклон для ощущения объёма
-    this.artifactContainer.rotation = Math.sin(this.yaw) * 0.09;
-
-    // Динамический блик света при повороте экспоната
-    const glintStrength = Math.min(0.34, Math.abs(Math.sin(this.yaw)) * 0.42);
+    const glintStrength = Math.min(0.30, Math.abs(Math.sin(this.yaw)) * 0.72);
     this.glintSprite.setAlpha(glintStrength);
-    this.glintSprite.x = Math.sin(this.yaw) * 8;
+    this.glintSprite.x = Math.sin(this.yaw) * 5;
 
-    // Тень на пьедестале синхронно подстраивается под угол и масштаб
     if (this.shadowEllipse) {
       this.shadowEllipse.scaleX = cosYaw * this.zoomFactor;
       this.shadowEllipse.scaleY = this.zoomFactor;
@@ -286,7 +268,7 @@ export class ArtifactDetailScene extends Phaser.Scene {
 
   update(time) {
     if (this.autoSpin && !this.isInspecting) {
-      this.yaw = Math.sin(time * 0.0014) * 0.22;
+      this.yaw = Math.sin(time * 0.0014) * 0.14;
       this.apply3DTransform();
     }
   }
