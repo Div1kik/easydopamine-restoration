@@ -24,7 +24,11 @@ export class MenuScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
     }
 
-    this.createAudioToggles(width, textRes);
+    // Тихо предзагружаем активный и купленные фоны верстаков в фоне
+    this.lazyPreloadOwnedWorkbenches();
+
+    // Верхние кнопки: Звук, Музыка и Обучение по желанию (?)
+    this.createTopUtilityButtons(width, height, textRes, FONT_UI);
 
     // Верхняя плашка заголовка
     const headerW = width * 0.88;
@@ -69,7 +73,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    // Парящий логотип артефакта
     const logoKey = this.textures.exists('art_egypt_scarab') ? 'art_egypt_scarab' : null;
     if (logoKey) {
       const logo = this.add.image(width / 2, height * 0.252, logoKey);
@@ -228,6 +231,22 @@ export class MenuScene extends Phaser.Scene {
     this.checkOfflineEarnings(width, height, textRes, FONT_UI);
   }
 
+  lazyPreloadOwnedWorkbenches() {
+    const owned = Storage.getOwnedWorkbenchSkins();
+    const active = Storage.getActiveWorkbenchSkin();
+    const toLoad = new Set([...owned, active]);
+    let queued = false;
+    toLoad.forEach((key) => {
+      if (key && !this.textures.exists(key)) {
+        this.load.image(key, `assets/workbenches/${key}.webp`);
+        queued = true;
+      }
+    });
+    if (queued) {
+      this.load.start();
+    }
+  }
+
   drawStyledBox(x, y, w, h, opts) {
     const gfx = this.add.graphics();
     const r = opts.radius || 10;
@@ -371,7 +390,6 @@ export class MenuScene extends Phaser.Scene {
     const headerH = 66;
     const footerH = 60;
 
-    // Фон модального окна
     const bg = this.add.graphics().setDepth(101);
     bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.99);
     bg.fillRoundedRect(width / 2 - modalW / 2, modalTop, modalW, modalH, 14);
@@ -380,7 +398,6 @@ export class MenuScene extends Phaser.Scene {
     const listViewportTop = modalTop + headerH;
     const listViewportBottom = modalBottom - footerH;
 
-    // Контейнер списка уровней (строки рисуются сразу в видимом слое depth 102)
     const listCont = this.add.container(width / 2, listViewportTop).setDepth(102);
     modalObjects.push(listCont);
 
@@ -476,7 +493,6 @@ export class MenuScene extends Phaser.Scene {
       listCont.add(rowCont);
     }
 
-    // Непрозрачная верхняя шапка окна (depth 105) + маскировка фона сверху окна (depth 104)
     const topBlocker = this.add.graphics().setDepth(104);
     topBlocker.fillStyle(0x080503, 0.96);
     topBlocker.fillRect(0, 0, width, modalTop);
@@ -502,7 +518,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5).setDepth(106);
 
-    // Непрозрачная нижняя панель окна (depth 105) + маскировка фона снизу окна (depth 104)
     const bottomBlocker = this.add.graphics().setDepth(104);
     bottomBlocker.fillStyle(0x080503, 0.96);
     bottomBlocker.fillRect(0, modalBottom, width, height - modalBottom);
@@ -513,14 +528,12 @@ export class MenuScene extends Phaser.Scene {
     modalFooterGfx.lineStyle(1, 0xc89d54, 0.45);
     modalFooterGfx.lineBetween(width / 2 - modalW / 2 + 12, listViewportBottom + 2, width / 2 + modalW / 2 - 12, listViewportBottom + 2);
 
-    // Внешняя рамка модального окна
     const borderGfx = this.add.graphics().setDepth(107);
     borderGfx.lineStyle(1.5, 0xc89d54, 0.92);
     borderGfx.strokeRoundedRect(width / 2 - modalW / 2, modalTop, modalW, modalH, 14);
 
     modalObjects.push(topBlocker, modalHeaderGfx, title, subTitle, bottomBlocker, modalFooterGfx, borderGfx);
 
-    // Границы скролла и авто-позиционирование на текущем уровне
     const totalListH = 50 * itemH;
     const minScrollY = Math.min(listViewportTop, listViewportBottom - totalListH - 6);
     const maxScrollY = listViewportTop;
@@ -596,13 +609,190 @@ export class MenuScene extends Phaser.Scene {
         if (obj && obj.destroy) obj.destroy();
       });
 
-      // Небольшая задержка перед снятием блокировки, чтобы отпускание пальца не нажало кнопки под окном
       this.time.delayedCall(120, () => {
         this.isModalOpen = false;
       });
     };
 
     closeHit.on('pointerup', closeModal);
+  }
+
+  // Справочник реставратора (обучение по желанию по кнопке ?)
+  openGuideModal(width, height, textRes, FONT_UI) {
+    if (this.isModalOpen) return;
+    this.isModalOpen = true;
+
+    const slides = [
+      {
+        badge: '1 ИЗ 4 • ОСНОВЫ МАСТЕРСКОЙ',
+        title: '⚒ Как реставрировать находки',
+        body: '• Нажмите «На верстак», чтобы взять случайный артефакт со склада, или выберите конкретный в «Экспедициях».\n\n• Внизу экрана расположены приборы: Скребок, Кисть, Реагент, Клей и Блеск. Подсказка сверху подскажет нужный инструмент.\n\n• Чем меньше ошибок при выборе инструмента, тем больше звёзд (до 3★) и выше оценка реликвии.'
+      },
+      {
+        badge: '2 ИЗ 4 • СКЛЕЙКА И КИНЦУГИ',
+        title: '✨ Золотой шов Кинцуги',
+        body: '• Если на артефакте образовались сколы, выберите Клей, промажьте лунки на предмете и перетащите осколки на свои места.\n\n• Нажмите кнопку «✨ КИНЦУГИ» перед склейкой, чтобы скрепить фрагменты золотым лаком — это увеличит стоимость экспоната на +60%.'
+      },
+      {
+        badge: '3 ИЗ 4 • МУЗЕЙ И ПАССИВНЫЙ ДОХОД',
+        title: '🏛 Зал Славы и доход в час',
+        body: '• Отреставрированные экспонаты (2★ и 3★) попадают в ваш Музей и приносят пассивный доход в час — даже когда игра закрыта.\n\n• Доход зависит от количества витрин, рыночной ценности выставленных реликвий и улучшений в Лавке Мастера.\n\n• В музее любой экспонат можно осмотреть в объёме или продать с бонусом.'
+      },
+      {
+        badge: '4 ИЗ 4 • ЭКСПЕДИЦИИ И ЗАКАЗЫ',
+        title: '🧭 Новые эпохи и контракты',
+        body: '• Повышая уровень мастера, вы открываете новые эпохи в «Экспедициях» (от Египта до Ренессанса) и расширяете вместимость музея.\n\n• «Срочный заказ музея» в главном меню — задание на любую редкую реликвию с наградой под ваш уровень. После работы экспонат уходит заказчику, а вы получаете крупный гонорар и опыт.'
+      }
+    ];
+
+    let pageIdx = 0;
+    const items = [];
+
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.90)
+      .setDepth(120)
+      .setInteractive();
+    items.push(overlay);
+
+    const modalW = width * 0.88;
+    const modalH = 420;
+    const card = this.add.container(width / 2, height / 2).setDepth(121);
+    items.push(card);
+
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.99);
+    bg.fillRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
+    bg.lineStyle(1.5, 0xc89d54, 0.92);
+    bg.strokeRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
+
+    const badgeTxt = this.add.text(0, -modalH / 2 + 24, '', {
+      fontSize: '11px',
+      fontFamily: FONT_UI,
+      color: '#e2b866',
+      fontStyle: 'bold',
+      letterSpacing: 1.2,
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const titleTxt = this.add.text(0, -modalH / 2 + 52, '', {
+      fontSize: '16px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: modalW - 28 },
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const bodyTxt = this.add.text(0, -10, '', {
+      fontSize: '12.5px',
+      fontFamily: FONT_UI,
+      color: '#f5e6c8',
+      wordWrap: { width: modalW - 32 },
+      lineSpacing: 5,
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    // Навигационные кнопки Назад / Далее и Закрыть
+    const navY = modalH / 2 - 78;
+    const halfBtnW = (modalW - 44) / 2;
+
+    const prevGfx = this.add.graphics();
+    prevGfx.fillStyle(0x332215, 1);
+    prevGfx.fillRoundedRect(-modalW / 2 + 16, navY - 17, halfBtnW, 34, 8);
+    prevGfx.lineStyle(1, 0xc89d54, 0.85);
+    prevGfx.strokeRoundedRect(-modalW / 2 + 16, navY - 17, halfBtnW, 34, 8);
+
+    const prevTxt = this.add.text(-modalW / 2 + 16 + halfBtnW / 2, navY, '‹ НАЗАД', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const prevZone = this.add.zone(-modalW / 2 + 16 + halfBtnW / 2, navY, halfBtnW, 34)
+      .setInteractive({ useHandCursor: true });
+
+    const nextGfx = this.add.graphics();
+    nextGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    nextGfx.fillRoundedRect(6, navY - 17, halfBtnW, 34, 8);
+
+    const nextTxt = this.add.text(6 + halfBtnW / 2, navY, 'ДАЛЕЕ ›', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const nextZone = this.add.zone(6 + halfBtnW / 2, navY, halfBtnW, 34)
+      .setInteractive({ useHandCursor: true });
+
+    const closeY = modalH / 2 - 30;
+    const closeW = modalW - 32;
+    const closeGfx = this.add.graphics();
+    closeGfx.fillStyle(0x261a10, 1);
+    closeGfx.fillRoundedRect(-closeW / 2, closeY - 18, closeW, 36, 9);
+    closeGfx.lineStyle(1.2, 0x8c6239, 0.9);
+    closeGfx.strokeRoundedRect(-closeW / 2, closeY - 18, closeW, 36, 9);
+
+    const closeTxt = this.add.text(0, closeY, 'ЗАКРЫТЬ СПРАВОЧНИК', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const closeZone = this.add.zone(0, closeY, closeW, 36).setInteractive({ useHandCursor: true });
+
+    card.add([
+      bg, badgeTxt, titleTxt, bodyTxt,
+      prevGfx, prevTxt, prevZone,
+      nextGfx, nextTxt, nextZone,
+      closeGfx, closeTxt, closeZone
+    ]);
+
+    const renderSlide = () => {
+      const s = slides[pageIdx];
+      badgeTxt.setText(s.badge);
+      titleTxt.setText(s.title);
+      bodyTxt.setText(s.body);
+      prevTxt.setAlpha(pageIdx > 0 ? 1 : 0.4);
+      nextTxt.setText(pageIdx === slides.length - 1 ? 'ГОТОВО ✓' : 'ДАЛЕЕ ›');
+    };
+
+    renderSlide();
+
+    const closeGuide = () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      items.forEach((it) => {
+        if (it && it.destroy) it.destroy();
+      });
+      this.time.delayedCall(120, () => {
+        this.isModalOpen = false;
+      });
+    };
+
+    prevZone.on('pointerup', () => {
+      if (pageIdx > 0) {
+        if (AudioManager.playClick) AudioManager.playClick();
+        pageIdx--;
+        renderSlide();
+      }
+    });
+
+    nextZone.on('pointerup', () => {
+      if (pageIdx < slides.length - 1) {
+        if (AudioManager.playClick) AudioManager.playClick();
+        pageIdx++;
+        renderSlide();
+      } else {
+        closeGuide();
+      }
+    });
+
+    closeZone.on('pointerup', closeGuide);
   }
 
   formatTimeRemaining(ms) {
@@ -635,7 +825,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     if (contract.completed) {
-      this.add.text(leftEdge + padX, y - 12, '✓ КОНТРАКТ ВЫПОЛНЕН!', {
+      this.add.text(leftEdge + padX, y - 12, '✓ ЗАКАЗ ВЫПОЛНЕН!', {
         fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#86efac',
@@ -691,8 +881,6 @@ export class MenuScene extends Phaser.Scene {
     }
 
     const hitBox = this.add.zone(width / 2, y, boxW, boxH).setInteractive({ useHandCursor: true });
-
-    // Левая колонка: жёсткое ограничение ширины текста, чтобы не наползал на правую кнопку
     const leftTextMaxW = boxW - 110;
 
     this.add.text(leftEdge + padX, y - 22, '📜 СРОЧНЫЙ ЗАКАЗ МУЗЕЯ', {
@@ -721,7 +909,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    // Правая колонка: таймер и кнопка ВЗЯТЬ строго с отступом 14px от правого края
     const btnW = 72;
     const btnH = 28;
     const btnX = rightEdge - padX - btnW / 2;
@@ -785,7 +972,7 @@ export class MenuScene extends Phaser.Scene {
 
     const box = this.add.container(width / 2, height / 2).setDepth(111);
     const boxW = width * 0.86;
-    const boxH = 252; // Увеличена высота, чтобы снизу оставался аккуратный зазор 18px
+    const boxH = 252;
 
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.98);
@@ -820,7 +1007,6 @@ export class MenuScene extends Phaser.Scene {
 
     const btnW = boxW * 0.84;
 
-    // Кнопка обычного сбора
     const claimY = boxH / 2 - 74;
     const claimGfx = this.add.graphics();
     claimGfx.fillStyle(0x332215, 1);
@@ -837,7 +1023,6 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    // Кнопка x2 за рекламу с чистым отступом 18px от нижней рамки
     const adY = boxH / 2 - 30;
     const adGfx = this.add.graphics();
     adGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
@@ -877,7 +1062,27 @@ export class MenuScene extends Phaser.Scene {
     box.add([bg, title, desc, sumTxt, claimGfx, claimTxt, claimHit, adGfx, adTxt, adHit]);
   }
 
-  createAudioToggles(width, textRes) {
+  createTopUtilityButtons(width, height, textRes, FONT_UI) {
+    // Кнопка ? (Обучение / Справочник по желанию)
+    const helpBtn = this.add.circle(width - 106, 28, 16, 0x2b1d12)
+      .setStrokeStyle(1.5, 0xfacc15, 0.92)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(30);
+
+    this.add.text(width - 106, 28, '?', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(31);
+
+    helpBtn.on('pointerdown', () => {
+      if (this.isModalOpen) return;
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.openGuideModal(width, height, textRes, FONT_UI);
+    });
+
     const musicBtn = this.add.circle(width - 68, 28, 16, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
       .setStrokeStyle(1.5, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
       .setInteractive({ useHandCursor: true })
