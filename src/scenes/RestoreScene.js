@@ -22,6 +22,8 @@ export class RestoreScene extends Phaser.Scene {
     // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
     this._tempTextureKeys = [];
     this.events.once('shutdown', () => {
+      this.isPointerActive = false;
+      this.activeDraggedShard = null;
       if (this.dirtLayer) {
         this.dirtLayer.destroy();
         this.dirtLayer = null;
@@ -40,7 +42,6 @@ export class RestoreScene extends Phaser.Scene {
       }
       this._artSnapshotCanvas = null;
       this._artSnapshotKey = null;
-      this.activeDraggedShard = null;
     });
 
     // 1. ДАННЫЕ И СЕССИЯ
@@ -89,6 +90,7 @@ export class RestoreScene extends Phaser.Scene {
     this.lastTouchPos = null;
     this.activeTool = null;
     this.isTaskTransition = false;
+    this.isPointerActive = false;
     this.mistakesCount = 0;
     this.isKintsugiMode = false;
     this.hasKintsugiMastery = false;
@@ -330,10 +332,23 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД (БЕЗ КОНФЛИКТУЮЩЕГО DRAG-ПЛАГИНА PHASER)
+    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД С ЗАЩИТОЙ ОТ НУЛЕВЫХ КООРДИНАТ
+    const isValidWorkspacePoint = (pointer) => {
+      if (!pointer) return false;
+      const px = pointer.x;
+      const py = pointer.y;
+      if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
+      // Защита от стартового (0, 0) на сенсорных экранах, чтобы инструмент не улетал в верхний угол
+      if (px <= 1 && py <= 1) return false;
+      return py >= workspaceTop && py <= trayTopLimit;
+    };
+
     const processInteraction = (pointer) => {
       if (this.isTaskTransition) return;
-      if (pointer.y > trayTopLimit || pointer.y < workspaceTop) return;
+      if (!isValidWorkspacePoint(pointer)) return;
+
+      const px = pointer.x;
+      const py = pointer.y;
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (!currentTask) return;
@@ -341,15 +356,16 @@ export class RestoreScene extends Phaser.Scene {
       // Если активен этап склейки
       if (currentTask.type === 'break_and_assemble') {
         if (this.activeDraggedShard) {
-          this.dragShardTo(this.activeDraggedShard, pointer.x, pointer.y);
+          this.dragShardTo(this.activeDraggedShard, px, py);
         } else {
           this.processGlueAction(pointer);
         }
         return;
       }
 
-      this.toolSprite.setPosition(pointer.x, pointer.y);
-      this.animateToolUnderFinger(pointer);
+      this.toolSprite.setPosition(px, py);
+      this.toolSprite.setAlpha(1);
+      this.animateToolUnderFinger(px, py);
 
       if (this.activeTool !== currentTask.requiredTool) {
         this.toolWarning.setText(`⚠️ Нужен: ${this.getToolName(currentTask.requiredTool)}!`);
@@ -364,8 +380,8 @@ export class RestoreScene extends Phaser.Scene {
 
       this.toolWarning.setText('');
 
-      const localX = pointer.x - this.topLeftX;
-      const localY = pointer.y - this.topLeftY;
+      const localX = px - this.topLeftX;
+      const localY = py - this.topLeftY;
 
       if (localX < 0 || localX > this.artW || localY < 0 || localY > this.artH) return;
 
@@ -373,8 +389,10 @@ export class RestoreScene extends Phaser.Scene {
       const requiredPasses = tier >= 3 ? 1 : 2;
       const brushKey = `${this.activeTool}_t${tier}`;
 
-      this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
-      this.emitDustFX(pointer.x, pointer.y);
+      if (this.dirtLayer) {
+        this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
+      }
+      this.emitDustFX(px, py);
 
       const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
       const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
@@ -414,8 +432,9 @@ export class RestoreScene extends Phaser.Scene {
 
       if (ratio >= 0.89 && !this.isTaskTransition) {
         this.isTaskTransition = true;
+        this.isPointerActive = false;
         this.progressBarFill.width = maxBarW;
-        this.dirtLayer.clear();
+        if (this.dirtLayer) this.dirtLayer.clear();
         this.toolSprite.setAlpha(0);
         this.completeTaskTransition();
       }
@@ -423,13 +442,13 @@ export class RestoreScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p) => {
       if (this.isTaskTransition) return;
-      if (p.y > trayTopLimit || p.y < workspaceTop) return;
+      if (!isValidWorkspacePoint(p)) return;
 
+      this.isPointerActive = true;
       this.lastTouchPos = { x: p.x, y: p.y };
 
       const currentTask = this.artifactData.tasks[this.currentTaskIndex];
       if (currentTask && currentTask.type === 'break_and_assemble' && this.shardsList.length > 0) {
-        // Проверяем, нажал ли игрок на один из неприклеенных осколков
         const grabbed = this.shardsList.find(
           (s) => !s.placed && Phaser.Math.Distance.Between(p.x, p.y, s.container.x, s.container.y) <= 44
         );
@@ -446,20 +465,28 @@ export class RestoreScene extends Phaser.Scene {
         }
       }
 
+      this.toolSprite.setPosition(p.x, p.y);
       this.toolSprite.setAlpha(1);
       processInteraction(p);
     });
 
     this.input.on('pointermove', (p) => {
-      if (!p.isDown || this.isTaskTransition) return;
+      if (this.isTaskTransition) return;
+      // Не полагаемся только на p.isDown, используем и наш флаг this.isPointerActive
+      if (!this.isPointerActive && !p.isDown) return;
+
       if (this.activeDraggedShard) {
-        this.dragShardTo(this.activeDraggedShard, p.x, p.y);
+        if (isValidWorkspacePoint(p)) {
+          this.dragShardTo(this.activeDraggedShard, p.x, p.y);
+        }
         return;
       }
+
       processInteraction(p);
     });
 
-    this.input.on('pointerup', () => {
+    const stopPointer = () => {
+      this.isPointerActive = false;
       this.lastTouchPos = null;
       if (this.activeDraggedShard) {
         const shard = this.activeDraggedShard;
@@ -467,12 +494,17 @@ export class RestoreScene extends Phaser.Scene {
         this.releaseShard(shard);
         return;
       }
-      this.tweens.add({
-        targets: this.toolSprite,
-        alpha: 0,
-        duration: 140
-      });
-    });
+      if (this.toolSprite && this.toolSprite.active) {
+        this.tweens.add({
+          targets: this.toolSprite,
+          alpha: 0,
+          duration: 140
+        });
+      }
+    };
+
+    this.input.on('pointerup', stopPointer);
+    this.input.on('pointerout', stopPointer);
   }
 
   dragShardTo(shardObj, x, y) {
@@ -567,14 +599,14 @@ export class RestoreScene extends Phaser.Scene {
     return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
   }
 
-  animateToolUnderFinger(pointer) {
+  animateToolUnderFinger(px, py) {
     if (!this.lastTouchPos) {
-      this.lastTouchPos = { x: pointer.x, y: pointer.y };
+      this.lastTouchPos = { x: px, y: py };
       return;
     }
-    const dx = pointer.x - this.lastTouchPos.x;
-    this.lastTouchPos.x = pointer.x;
-    this.lastTouchPos.y = pointer.y;
+    const dx = px - this.lastTouchPos.x;
+    this.lastTouchPos.x = px;
+    this.lastTouchPos.y = py;
 
     if (this.activeTool === 'tool_scraper') {
       const targetAngle = Phaser.Math.Clamp(dx * 1.4, -34, 16);
@@ -727,6 +759,18 @@ export class RestoreScene extends Phaser.Scene {
 
       slotZone.on('pointerdown', () => {
         this.selectTool(t.id, t.icon, true);
+        // Визуально показываем выбранный инструмент над центром верстака на 0.45 сек
+        if (this.toolSprite && this.toolSprite.active) {
+          this.toolSprite.setPosition(this.centerX, this.centerY);
+          this.toolSprite.setAlpha(0.85);
+          this.tweens.killTweensOf(this.toolSprite);
+          this.tweens.add({
+            targets: this.toolSprite,
+            alpha: 0,
+            delay: 280,
+            duration: 180
+          });
+        }
       });
 
       this.traySlots.push({
@@ -778,10 +822,15 @@ export class RestoreScene extends Phaser.Scene {
 
     if (AudioManager.playCloth) AudioManager.playCloth();
 
+    // Страховочный таймер: гарантированно разрешает ввод через 350 мс даже при просадке FPS
+    this.time.delayedCall(350, () => {
+      this.isTaskTransition = false;
+    });
+
     this.tweens.add({
       targets: [this.cleanArt, this.dirtLayer],
       alpha: 1,
-      duration: 360,
+      duration: 280,
       ease: 'Quad.easeOut',
       onComplete: () => {
         this.isTaskTransition = false;
@@ -791,7 +840,7 @@ export class RestoreScene extends Phaser.Scene {
     this.tweens.add({
       targets: [this.artifactPedestal, this.artifactShadow],
       alpha: 0.85,
-      duration: 340
+      duration: 280
     });
   }
 
@@ -1279,6 +1328,7 @@ export class RestoreScene extends Phaser.Scene {
   startTask(taskIdx, animateLayer = true) {
     this.currentTaskIndex = taskIdx;
     this.isTaskTransition = false;
+    this.isPointerActive = false;
     this.activeDraggedShard = null;
     this.cleanedGrid.fill(0);
     this.cleanedScore = 0;
