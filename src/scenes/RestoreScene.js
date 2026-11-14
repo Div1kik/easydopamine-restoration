@@ -521,22 +521,15 @@ export class RestoreScene extends Phaser.Scene {
       if (this.textures.exists('workbench_bg_1')) {
         applyBgTexture('workbench_bg_1');
       }
+
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         applyBgTexture(activeSkin);
       });
-      this.load.once('loaderror', (file) => {
-        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
-          if (this.textures.exists('workbench_bg_1')) {
-            applyBgTexture('workbench_bg_1');
-          } else {
-            this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
-            this.load.once('filecomplete-image-workbench_bg_1', () => applyBgTexture('workbench_bg_1'));
-            this.load.start();
-          }
-        }
-      });
-      this.load.start();
+
+      if (!this.load.isLoading()) {
+        this.load.start();
+      }
     }
 
     const artW = this.artW || 260;
