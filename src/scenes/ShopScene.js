@@ -2,6 +2,7 @@ import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
+import { TextureLoader } from '../utils/TextureLoader.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -103,11 +104,9 @@ export class ShopScene extends Phaser.Scene {
     });
   }
 
-  // Фоновая загрузка текстуры верстака, чтобы при переходе на верстак не было задержек
   preloadWorkbenchInBackground(skinId) {
     if (!skinId || this.textures.exists(skinId)) return;
-    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
-    this.load.start();
+    TextureLoader.loadImage(this, skinId, `assets/workbenches/${skinId}.webp`);
   }
 
   updateHeaderBalance() {
@@ -249,7 +248,7 @@ export class ShopScene extends Phaser.Scene {
 
     if (this.activeTab === 'tools') {
       const upgrades = [
-        // СКРЕБОК (цепочка II -> III -> IV, ребаланс цен Tier IV)
+        // СКРЕБОК (цепочка II -> III -> IV)
         { key: 'tool_upg_scraper_2', toolType: 'scraper', tier: 2, title: 'Скребок II: Бронза', desc: 'Шире лезвие (+27% радиус)', price: 180 },
         { key: 'tool_upg_scraper_3', reqKey: 'tool_upg_scraper_2', reqLabel: 'НУЖЕН СКРЕБОК II', toolType: 'scraper', tier: 3, title: 'Скребок III: Дамаск', desc: 'Скол породы за 1 проход!', price: 620 },
         { key: 'tool_upg_scraper_4', reqKey: 'tool_upg_scraper_3', reqLabel: 'НУЖЕН СКРЕБОК III', toolType: 'scraper', tier: 4, title: 'Скребок IV: Алмазный', desc: 'Максимальный захват пласта', price: 2650 },
@@ -432,7 +431,7 @@ export class ShopScene extends Phaser.Scene {
     const cardW = width * 0.92;
     let curY = 8;
 
-    // 1. Сундук Искателя (1650 монет, интерактивное открытие по тапу)
+    // 1. Сундук Искателя (1650 монет, 4 уникальных верстака внутри, открытие по тапу)
     const chestH = 128;
     const chestCont = this.add.container(width / 2, curY + chestH / 2);
 
@@ -456,7 +455,7 @@ export class ShopScene extends Phaser.Scene {
     const chestDesc = this.add.text(
       -cardW / 2 + 102,
       -10,
-      `Редкие верстаки (шанс 12%), Лак Кинцуги или 750–1300 🪙\nГарант редкого верстака: ${pityCount}/10`,
+      `4 уникальных верстака (шанс 12%), Лак Кинцуги или 750–1300 🪙\nГарант эксклюзива: ${pityCount}/10`,
       {
         fontSize: '10.5px',
         fontFamily: FONT_UI,
@@ -643,7 +642,7 @@ export class ShopScene extends Phaser.Scene {
 
     curY += 10;
 
-    // 3. Интерьер мастерской (15 фонов верстака с ребалансом цен для лейтгейма)
+    // 3. Интерьер мастерской (отсортировано по эпохам и цене + 4 эксклюзива в сундуке)
     const wbTitle = this.add.text(width * 0.04, curY, '🏛 ИНТЕРЬЕР МАСТЕРСКОЙ (15 СТОЛОВ)', {
       fontSize: '13px',
       fontFamily: FONT_UI,
@@ -656,19 +655,19 @@ export class ShopScene extends Phaser.Scene {
 
     const workbenches = [
       { id: 'workbench_bg_1', title: 'Дубовый верстак ученика', price: 0 },
-      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 350 },
-      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 620 },
-      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 950 },
-      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1350 },
-      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 1850 },
-      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 2450 },
-      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 3200 },
-      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 3900 },
-      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 4400 },
+      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 320 },
+      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 680 },
+      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 1350 },
+      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1950 },
+      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 2800 },
+      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 4600 },
+      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 7500 },
+      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 11500 },
+      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 16000 },
+      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 22000 },
       { id: 'workbench_bg_11', title: 'Павильон Нефритового Дракона', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 4800 },
       { id: 'workbench_bg_13', title: 'Храм Золотого Скарабея', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 6500 },
+      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 0, lootboxOnly: true },
       { id: 'workbench_bg_15', title: 'Чертог Хранителя Вечности', price: 0, lootboxOnly: true }
     ];
 
@@ -783,6 +782,7 @@ export class ShopScene extends Phaser.Scene {
     const rareWorkbenches = [
       { id: 'workbench_bg_11', name: 'Павильон Нефритового Дракона' },
       { id: 'workbench_bg_13', name: 'Храм Золотого Скарабея' },
+      { id: 'workbench_bg_14', name: 'Королевская кузница' },
       { id: 'workbench_bg_15', name: 'Чертог Хранителя Вечности' }
     ];
 
