@@ -104,7 +104,9 @@ export class ShopScene extends Phaser.Scene {
   preloadWorkbenchInBackground(skinId) {
     if (!skinId || this.textures.exists(skinId)) return;
     this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
-    this.load.start();
+    if (!this.load.isLoading()) {
+      this.load.start();
+    }
   }
 
   updateHeaderBalance() {
