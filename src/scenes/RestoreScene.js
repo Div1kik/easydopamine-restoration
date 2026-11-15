@@ -1164,69 +1164,40 @@ export class RestoreScene extends Phaser.Scene {
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
-    // Базовая тёмная подложка
-    const fallbackBg = this.add.graphics().setDepth(0);
-    fallbackBg.fillStyle(0x0d0805, 1);
-    fallbackBg.fillRect(0, 0, width, height);
+    // Базовая тёмная подложка (как в MenuScene)
+    this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805).setDepth(0);
 
-    const placeBackground = (key) => {
+    // Отрисовка точно как в MenuScene.js (строки 19-22)
+    const drawBg = (key) => {
       if (!this.sys || !this.sys.isActive()) return;
       if (!this.textures.exists(key)) return;
-
       const tex = this.textures.get(key);
       if (!tex || tex.key === '__MISSING') return;
 
-      const cam = this.cameras.main;
-      const viewW = cam ? cam.width : width;
-      const viewH = cam ? cam.height : height;
-      const cx = cam ? cam.centerX : (width / 2);
-      const cy = cam ? cam.centerY : (height / 2);
-
-      if (!this.workbenchBgImg || !this.workbenchBgImg.active) {
-        this.workbenchBgImg = this.add.image(cx, cy, key)
-          .setOrigin(0.5, 0.5)
-          .setDepth(1);
-      } else {
-        this.workbenchBgImg.setTexture(key);
-        this.workbenchBgImg.setPosition(cx, cy);
+      if (this.workbenchBgImg && this.workbenchBgImg.active) {
+        this.workbenchBgImg.destroy();
       }
-
-      this.workbenchBgImg.setVisible(true);
-      this.workbenchBgImg.setAlpha(1);
-
-      const srcImg = tex.getSourceImage();
-      if (srcImg && srcImg.width > 0 && srcImg.height > 0) {
-        const scale = Math.max(viewW / srcImg.width, viewH / srcImg.height);
-        this.workbenchBgImg.setScale(scale);
+      const bg = this.add.image(width / 2, height / 2, key).setDepth(1);
+      if (bg.width > 0 && bg.height > 0) {
+        bg.setScale(Math.max(width / bg.width, height / bg.height));
       } else {
-        this.workbenchBgImg.setDisplaySize(viewW, viewH);
+        bg.setDisplaySize(width, height);
       }
+      this.workbenchBgImg = bg;
     };
 
-    const loadNativeAndApply = (key, fallbackKey = null) => {
-      if (this.textures.exists(key) && this.textures.get(key).key !== '__MISSING') {
-        placeBackground(key);
-        return;
+    if (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING') {
+      drawBg(activeSkin);
+    } else {
+      if (this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') {
+        drawBg('workbench_bg_1');
       }
-
-      const img = new Image();
-      img.onload = () => {
-        if (!this.sys || !this.sys.isActive()) return;
-        if (!this.textures.exists(key)) {
-          this.textures.addImage(key, img);
-        }
-        placeBackground(key);
-      };
-      img.onerror = () => {
-        console.error(`[WorkbenchBG] Не удалось загрузить: assets/workbenches/${key}.webp`);
-        if (fallbackKey && fallbackKey !== key) {
-          loadNativeAndApply(fallbackKey, null);
-        }
-      };
-      img.src = `assets/workbenches/${key}.webp`;
-    };
-
-    loadNativeAndApply(activeSkin, 'workbench_bg_1');
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+      this.load.once(`filecomplete-image-${activeSkin}`, () => {
+        drawBg(activeSkin);
+      });
+      this.load.start();
+    }
 
     // Полупрозрачный коврик под артефакт поверх стола
     const artW = this.artW || 260;
