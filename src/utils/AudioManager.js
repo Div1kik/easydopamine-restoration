@@ -10,10 +10,11 @@ class AudioManagerClass {
     this.pendingTrack = null;
     this.isMusicPlaying = false;
     this.wasPlayingBeforeHide = false;
+    this.isAdPaused = false;
 
     const unlock = () => {
       this.unlockAudio();
-      if (this.pendingTrack && !this.isMusicPlaying && !this.isMusicMuted()) {
+      if (this.pendingTrack && !this.isMusicPlaying && !this.isMusicMuted() && !this.isAdPaused) {
         this.playEraMusic(this.pendingTrack);
       }
     };
@@ -21,28 +22,57 @@ class AudioManagerClass {
     window.addEventListener('pointerdown', unlock, { once: true });
     window.addEventListener('touchstart', unlock, { once: true });
 
-    const handleVisibility = () => {
-      if (document.hidden) {
-        if (this.isMusicPlaying) {
-          this.wasPlayingBeforeHide = true;
-          this.stopMusic();
-        }
-        if (this.ctx && this.ctx.state === 'running') {
-          this.ctx.suspend().catch(() => {});
-        }
-      } else {
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume().catch(() => {});
-        }
-        if (this.wasPlayingBeforeHide && !this.isMusicMuted()) {
-          this.wasPlayingBeforeHide = false;
-          this.playEraMusic(this.currentTrack || this.pendingTrack || 'menu');
-        }
+    const pauseAudio = () => {
+      if (this.isMusicPlaying) {
+        this.wasPlayingBeforeHide = true;
+        this.stopMusic();
+      }
+      if (this.ctx && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {});
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('pagehide', handleVisibility);
+    const resumeAudio = () => {
+      if (document.hidden || this.isAdPaused) return;
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      if (this.wasPlayingBeforeHide && !this.isMusicMuted()) {
+        this.wasPlayingBeforeHide = false;
+        this.playEraMusic(this.currentTrack || this.pendingTrack || 'menu');
+      }
+    };
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseAudio();
+      else resumeAudio();
+    });
+    window.addEventListener('pagehide', pauseAudio);
+    window.addEventListener('blur', pauseAudio);
+    window.addEventListener('focus', resumeAudio);
+  }
+
+  suspendForAd() {
+    this.isAdPaused = true;
+    if (this.isMusicPlaying) {
+      this.wasPlayingBeforeHide = true;
+      this.stopMusic();
+    }
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend().catch(() => {});
+    }
+  }
+
+  resumeAfterAd() {
+    this.isAdPaused = false;
+    if (document.hidden) return;
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    if (this.wasPlayingBeforeHide && !this.isMusicMuted()) {
+      this.wasPlayingBeforeHide = false;
+      this.playEraMusic(this.currentTrack || this.pendingTrack || 'menu');
+    }
   }
 
   init() {
@@ -68,7 +98,7 @@ class AudioManagerClass {
 
   unlockAudio() {
     this.init();
-    if (this.ctx && this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended' && !this.isAdPaused && !document.hidden) {
       this.ctx.resume().catch(() => {});
     }
   }
@@ -89,7 +119,7 @@ class AudioManagerClass {
     if (this.musicGain && this.ctx) {
       this.musicGain.gain.setValueAtTime(willBeMuted ? 0.0 : 0.28, this.ctx.currentTime);
     }
-    if (!willBeMuted && !this.isMusicPlaying && this.pendingTrack) {
+    if (!willBeMuted && !this.isMusicPlaying && this.pendingTrack && !this.isAdPaused) {
       this.playEraMusic(this.pendingTrack);
     } else if (willBeMuted && this.isMusicPlaying) {
       this.stopMusic();
@@ -150,31 +180,53 @@ class AudioManagerClass {
   }
 
   playScrub(tier = 1) {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
-    if (!this.ctx || !this.throttle('scraper', 85)) return;
+    if (!this.ctx || !this.throttle('scraper', 90)) return;
 
     const t = this.ctx.currentTime;
-    const pm = this.getToolPitchMult();
+    const dur = 0.065;
+    const noiseBuffer = this.createNoiseBuffer(dur);
+
+    if (noiseBuffer) {
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+
+      const bpf = this.ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      const centerFreq = 500 + Math.min(tier, 4) * 35;
+      bpf.frequency.setValueAtTime(centerFreq, t);
+      bpf.Q.setValueAtTime(2.4, t);
+
+      const nGain = this.ctx.createGain();
+      nGain.gain.setValueAtTime(0.001, t);
+      nGain.gain.linearRampToValueAtTime(0.18, t + 0.01);
+      nGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      noise.connect(bpf);
+      bpf.connect(nGain);
+      nGain.connect(this.sfxGain);
+      noise.start(t);
+      noise.stop(t + dur);
+    }
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
-    osc.type = tier >= 4 ? 'sawtooth' : 'triangle';
-    const baseFreq = (tier >= 4 ? 1200 : (tier === 3 ? 720 : (tier === 2 ? 480 : 420))) * pm;
-    osc.frequency.setValueAtTime(baseFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.45, t + 0.075);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(155, t);
+    osc.frequency.exponentialRampToValueAtTime(75, t + 0.045);
 
-    gain.gain.setValueAtTime(0.20, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.075);
+    gain.gain.setValueAtTime(0.10, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
 
     osc.connect(gain);
     gain.connect(this.sfxGain);
     osc.start(t);
-    osc.stop(t + 0.075);
+    osc.stop(t + 0.045);
   }
 
   playBrush(tier = 1) {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('brush', 90)) return;
 
@@ -204,7 +256,7 @@ class AudioManagerClass {
   }
 
   playSpray(tier = 1) {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('spray', 100)) return;
 
@@ -234,7 +286,7 @@ class AudioManagerClass {
   }
 
   playCloth(tier = 1) {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('cloth', 90)) return;
 
@@ -264,7 +316,7 @@ class AudioManagerClass {
   }
 
   playShopBell() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -294,7 +346,7 @@ class AudioManagerClass {
   }
 
   playRub() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx || !this.throttle('rub', 70)) return;
 
@@ -315,7 +367,7 @@ class AudioManagerClass {
   }
 
   playCoin() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -342,7 +394,7 @@ class AudioManagerClass {
   }
 
   playTaskChime(step = 0) {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -365,7 +417,7 @@ class AudioManagerClass {
   }
 
   playShine() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -390,7 +442,7 @@ class AudioManagerClass {
   }
 
   playClick() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -411,7 +463,7 @@ class AudioManagerClass {
   }
 
   playBreakSnap() {
-    if (this.isSfxDisabled()) return;
+    if (this.isSfxDisabled() || this.isAdPaused) return;
     this.unlockAudio();
     if (!this.ctx) return;
 
@@ -439,7 +491,7 @@ class AudioManagerClass {
     this.unlockAudio();
     if (!this.ctx) return;
     this.pendingTrack = era;
-    if (this.isMusicMuted()) return;
+    if (this.isMusicMuted() || this.isAdPaused) return;
 
     if (this.currentTrack === era && this.isMusicPlaying) return;
 
@@ -462,7 +514,7 @@ class AudioManagerClass {
     this.isMusicPlaying = true;
 
     const playNextNote = () => {
-      if (!this.isMusicPlaying || this.isMusicMuted()) return;
+      if (!this.isMusicPlaying || this.isMusicMuted() || this.isAdPaused) return;
 
       const t = this.ctx.currentTime;
       const freq = notes[step % notes.length];
