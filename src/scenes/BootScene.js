@@ -14,12 +14,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
     this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
-    // Грузим только активный скин верстака, чтобы старт игры был мгновенным
-    const activeSkin = Storage.getActiveWorkbenchSkin
+    let activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
-      : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
-    this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+      : 'workbench_bg_1';
+    if (!activeSkin || !String(activeSkin).startsWith('workbench_bg_')) {
+      activeSkin = 'workbench_bg_1';
+    }
 
+    this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
     if (activeSkin !== 'workbench_bg_1') {
       this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
     }
