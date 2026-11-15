@@ -1167,7 +1167,6 @@ export class RestoreScene extends Phaser.Scene {
     // Базовая тёмная подложка (как в MenuScene)
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805).setDepth(0);
 
-    // Отрисовка точно как в MenuScene.js (строки 19-22)
     const drawBg = (key) => {
       if (!this.sys || !this.sys.isActive()) return;
       if (!this.textures.exists(key)) return;
@@ -1199,7 +1198,7 @@ export class RestoreScene extends Phaser.Scene {
       this.load.start();
     }
 
-    // Полупрозрачный коврик под артефакт поверх стола
+    // Декоративная рамка коврика с прозрачным центром (чтобы фон верстака был полностью виден)
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
@@ -1216,20 +1215,17 @@ export class RestoreScene extends Phaser.Scene {
     const halfH = matH / 2;
 
     const palettes = {
-      1: { fill: 0x261a11, border: 0x6e472b, line: 0x8c5a37 },
-      2: { fill: 0x3b2615, border: 0x9c663a, line: 0xc2864e },
-      3: { fill: 0x16382b, border: 0xc89d54, line: 0xe2b866 },
-      4: { fill: 0x291d14, border: 0xfacc15, line: 0xfef08a }
+      1: { border: 0x6e472b, line: 0x8c5a37 },
+      2: { border: 0x9c663a, line: 0xc2864e },
+      3: { border: 0xc89d54, line: 0xe2b866 },
+      4: { border: 0xfacc15, line: 0xfef08a }
     };
     const palette = palettes[tier] || palettes[1];
-
-    matGfx.fillStyle(palette.fill, 0.12);
-    matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(2, palette.border, 0.85);
     matGfx.strokeRoundedRect(-halfW, -halfH, matW, matH, 16);
 
-    matGfx.lineStyle(1, palette.line, 0.3);
+    matGfx.lineStyle(1, palette.line, 0.35);
     matGfx.strokeRoundedRect(-halfW + 5, -halfH + 5, matW - 10, matH - 10, 12);
 
     const rivets = [
