@@ -19,7 +19,6 @@ export class RestoreScene extends Phaser.Scene {
 
     YandexSDK.notifyGameplayStart();
 
-    // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
     this._tempTextureKeys = [];
     this.workbenchBgImg = null;
 
@@ -119,7 +118,6 @@ export class RestoreScene extends Phaser.Scene {
     this.centerX = Math.floor(width / 2);
     this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
 
-    // Строгая пропорция 4:5 (под холст 640x800)
     const maxArtH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 320));
     const maxArtW = Math.floor(Math.min(width * 0.76, 260));
     if (maxArtH * 0.8 <= maxArtW) {
@@ -180,7 +178,6 @@ export class RestoreScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Кнопка ? (Обучение / Справочник)
     const helpX = width - rightMargin - 66 - 6 - 16;
     const helpBtn = this.add.circle(helpX, systemTopPad + 23, 16, 0x2b1d12)
       .setStrokeStyle(1.3, 0xfacc15, 0.9)
@@ -360,7 +357,7 @@ export class RestoreScene extends Phaser.Scene {
     this.startTask(0, false);
     this.playMaterializeSequence();
 
-    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД С ЗАЩИТОЙ ОТ НУЛЕВЫХ КООРДИНАТ
+    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД
     const isValidWorkspacePoint = (pointer) => {
       if (!pointer) return false;
       const px = pointer.x;
@@ -532,7 +529,6 @@ export class RestoreScene extends Phaser.Scene {
     this.input.on('pointerout', stopPointer);
   }
 
-  // Справочник реставратора по кнопке ?
   openGuideModal(width, height, textRes, FONT_UI) {
     if (this.isGuideOpen) return;
     this.isGuideOpen = true;
@@ -1161,7 +1157,6 @@ export class RestoreScene extends Phaser.Scene {
   }
 
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
-    // Сбрасываем старую ссылку на случай перезапуска сцены
     this.workbenchBgImg = null;
 
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
@@ -1169,14 +1164,14 @@ export class RestoreScene extends Phaser.Scene {
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
-    // Тёмная подложка-страховка
+    // Базовая тёмная подложка
     const fallbackBg = this.add.graphics().setDepth(0);
     fallbackBg.fillStyle(0x0d0805, 1);
     fallbackBg.fillRect(0, 0, width, height);
 
-    const applyBgTexture = (key) => {
-      if (!this.scene || !this.scene.isActive()) return;
-      if (!key || !this.textures.exists(key)) return;
+    const placeBackground = (key) => {
+      if (!this.sys || !this.sys.isActive()) return;
+      if (!this.textures.exists(key)) return;
 
       const tex = this.textures.get(key);
       if (!tex || tex.key === '__MISSING') return;
@@ -1195,31 +1190,39 @@ export class RestoreScene extends Phaser.Scene {
 
       const srcImg = tex.getSourceImage();
       if (srcImg && srcImg.width > 0 && srcImg.height > 0) {
-        const scaleX = width / srcImg.width;
-        const scaleY = height / srcImg.height;
-        this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
+        const scale = Math.max(width / srcImg.width, height / srcImg.height);
+        this.workbenchBgImg.setScale(scale);
       } else {
         this.workbenchBgImg.setDisplaySize(width, height);
       }
     };
 
-    if (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING') {
-      applyBgTexture(activeSkin);
-    } else {
-      if (this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') {
-        applyBgTexture('workbench_bg_1');
+    const loadNativeAndApply = (key, fallbackKey = null) => {
+      if (this.textures.exists(key) && this.textures.get(key).key !== '__MISSING') {
+        placeBackground(key);
+        return;
       }
-      const eventName = `filecomplete-image-${activeSkin}`;
-      this.load.off(eventName);
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      this.load.once(eventName, () => {
-        applyBgTexture(activeSkin);
-      });
-      if (!this.load.isLoading()) {
-        this.load.start();
-      }
-    }
 
+      const img = new Image();
+      img.onload = () => {
+        if (!this.sys || !this.sys.isActive()) return;
+        if (!this.textures.exists(key)) {
+          this.textures.addImage(key, img);
+        }
+        placeBackground(key);
+      };
+      img.onerror = () => {
+        console.error(`[WorkbenchBG] Не удалось загрузить: assets/workbenches/${key}.webp`);
+        if (fallbackKey && fallbackKey !== key) {
+          loadNativeAndApply(fallbackKey, null);
+        }
+      };
+      img.src = `assets/workbenches/${key}.webp`;
+    };
+
+    loadNativeAndApply(activeSkin, 'workbench_bg_1');
+
+    // Полупрозрачный коврик под артефакт поверх стола
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
@@ -1243,7 +1246,6 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    // Полупрозрачный коврик, чтобы текстура стола красиво просвечивала под ним
     matGfx.fillStyle(palette.fill, 0.12);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
