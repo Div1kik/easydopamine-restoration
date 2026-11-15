@@ -24,7 +24,7 @@ export class MenuScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
     }
 
-    this.lazyPreloadOwnedWorkbenches();
+    
 
     // Верхние кнопки: Звук, Музыка и Обучение по желанию (?)
     this.createTopUtilityButtons(width, height, textRes, FONT_UI);
