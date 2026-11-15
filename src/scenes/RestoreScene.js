@@ -9,22 +9,6 @@ export class RestoreScene extends Phaser.Scene {
     super('RestoreScene');
   }
 
-  preload() {
-    let activeSkin = Storage.getActiveWorkbenchSkin
-      ? Storage.getActiveWorkbenchSkin()
-      : 'workbench_bg_1';
-    if (!activeSkin || !String(activeSkin).startsWith('workbench_bg_')) {
-      activeSkin = 'workbench_bg_1';
-    }
-
-    if (!this.textures.exists(activeSkin) || this.textures.get(activeSkin).key === '__MISSING') {
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-    }
-    if (!this.textures.exists('workbench_bg_1') || this.textures.get('workbench_bg_1').key === '__MISSING') {
-      this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
-    }
-  }
-
   create(data) {
     const { width, height } = this.scale;
     const dpr = 3;
@@ -1186,21 +1170,41 @@ export class RestoreScene extends Phaser.Scene {
     // Базовая тёмная подложка
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805).setDepth(0);
 
-    const keyToUse = (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING')
-      ? activeSkin
-      : ((this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') ? 'workbench_bg_1' : null);
+    const applyBgTexture = (key) => {
+      if (!this.sys || !this.sys.isActive()) return;
+      if (!this.textures.exists(key)) return;
+      const tex = this.textures.get(key);
+      if (!tex || tex.key === '__MISSING') return;
 
-    if (keyToUse) {
-      const bg = this.add.image(width / 2, height / 2, keyToUse).setDepth(1);
+      if (this.workbenchBgImg && this.workbenchBgImg.active) {
+        this.workbenchBgImg.destroy();
+      }
+      const bg = this.add.image(width / 2, height / 2, key).setDepth(1);
       if (bg.width > 0 && bg.height > 0) {
         bg.setScale(Math.max(width / bg.width, height / bg.height));
       } else {
         bg.setDisplaySize(width, height);
       }
       this.workbenchBgImg = bg;
+    };
+
+    const isSkinReady = this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING';
+
+    if (isSkinReady) {
+      applyBgTexture(activeSkin);
+    } else {
+      if (this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') {
+        applyBgTexture('workbench_bg_1');
+      }
+
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+      this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+        applyBgTexture(activeSkin);
+      });
+      this.load.start();
     }
 
-    // Декоративная рамка коврика с прозрачным центром (весь рисунок стола полностью виден)
+    // Декоративная рамка коврика с прозрачным центром
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
