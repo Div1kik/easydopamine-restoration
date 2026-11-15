@@ -195,27 +195,5 @@ export class BootScene extends Phaser.Scene {
       ctx.arc(12, 12, 10, 0, Math.PI * 2);
       ctx.fill();
     });
-
-    const W = 640;
-    const H = 800;
-    const cx = 320;
-    const cy = 400;
-
-    ARTIFACT_TEMPLATES.forEach((art, index) => {
-      make(art.textureKey, W, H, (ctx) => {
-        const hue = (index * 37) % 360;
-        const grad = ctx.createRadialGradient(cx, cy, 30, cx, cy, 200);
-        grad.addColorStop(0, `hsl(${hue}, 65%, 65%)`);
-        grad.addColorStop(0.6, `hsl(${hue}, 55%, 42%)`);
-        grad.addColorStop(1, `hsl(${hue}, 45%, 22%)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(cx - 140, cy - 190, 280, 380, 42);
-        ctx.fill();
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 10;
-        ctx.stroke();
-      });
-    });
   }
 }
