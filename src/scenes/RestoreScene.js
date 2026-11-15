@@ -317,12 +317,36 @@ export class RestoreScene extends Phaser.Scene {
       .setStrokeStyle(1.5, 0xc89d54, 0.75)
       .setDepth(6);
 
-    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
+    const texKey = this.artifactData.textureKey || 'art_egypt_scarab';
     this.currentArtTexKey = texKey;
 
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
       .setDisplaySize(this.artW, this.artH)
       .setDepth(7);
+
+    if (!this.artifactData._webpLoaded) {
+      const artImg = new Image();
+      artImg.onload = () => {
+        if (artImg.naturalWidth > 0 && this.scene && this.scene.isActive()) {
+          if (this.textures.exists(texKey)) this.textures.remove(texKey);
+          const cvs = this.textures.createCanvas(texKey, artImg.naturalWidth, artImg.naturalHeight);
+          cvs.getContext().drawImage(artImg, 0, 0);
+          cvs.refresh();
+          this.artifactData._webpLoaded = true;
+          this._artSnapshotCanvas = null;
+          if (this.cleanArt && this.cleanArt.active) {
+            this.cleanArt.setTexture(texKey).setDisplaySize(this.artW, this.artH);
+          }
+          this.buildValidCellsMask(texKey);
+          const curTask = this.artifactData.tasks[this.currentTaskIndex];
+          if (curTask && curTask.type !== 'break_and_assemble' && this.dirtLayer) {
+            this.dirtLayer.clear();
+            this.dirtLayer.draw(this.buildMaskedDirtCanvasTexture(curTask.requiredTool || 'tool_scraper'), 0, 0);
+          }
+        }
+      };
+      artImg.src = `assets/artifacts/${texKey}.webp`;
+    }
 
     this.breakHoleGfx = this.add.graphics().setDepth(7.5);
 
@@ -1157,7 +1181,7 @@ export class RestoreScene extends Phaser.Scene {
     return tempKey;
   }
 
-    renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -1182,30 +1206,35 @@ export class RestoreScene extends Phaser.Scene {
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
     };
 
+    const loadWebGLBackdrop = (skinKey, isFallback = false) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > 0 && this.textures) {
+          if (this.textures.exists(skinKey)) {
+            this.textures.remove(skinKey);
+          }
+          const cvs = this.textures.createCanvas(skinKey, img.naturalWidth, img.naturalHeight);
+          const ctx = cvs.getContext();
+          ctx.drawImage(img, 0, 0);
+          cvs.refresh();
+          applyBgTexture(skinKey);
+        }
+      };
+      img.onerror = () => {
+        if (!isFallback && skinKey !== 'workbench_bg_1') {
+          loadWebGLBackdrop('workbench_bg_1', true);
+        }
+      };
+      img.src = `assets/workbenches/${skinKey}.webp`;
+    };
+
     if (isTextureValid(activeSkin)) {
       applyBgTexture(activeSkin);
     } else {
-      if (this.textures.exists(activeSkin)) {
-        this.textures.remove(activeSkin);
+      if (isTextureValid('workbench_bg_1')) {
+        applyBgTexture('workbench_bg_1');
       }
-
-      // Сбрасываем загрузчик сцены, иначе Phaser 3.80 игнорирует start() после завершения create()
-      this.load.reset();
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      this.load.once(`filecomplete-image-${activeSkin}`, () => {
-        applyBgTexture(activeSkin);
-      });
-      this.load.once('loaderror', (file) => {
-        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
-          this.load.reset();
-          this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
-          this.load.once('filecomplete-image-workbench_bg_1', () => {
-            applyBgTexture('workbench_bg_1');
-          });
-          this.load.start();
-        }
-      });
-      this.load.start();
+      loadWebGLBackdrop(activeSkin, false);
     }
 
     const artW = this.artW || 260;
