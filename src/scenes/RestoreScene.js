@@ -1163,6 +1163,7 @@ export class RestoreScene extends Phaser.Scene {
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
+    // Тёмная подложка-страховка
     const fallbackBg = this.add.graphics().setDepth(0);
     fallbackBg.fillStyle(0x0d0805, 1);
     fallbackBg.fillRect(0, 0, width, height);
@@ -1175,7 +1176,12 @@ export class RestoreScene extends Phaser.Scene {
 
     const applyBgTexture = (key) => {
       if (!this.scene || !this.scene.isActive() || !isTextureReady(key)) return;
+      
+      const tex = this.textures.get(key);
+      const srcImg = tex.getSourceImage();
+      
       if (!this.workbenchBgImg) {
+        // Ставим строго по центру логического экрана (480x800), маппинг зума подхватит камера
         this.workbenchBgImg = this.add.image(width / 2, height / 2, key)
           .setOrigin(0.5, 0.5)
           .setDepth(1);
@@ -1183,9 +1189,14 @@ export class RestoreScene extends Phaser.Scene {
         this.workbenchBgImg.setTexture(key);
         this.workbenchBgImg.setPosition(width / 2, height / 2);
       }
+      
       this.workbenchBgImg.setVisible(true);
       this.workbenchBgImg.setAlpha(1);
-      this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
+
+      // Растягиваем на весь экран с сохранением пропорций (Cover)
+      const scaleX = width / srcImg.width;
+      const scaleY = height / srcImg.height;
+      this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
     };
 
     if (isTextureReady(activeSkin)) {
@@ -1224,7 +1235,8 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    matGfx.fillStyle(palette.fill, 0.08);
+    // Делаем коврик полупрозрачным, чтобы текстура стола просвечивала под ним
+    matGfx.fillStyle(palette.fill, 0.12);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(2, palette.border, 0.85);
@@ -1246,7 +1258,6 @@ export class RestoreScene extends Phaser.Scene {
 
     this.matContainer.add(matGfx);
   }
-
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
