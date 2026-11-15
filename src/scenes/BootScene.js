@@ -19,6 +19,15 @@ export class BootScene extends Phaser.Scene {
       color: '#fdf6e3'
     }).setOrigin(0.5);
 
+    this.load.maxParallelDownloads = 4;
+
+    const retriedKeys = new Set();
+    this.load.on('loaderror', (fileObj) => {
+      if (!fileObj || !fileObj.key || retriedKeys.has(fileObj.key)) return;
+      retriedKeys.add(fileObj.key);
+      this.load.image(fileObj.key, fileObj.url);
+    });
+
     this.load.on('progress', (val) => {
       barFill.width = Math.max(4, barW * val);
     });
@@ -29,7 +38,6 @@ export class BootScene extends Phaser.Scene {
       loadTxt.destroy();
     });
 
-    // 5 фонов сцен в лёгком .webp
     this.load.image('menu_bg', 'assets/backgrounds/menu_bg.webp');
     this.load.image('museum_bg', 'assets/backgrounds/museum_bg.webp');
     this.load.image('shop_bg', 'assets/backgrounds/shop_bg.webp');
