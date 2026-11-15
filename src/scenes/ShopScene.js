@@ -102,11 +102,17 @@ export class ShopScene extends Phaser.Scene {
   }
 
   preloadWorkbenchInBackground(skinId) {
-    if (!skinId || this.textures.exists(skinId)) return;
-    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
-    if (!this.load.isLoading()) {
-      this.load.start();
+    if (!skinId) return;
+    if (this.textures.exists(skinId)) {
+      const tex = this.textures.get(skinId);
+      const src = tex && tex.getSourceImage ? tex.getSourceImage() : null;
+      if (src && src.width > 1 && tex.key !== '__MISSING') return;
+      this.textures.remove(skinId);
     }
+
+    this.load.reset();
+    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
+    this.load.start();
   }
 
   updateHeaderBalance() {
