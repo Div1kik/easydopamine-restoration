@@ -1,72 +1,1160 @@
+import * as ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
-import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
-import * as ToolArtModule from '../utils/ToolArt.js';
-
-const ToolArt = ToolArtModule.ToolArt || ToolArtModule.default || ToolArtModule;
+import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
     super('RestoreScene');
   }
 
-  init(data) {
-    this.regionId = (data && data.regionId) || 'egypt';
-    this.templateId = (data && data.templateId) || null;
-    this.contract = (data && data.contract) || null;
+  create(data) {
+    const { width, height } = this.scale;
+    const dpr = 3;
+    this.dpr = dpr;
+
+    const FONT_UI = '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    this.FONT_UI = FONT_UI;
+
+    YandexSDK.notifyGameplayStart();
+
+    // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
+    this._tempTextureKeys = [];
+    this.events.once('shutdown', () => {
+      this.isPointerActive = false;
+      this.activeDraggedShard = null;
+      if (this.dirtLayer) {
+        this.dirtLayer.destroy();
+        this.dirtLayer = null;
+      }
+      if (this.particles) {
+        this.particles.destroy();
+        this.particles = null;
+      }
+      if (this._tempTextureKeys) {
+        this._tempTextureKeys.forEach((k) => {
+          if (this.textures.exists(k)) {
+            this.textures.remove(k);
+          }
+        });
+        this._tempTextureKeys = [];
+      }
+      this._artSnapshotCanvas = null;
+      this._artSnapshotKey = null;
+    });
+
+    // 1. ДАННЫЕ И СЕССИЯ
+    this.activeContract = (data && data.contract) ? data.contract : null;
+
+    const history = Storage.getRestoreHistory ? Storage.getRestoreHistory() : [];
+    let reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
+    let reqTemplateId = (data && data.templateId) ? data.templateId : null;
+
+    if (!reqTemplateId) {
+      const saved = Storage.getActiveSession ? Storage.getActiveSession() : null;
+      if (saved && saved.templateId) {
+        reqRegion = saved.regionId;
+        reqTemplateId = saved.templateId;
+      }
+    }
+
+    if (typeof ArtifactModels.generateArtifactOrder === 'function') {
+      this.artifactData = ArtifactModels.generateArtifactOrder(reqRegion, history, reqTemplateId);
+    } else {
+      const templates = ArtifactModels.ARTIFACT_TEMPLATES || [];
+      const found = templates.find((t) => t.id === reqTemplateId) || templates[0];
+      this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
+    }
+
+    this.isDuplicate = history.some((item) => item.templateId === this.artifactData.id);
+    if (this.isDuplicate && this.activeContract) {
+      this.isDuplicate = false;
+    }
+
+    if (this.activeContract) {
+      this.artifactData.marketValue = this.activeContract.rewardCoins;
+    } else if (this.isDuplicate) {
+      this.artifactData.marketValue = Math.round((this.artifactData.marketValue || 100) * 0.65);
+    }
+
+    if (Storage.setActiveSession) {
+      Storage.setActiveSession(this.artifactData.regionId || reqRegion, this.artifactData.id);
+    }
+
+    if (AudioManager.playEraMusic) {
+      AudioManager.playEraMusic(this.artifactData.regionId || 'egypt');
+    }
+
+    this.currentTaskIndex = 0;
+    this.lastTouchPos = null;
+    this.activeTool = null;
+    this.isTaskTransition = false;
+    this.isPointerActive = false;
+    this.isGuideOpen = false;
+    this.mistakesCount = 0;
+    this.isKintsugiMode = false;
+    this.hasKintsugiMastery = false;
+    this.shardsList = [];
+    this.activeDraggedShard = null;
+    this._artSnapshotCanvas = null;
+    this._artSnapshotKey = null;
+
+    this.generateDetailedToolTextures();
+
+    // 2. БЕЗОПАСНАЯ ГЕОМЕТРИЯ ЭКРАНА
+    const systemTopPad = 6;
+    const topBarHeight = 46;
+    const infoPanelHeight = 86;
+    const workspaceTop = systemTopPad + topBarHeight + infoPanelHeight;
+
+    const trayHeight = 94;
+    const trayY = height - trayHeight / 2 - 12;
+    const trayTopLimit = trayY - trayHeight / 2;
+
+    const workspaceAvailableHeight = trayTopLimit - workspaceTop;
+    this.centerX = Math.floor(width / 2);
+    this.centerY = Math.floor(workspaceTop + workspaceAvailableHeight / 2);
+
+    // Строгая пропорция 4:5 (под холст 640x800)
+    const maxArtH = Math.floor(Math.min(workspaceAvailableHeight * 0.78, 320));
+    const maxArtW = Math.floor(Math.min(width * 0.76, 260));
+    if (maxArtH * 0.8 <= maxArtW) {
+      this.artH = maxArtH;
+      this.artW = Math.floor(maxArtH * 0.8);
+    } else {
+      this.artW = maxArtW;
+      this.artH = Math.floor(maxArtW / 0.8);
+    }
+
+    this.topLeftX = Math.floor(this.centerX - this.artW / 2);
+    this.topLeftY = Math.floor(this.centerY - this.artH / 2);
+
+    this.renderWorkbenchBackdrop(width, height, workspaceTop, trayTopLimit);
+
+    // 3. ВЕРХНИЙ БАР
+    const topBarGfx = this.add.graphics().setDepth(200);
+    topBarGfx.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.94);
+    topBarGfx.fillRect(0, systemTopPad, width, topBarHeight);
+    topBarGfx.lineStyle(1, 0xc89d54, 0.55);
+    topBarGfx.lineBetween(0, systemTopPad + topBarHeight, width, systemTopPad + topBarHeight);
+
+    const coins = Storage.getCoins();
+    this.coinsText = this.add.text(16, systemTopPad + 23, `${coins} 🪙`, {
+      fontSize: '13.5px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5).setDepth(205);
+
+    const btnSize = 34;
+    const rightMargin = 14;
+
+    const menuBtnGfx = this.add.graphics().setDepth(204);
+    menuBtnGfx.fillGradientStyle(0x332215, 0x332215, 0x1e130b, 0x1e130b, 1);
+    menuBtnGfx.fillRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
+    menuBtnGfx.lineStyle(1.2, 0xc89d54, 0.9);
+    menuBtnGfx.strokeRoundedRect(width - rightMargin - 66, systemTopPad + 6, 66, btnSize, 8);
+
+    const menuBtn = this.add.zone(width - rightMargin - 33, systemTopPad + 23, 66, btnSize)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(206);
+
+    this.add.text(width - rightMargin - 33, systemTopPad + 23, 'Меню', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(205);
+
+    menuBtn.on('pointerdown', () => {
+      if (this.isGuideOpen) return;
+      YandexSDK.notifyGameplayStop();
+      if (AudioManager.stopMusic) AudioManager.stopMusic();
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('MenuScene');
+    });
+
+    // Кнопка ? (Обучение / Справочник)
+    const helpX = width - rightMargin - 66 - 6 - 16;
+    const helpBtn = this.add.circle(helpX, systemTopPad + 23, 16, 0x2b1d12)
+      .setStrokeStyle(1.3, 0xfacc15, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(205);
+
+    this.add.text(helpX, systemTopPad + 23, '?', {
+      fontSize: '14px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(206);
+
+    helpBtn.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.openGuideModal(width, height, dpr, FONT_UI);
+    });
+
+    const musicX = helpX - btnSize - 4;
+    const musicBtn = this.add.circle(musicX, systemTopPad + 23, 16, AudioManager.isMusicOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.3, AudioManager.isMusicOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(205);
+
+    const musicIcon = this.add.text(musicX, systemTopPad + 23, AudioManager.isMusicOn() ? '🎵' : '🔇', {
+      fontSize: '13px',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(206);
+
+    musicBtn.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      if (this.isGuideOpen) return;
+      const state = AudioManager.toggleMusic();
+      musicBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      musicBtn.setStrokeStyle(1.3, state ? 0xc89d54 : 0x7f1d1d, 0.9);
+      musicIcon.setText(state ? '🎵' : '🔇');
+      if (AudioManager.playClick) AudioManager.playClick();
+    });
+
+    const sfxX = musicX - btnSize - 4;
+    const sfxBtn = this.add.circle(sfxX, systemTopPad + 23, 16, AudioManager.isSfxOn() ? 0x2b1d12 : 0x160f0a)
+      .setStrokeStyle(1.3, AudioManager.isSfxOn() ? 0xc89d54 : 0x7f1d1d, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(205);
+
+    const sfxIcon = this.add.text(sfxX, systemTopPad + 23, AudioManager.isSfxOn() ? '🔊' : '🔈', {
+      fontSize: '13px',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(206);
+
+    sfxBtn.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
+      if (this.isGuideOpen) return;
+      const state = AudioManager.toggleSfx();
+      sfxBtn.setFillStyle(state ? 0x2b1d12 : 0x160f0a);
+      sfxBtn.setStrokeStyle(1.3, state ? 0xc89d54 : 0x7f1d1d, 0.9);
+      sfxIcon.setText(state ? '🔊' : '🔈');
+      if (AudioManager.playClick) AudioManager.playClick();
+    });
+
+    // 4. ИНФОРМАЦИОННАЯ ПЛАШКА ЭТАПА
+    const artInfoCont = this.add.container(0, systemTopPad + 46).setDepth(190);
+
+    const infoPanelGfx = this.add.graphics();
+    infoPanelGfx.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.92);
+    infoPanelGfx.fillRect(0, 0, width, infoPanelHeight);
+    infoPanelGfx.lineStyle(1.2, 0xc89d54, 0.55);
+    infoPanelGfx.lineBetween(0, infoPanelHeight, width, infoPanelHeight);
+    artInfoCont.add(infoPanelGfx);
+
+    const regionNamesMap = {
+      egypt: 'Древний Египет',
+      antique: 'Античность',
+      europe: 'Европа',
+      japan: 'Япония',
+      aztec: 'Ацтеки',
+      vikings: 'Викинги',
+      renaissance: 'Ренессанс'
+    };
+    const currentRegionName = regionNamesMap[this.artifactData.regionId] || this.artifactData.regionName || '';
+
+    let badgeText = currentRegionName.toUpperCase();
+    if (this.activeContract) badgeText = '📜 СРОЧНЫЙ КОНТРАКТ';
+    else if (this.isDuplicate) badgeText = 'ПОВТОРНАЯ НАХОДКА (-35%)';
+
+    const badgeTxt = this.add.text(width / 2, 7, badgeText, {
+      fontSize: '10px',
+      fontFamily: FONT_UI,
+      color: this.isDuplicate ? '#fda4af' : '#e2b866',
+      fontStyle: 'bold',
+      letterSpacing: 1,
+      resolution: dpr
+    }).setOrigin(0.5, 0);
+
+    const artTitle = this.add.text(width / 2, 22, this.artifactData.name || 'Артефакт', {
+      fontSize: '15px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5, 0);
+
+    this.taskNotice = this.add.text(width / 2, 42, '', {
+      fontSize: '11px',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
+      resolution: dpr
+    }).setOrigin(0.5, 0);
+
+    const barW = Math.min(width * 0.78, 280);
+    const progressBarBg = this.add.graphics();
+    progressBarBg.fillStyle(0x0d0805, 0.95);
+    progressBarBg.fillRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
+    progressBarBg.lineStyle(1, 0x5c3d22, 0.8);
+    progressBarBg.strokeRoundedRect(width / 2 - barW / 2, 60, barW, 6, 3);
+
+    this.progressBarFill = this.add.rectangle(width / 2 - barW / 2, 63, 6, 4, 0xfacc15)
+      .setOrigin(0, 0.5);
+
+    this.toolWarning = this.add.text(width / 2, 69, '', {
+      fontSize: '10.5px',
+      fontFamily: FONT_UI,
+      color: '#fde047',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5, 0);
+
+    artInfoCont.add([badgeTxt, artTitle, this.taskNotice, progressBarBg, this.progressBarFill, this.toolWarning]);
+
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
+    this.artifactShadow = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.44, this.artW * 0.82, 26, 0x000000, 0.5)
+      .setDepth(5);
+
+    this.artifactPedestal = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.43, this.artW * 0.68, 20, 0x2b1d12, 0.9)
+      .setStrokeStyle(1.5, 0xc89d54, 0.75)
+      .setDepth(6);
+
+    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
+    this.currentArtTexKey = texKey;
+
+    this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
+      .setDisplaySize(this.artW, this.artH)
+      .setDepth(7);
+
+    this.breakHoleGfx = this.add.graphics().setDepth(7.5);
+
+    this.dirtLayer = this.add.renderTexture(this.topLeftX, this.topLeftY, this.artW, this.artH)
+      .setOrigin(0, 0)
+      .setDepth(8);
+
+    this.createDustParticles();
+
+    const firstTask = this.artifactData.tasks[0];
+    const initialTool = firstTask.requiredTool || 'tool_scraper';
+
+    this.toolSprite = this.add.image(this.centerX, this.centerY, this.getToolTextureForTier(initialTool))
+      .setOrigin(0.5, 0.10)
+      .setScale(0.76)
+      .setAlpha(0)
+      .setDepth(100);
+
+    this.assemblyContainer = this.add.container(0, 0).setDepth(35).setVisible(false);
+
+    // 6. НИЖНИЙ ТРЕЙ ИНСТРУМЕНТОВ
+    this.createToolTray(trayY, width, dpr);
+
+    this.gridCols = 32;
+    this.gridRows = 40;
+    this.totalCells = this.gridCols * this.gridRows;
+    this.cleanedGrid = new Uint8Array(this.totalCells);
+    this.validCellsMask = new Uint8Array(this.totalCells);
+    this.targetValidCells = this.totalCells;
+
+    this.buildValidCellsMask(texKey);
+    this.startTask(0, false);
+    this.playMaterializeSequence();
+
+    // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД С ЗАЩИТОЙ ОТ НУЛЕВЫХ КООРДИНАТ
+    const isValidWorkspacePoint = (pointer) => {
+      if (!pointer) return false;
+      const px = pointer.x;
+      const py = pointer.y;
+      if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
+      if (px <= 1 && py <= 1) return false;
+      return py >= workspaceTop && py <= trayTopLimit;
+    };
+
+    const processInteraction = (pointer) => {
+      if (this.isTaskTransition || this.isGuideOpen) return;
+      if (!isValidWorkspacePoint(pointer)) return;
+
+      const px = pointer.x;
+      const py = pointer.y;
+
+      const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+      if (!currentTask) return;
+
+      if (currentTask.type === 'break_and_assemble') {
+        if (this.activeDraggedShard) {
+          this.dragShardTo(this.activeDraggedShard, px, py);
+        } else {
+          this.processGlueAction(pointer);
+        }
+        return;
+      }
+
+      this.toolSprite.setPosition(px, py);
+      this.toolSprite.setAlpha(1);
+      this.animateToolUnderFinger(px, py);
+
+      if (this.activeTool !== currentTask.requiredTool) {
+        this.toolWarning.setText(`⚠️ Нужен: ${this.getToolName(currentTask.requiredTool)}!`);
+        if (!this.lastWarnTime || this.time.now - this.lastWarnTime > 700) {
+          this.lastWarnTime = this.time.now;
+          this.mistakesCount++;
+          if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+          this.cameras.main.shake(80, 0.004);
+        }
+        return;
+      }
+
+      this.toolWarning.setText('');
+
+      const localX = px - this.topLeftX;
+      const localY = py - this.topLeftY;
+
+      if (localX < 0 || localX > this.artW || localY < 0 || localY > this.artH) return;
+
+      const tier = this.getToolTier(this.activeTool);
+      const requiredPasses = tier >= 3 ? 1 : 2;
+      const brushKey = `${this.activeTool}_t${tier}`;
+
+      if (this.dirtLayer) {
+        this.dirtLayer.erase(brushKey, localX - 32, localY - 32);
+      }
+      this.emitDustFX(px, py);
+
+      const baseRadius = (this.activeTool === 'tool_scraper') ? 22 : ((this.activeTool === 'tool_brush') ? 28 : 24);
+      const tierRadiusBonus = [0, 0, 6, 11, 16][tier] || 0;
+      const countRadius = (baseRadius + tierRadiusBonus) * 0.78;
+
+      const col2 = this.artW / this.gridCols;
+      const row2 = this.artH / this.gridRows;
+
+      const centerCol = Math.floor(localX / col2);
+      const centerRow = Math.floor(localY / row2);
+      const colRad = Math.ceil(countRadius / col2);
+      const rowRad = Math.ceil(countRadius / row2);
+
+      for (let rr = centerRow - rowRad; rr <= centerRow + rowRad; rr++) {
+        if (rr < 0 || rr >= this.gridRows) continue;
+        for (let cc = centerCol - colRad; cc <= centerCol + colRad; cc++) {
+          if (cc < 0 || cc >= this.gridCols) continue;
+          const gx = (cc + 0.5) * col2;
+          const gy = (rr + 0.5) * row2;
+          const distCell = Phaser.Math.Distance.Between(localX, localY, gx, gy);
+          if (distCell <= countRadius) {
+            const idx = rr * this.gridCols + cc;
+            if (this.validCellsMask[idx] === 1 && this.cleanedGrid[idx] < requiredPasses) {
+              this.cleanedGrid[idx]++;
+              if (this.cleanedGrid[idx] >= requiredPasses) {
+                this.cleanedScore++;
+              }
+            }
+          }
+        }
+      }
+
+      const maxScore = Math.max(1, this.targetValidCells);
+      const ratio = Math.min(1, this.cleanedScore / maxScore);
+      const maxBarW = Math.min(this.scale.width * 0.78, 280);
+      this.progressBarFill.width = Math.max(6, maxBarW * Math.min(1, ratio / 0.89));
+
+      if (ratio >= 0.89 && !this.isTaskTransition) {
+        this.isTaskTransition = true;
+        this.isPointerActive = false;
+        this.progressBarFill.width = maxBarW;
+        if (this.dirtLayer) this.dirtLayer.clear();
+        this.toolSprite.setAlpha(0);
+        this.completeTaskTransition();
+      }
+    };
+
+    this.input.on('pointerdown', (p) => {
+      if (this.isTaskTransition || this.isGuideOpen) return;
+      if (!isValidWorkspacePoint(p)) return;
+
+      this.isPointerActive = true;
+      this.lastTouchPos = { x: p.x, y: p.y };
+
+      const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+      if (currentTask && currentTask.type === 'break_and_assemble' && this.shardsList.length > 0) {
+        const grabbed = this.shardsList.find(
+          (s) => !s.placed && Phaser.Math.Distance.Between(p.x, p.y, s.container.x, s.container.y) <= 44
+        );
+        if (grabbed) {
+          if (!grabbed.glued) {
+            this.toolWarning.setText('⚠️ Сначала нанесите Клей в гнездо этого осколка!');
+            if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+            return;
+          }
+          this.activeDraggedShard = grabbed;
+          this.toolSprite.setAlpha(0);
+          this.dragShardTo(grabbed, p.x, p.y);
+          return;
+        }
+      }
+
+      this.toolSprite.setPosition(p.x, p.y);
+      this.toolSprite.setAlpha(1);
+      processInteraction(p);
+    });
+
+    this.input.on('pointermove', (p) => {
+      if (this.isTaskTransition || this.isGuideOpen) return;
+      if (!this.isPointerActive && !p.isDown) return;
+
+      if (this.activeDraggedShard) {
+        if (isValidWorkspacePoint(p)) {
+          this.dragShardTo(this.activeDraggedShard, p.x, p.y);
+        }
+        return;
+      }
+
+      processInteraction(p);
+    });
+
+    const stopPointer = () => {
+      this.isPointerActive = false;
+      this.lastTouchPos = null;
+      if (this.activeDraggedShard) {
+        const shard = this.activeDraggedShard;
+        this.activeDraggedShard = null;
+        this.releaseShard(shard);
+        return;
+      }
+      if (this.toolSprite && this.toolSprite.active) {
+        this.tweens.add({
+          targets: this.toolSprite,
+          alpha: 0,
+          duration: 140
+        });
+      }
+    };
+
+    this.input.on('pointerup', stopPointer);
+    this.input.on('pointerout', stopPointer);
   }
 
-  create() {
-    const { width, height } = this.scale;
-    const textRes = 3;
-    const FONT_UI = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  // Справочник реставратора по кнопке ?
+  openGuideModal(width, height, textRes, FONT_UI) {
+    if (this.isGuideOpen) return;
+    this.isGuideOpen = true;
+    this.isPointerActive = false;
 
-    this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805, 1).setDepth(0);
-
-    let template = this.templateId
-      ? ARTIFACT_TEMPLATES.find((t) => t.id === this.templateId)
-      : null;
-
-    if (!template) {
-      const pool = ARTIFACT_TEMPLATES.filter((t) => t.regionId === this.regionId);
-      template = pool[0] || ARTIFACT_TEMPLATES[0];
-    }
-    this.template = template;
-
-    if (!this.contract) {
-      Storage.setActiveSession(this.regionId, this.template.id);
-    }
-
-    this.artW = 260;
-    this.artH = 320;
-    const topBound = 132;
-    const bottomBound = height - 134;
-    this.centerY = (topBound + bottomBound) / 2;
-
-    this.renderWorkbenchBackdrop(width, height, topBound, bottomBound);
-
-    this.steps = [
-      { id: 'scraper', name: 'Скребок', hint: 'Сколоть окаменевший пласт породы' },
-      { id: 'brush', name: 'Кисть', hint: 'Смести минеральную пыль и песок' },
-      { id: 'reagent', name: 'Реагент', hint: 'Снять вековой налёт и окислы' },
-      { id: 'glue', name: 'Клей', hint: 'Скрепить сколы и трещины' },
-      { id: 'polish', name: 'Блеск', hint: 'Отполировать до музейного сияния' }
+    const slides = [
+      {
+        badge: '1 ИЗ 4 • ИНСТРУМЕНТЫ',
+        title: '⚒ Этапы очистки находки',
+        body: '• Сверху указан нужный инструмент для текущего слоя: Скребок, Кисть, Реагент или Блеск.\n\n• Выберите прибор на нижней панели и водите пальцем по артефакту, пока шкала прогресса не заполнится.\n\n• Ошибки при выборе инструмента снижают итоговую оценку в звёздах.'
+      },
+      {
+        badge: '2 ИЗ 4 • СКЛЕЙКА И КИНЦУГИ',
+        title: '✨ Золотой шов Кинцуги',
+        body: '• Если артефакт раскололся, выберите Клей, промажьте красные лунки на предмете и перетащите осколки на свои места.\n\n• Нажмите кнопку «✨ КИНЦУГИ» перед склейкой, чтобы скрепить фрагменты золотым лаком (+60% к цене экспоната).'
+      },
+      {
+        badge: '3 ИЗ 4 • ПРОКАЧКА ПРИБОРОВ',
+        title: '🕯 Улучшения в Лавке Мастера',
+        body: '• В «Лавке Мастера» можно прокачивать радиус и скорость работы инструментов, а также менять облик верстака.\n\n• Инструменты 3-го и 4-го уровня очищают загрязнения в одно касание.'
+      },
+      {
+        badge: '4 ИЗ 4 • МУЗЕЙ И ДОХОД',
+        title: '🏛 Зал Славы и пассивный доход',
+        body: '• Реликвии качества 2★ и 3★ попадают в ваш Музей и приносят пассивный доход в час — даже когда игра закрыта.'
+      }
     ];
 
-    this.currentStepIdx = 0;
-    this.mistakes = 0;
-    this.kintsugiUsed = false;
-    this.selectedTool = 'scraper';
-    this.stepProgress = 0;
-    this.isCompleted = false;
+    let pageIdx = 0;
+    const items = [];
 
-    this.setupArtifactLayers(width, this.centerY);
-    this.createTopHud(width, textRes, FONT_UI);
-    this.createBottomToolbar(width, height, textRes, FONT_UI);
-    this.setupWorkInteractions(width, height, topBound, bottomBound);
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.90)
+      .setDepth(300)
+      .setInteractive();
+    items.push(overlay);
 
-    if (AudioManager.playMusic) AudioManager.playMusic('workshop');
+    const modalW = width * 0.88;
+    const modalH = 400;
+    const card = this.add.container(width / 2, height / 2).setDepth(301);
+    items.push(card);
+
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.99);
+    bg.fillRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
+    bg.lineStyle(1.5, 0xc89d54, 0.92);
+    bg.strokeRoundedRect(-modalW / 2, -modalH / 2, modalW, modalH, 14);
+
+    const badgeTxt = this.add.text(0, -modalH / 2 + 24, '', {
+      fontSize: '11px',
+      fontFamily: FONT_UI,
+      color: '#e2b866',
+      fontStyle: 'bold',
+      letterSpacing: 1.2,
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const titleTxt = this.add.text(0, -modalH / 2 + 52, '', {
+      fontSize: '16px',
+      fontFamily: FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: modalW - 28 },
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const bodyTxt = this.add.text(0, -10, '', {
+      fontSize: '12.5px',
+      fontFamily: FONT_UI,
+      color: '#f5e6c8',
+      wordWrap: { width: modalW - 32 },
+      lineSpacing: 5,
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const navY = modalH / 2 - 78;
+    const halfBtnW = (modalW - 44) / 2;
+
+    const prevGfx = this.add.graphics();
+    prevGfx.fillStyle(0x332215, 1);
+    prevGfx.fillRoundedRect(-modalW / 2 + 16, navY - 17, halfBtnW, 34, 8);
+    prevGfx.lineStyle(1, 0xc89d54, 0.85);
+    prevGfx.strokeRoundedRect(-modalW / 2 + 16, navY - 17, halfBtnW, 34, 8);
+
+    const prevTxt = this.add.text(-modalW / 2 + 16 + halfBtnW / 2, navY, '‹ НАЗАД', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const prevZone = this.add.zone(-modalW / 2 + 16 + halfBtnW / 2, navY, halfBtnW, 34)
+      .setInteractive({ useHandCursor: true });
+
+    const nextGfx = this.add.graphics();
+    nextGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    nextGfx.fillRoundedRect(6, navY - 17, halfBtnW, 34, 8);
+
+    const nextTxt = this.add.text(6 + halfBtnW / 2, navY, 'ДАЛЕЕ ›', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#1a1004',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const nextZone = this.add.zone(6 + halfBtnW / 2, navY, halfBtnW, 34)
+      .setInteractive({ useHandCursor: true });
+
+    const closeY = modalH / 2 - 30;
+    const closeW = modalW - 32;
+    const closeGfx = this.add.graphics();
+    closeGfx.fillStyle(0x261a10, 1);
+    closeGfx.fillRoundedRect(-closeW / 2, closeY - 18, closeW, 36, 9);
+    closeGfx.lineStyle(1.2, 0x8c6239, 0.9);
+    closeGfx.strokeRoundedRect(-closeW / 2, closeY - 18, closeW, 36, 9);
+
+    const closeTxt = this.add.text(0, closeY, 'ЗАКРЫТЬ СПРАВОЧНИК', {
+      fontSize: '12px',
+      fontFamily: FONT_UI,
+      color: '#d6c3a5',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const closeZone = this.add.zone(0, closeY, closeW, 36).setInteractive({ useHandCursor: true });
+
+    card.add([
+      bg, badgeTxt, titleTxt, bodyTxt,
+      prevGfx, prevTxt, prevZone,
+      nextGfx, nextTxt, nextZone,
+      closeGfx, closeTxt, closeZone
+    ]);
+
+    const renderSlide = () => {
+      const s = slides[pageIdx];
+      badgeTxt.setText(s.badge);
+      titleTxt.setText(s.title);
+      bodyTxt.setText(s.body);
+      prevTxt.setAlpha(pageIdx > 0 ? 1 : 0.4);
+      nextTxt.setText(pageIdx === slides.length - 1 ? 'ГОТОВО ✓' : 'ДАЛЕЕ ›');
+    };
+
+    renderSlide();
+
+    const closeGuide = () => {
+      if (AudioManager.playClick) AudioManager.playClick();
+      items.forEach((it) => {
+        if (it && it.destroy) it.destroy();
+      });
+      this.time.delayedCall(120, () => {
+        this.isGuideOpen = false;
+      });
+    };
+
+    prevZone.on('pointerup', () => {
+      if (pageIdx > 0) {
+        if (AudioManager.playClick) AudioManager.playClick();
+        pageIdx--;
+        renderSlide();
+      }
+    });
+
+    nextZone.on('pointerup', () => {
+      if (pageIdx < slides.length - 1) {
+        if (AudioManager.playClick) AudioManager.playClick();
+        pageIdx++;
+        renderSlide();
+      } else {
+        closeGuide();
+      }
+    });
+
+    closeZone.on('pointerup', closeGuide);
+  }
+
+  dragShardTo(shardObj, x, y) {
+    if (!shardObj || shardObj.placed) return;
+    shardObj.container.x = x;
+    shardObj.container.y = y;
+    const dist = Phaser.Math.Distance.Between(x, y, shardObj.targetX, shardObj.targetY);
+    shardObj.container.setScale(dist < 65 ? 1.08 : 1.0);
+  }
+
+  releaseShard(shardObj) {
+    if (!shardObj || shardObj.placed) return;
+    shardObj.container.setScale(1.0);
+
+    const dist = Phaser.Math.Distance.Between(
+      shardObj.container.x,
+      shardObj.container.y,
+      shardObj.targetX,
+      shardObj.targetY
+    );
+
+    if (dist < 65) {
+      shardObj.placed = true;
+      shardObj.container.x = shardObj.targetX;
+      shardObj.container.y = shardObj.targetY;
+      shardObj.border.clear();
+
+      if (this.isKintsugiMode) {
+        shardObj.border.lineStyle(3, 0xfacc15, 0.95);
+        shardObj.border.strokeCircle(0, 0, shardObj.radius);
+        if (AudioManager.playShine) AudioManager.playShine();
+      } else {
+        shardObj.border.lineStyle(1, 0x4ade80, 0.45);
+        shardObj.border.strokeCircle(0, 0, shardObj.radius);
+        if (AudioManager.playCoin) AudioManager.playCoin();
+      }
+
+      this.updateAssemblyProgress();
+
+      const allPlaced = this.shardsList.every((s) => s.placed);
+      if (allPlaced) {
+        this.isTaskTransition = true;
+        if (this.isKintsugiMode) {
+          this.hasKintsugiMastery = true;
+          Storage.addKintsugiLacquer(-1);
+        }
+
+        this.time.delayedCall(450, () => {
+          this.breakHoleGfx.setVisible(false);
+          this.assemblyContainer.setVisible(false);
+          if (this.kintsugiBanner) {
+            this.kintsugiBanner.destroy();
+            this.kintsugiBanner = null;
+          }
+          this.completeTaskTransition();
+        });
+      } else {
+        const left = this.shardsList.filter((s) => !s.placed).length;
+        this.toolWarning.setText(`Отлично! Осталось осколков: ${left}`);
+      }
+    } else {
+      this.toolWarning.setText('⚠️ Поднесите осколок точнее к месту скола!');
+      this.tweens.add({
+        targets: shardObj.container,
+        x: shardObj.restX,
+        y: shardObj.restY,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+    }
+  }
+
+  getToolTier(toolKey) {
+    const rawKey = toolKey.replace('tool_', '');
+    if (localStorage.getItem(`tool_upg_${rawKey}_4`) === 'true') return 4;
+    if (localStorage.getItem(`tool_upg_${rawKey}_3`) === 'true') return 3;
+    if (localStorage.getItem(`tool_upg_${rawKey}_2`) === 'true') return 2;
+    return 1;
+  }
+
+  getToolTextureForTier(toolId) {
+    const tier = this.getToolTier(toolId);
+    const skin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
+    if (toolId === 'tool_glue') {
+      const glueSkinned = `tex_hd_tool_glue_${skin}`;
+      return this.textures.exists(glueSkinned) ? glueSkinned : 'tex_hd_tool_glue';
+    }
+    const skinnedKey = `tex_hd_${toolId}_t${tier}_${skin}`;
+    if (this.textures.exists(skinnedKey)) return skinnedKey;
+
+    const key = `tex_hd_${toolId}_t${tier}`;
+    return this.textures.exists(key) ? key : 'tex_hd_tool_glue';
+  }
+
+  animateToolUnderFinger(px, py) {
+    if (!this.lastTouchPos) {
+      this.lastTouchPos = { x: px, y: py };
+      return;
+    }
+    const dx = px - this.lastTouchPos.x;
+    this.lastTouchPos.x = px;
+    this.lastTouchPos.y = py;
+
+    if (this.activeTool === 'tool_scraper') {
+      const targetAngle = Phaser.Math.Clamp(dx * 1.4, -34, 16);
+      this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.35);
+    } else if (this.activeTool === 'tool_brush') {
+      const targetAngle = Phaser.Math.Clamp(dx * 2.2, -32, 32);
+      this.toolSprite.angle = Phaser.Math.Linear(this.toolSprite.angle, targetAngle, 0.3);
+    } else {
+      this.toolSprite.angle = 0;
+    }
+  }
+
+  generateDetailedToolTextures() {
+    const makeTex = (key, size, drawFn) => {
+      if (this.textures.exists(key)) return;
+      const cvs = this.textures.createCanvas(key, size, size);
+      const ctx = cvs.getContext();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      drawFn(ctx);
+      cvs.refresh();
+    };
+
+    const activeSkin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
+    const toolTypes = ['scraper', 'brush', 'solvent', 'polish'];
+    const baseRadii = { scraper: 18, brush: 22, solvent: 20, polish: 21 };
+    const tierRadiusBonus = [0, 0, 3, 6, 9];
+    const tierCenterAlpha = [0, 0.65, 0.76, 0.88, 1.0];
+
+    toolTypes.forEach((type) => {
+      [1, 2, 3, 4].forEach((tier) => {
+        const rad = Math.min(31, baseRadii[type] + tierRadiusBonus[tier]);
+        const alpha = tierCenterAlpha[tier];
+        makeTex(`tool_${type}_t${tier}`, 64, (ctx) => {
+          const grad = ctx.createRadialGradient(32, 32, rad * 0.25, 32, 32, rad);
+          grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+          grad.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.78})`);
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(32, 32, rad, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        makeTex(`tex_hd_tool_${type}_t${tier}_${activeSkin}`, 128, (ctx) => {
+          drawDetailedToolCanvas(ctx, type, tier, activeSkin, 128);
+        });
+      });
+    });
+
+    makeTex(`tex_hd_tool_glue_${activeSkin}`, 128, (ctx) => {
+      drawDetailedToolCanvas(ctx, 'glue', 1, activeSkin, 128);
+    });
+    makeTex('tex_hd_tool_glue', 128, (ctx) => {
+      drawDetailedToolCanvas(ctx, 'glue', 1, activeSkin, 128);
+    });
+  }
+
+  createDustParticles() {
+    this.particles = this.add.particles(0, 0, 'tool_scraper_t1', {
+      lifespan: { min: 200, max: 350 },
+      speed: { min: 40, max: 95 },
+      scale: { start: 0.45, end: 0 },
+      alpha: { start: 0.85, end: 0 },
+      emitting: false
+    }).setDepth(16);
+  }
+
+  emitDustFX(x, y) {
+    if (!this.particles) return;
+    if (this.activeTool === 'tool_scraper') {
+      const tier = this.getToolTier('tool_scraper');
+      if (AudioManager.playScrape) AudioManager.playScrape(tier);
+      this.particles.setParticleTint(tier === 4 ? 0x38bdf8 : (tier === 3 ? 0xfacc15 : 0xd6d3d1));
+      this.particles.emitParticleAt(x, y, tier >= 3 ? 3 : 2);
+    } else if (this.activeTool === 'tool_brush') {
+      const tier = this.getToolTier('tool_brush');
+      if (AudioManager.playBrush) AudioManager.playBrush(tier);
+      this.particles.setParticleTint(tier === 4 ? 0x38bdf8 : 0xfef3c7);
+      this.particles.emitParticleAt(x, y, 2);
+    } else if (this.activeTool === 'tool_solvent') {
+      const tier = this.getToolTier('tool_solvent');
+      if (AudioManager.playSpray) AudioManager.playSpray(tier);
+      this.particles.setParticleTint(tier === 4 ? 0x818cf8 : 0x38bdf8);
+      this.particles.emitParticleAt(x, y, 3);
+    } else if (this.activeTool === 'tool_polish') {
+      const tier = this.getToolTier('tool_polish');
+      if (AudioManager.playCloth) AudioManager.playCloth(tier);
+      this.particles.setParticleTint(tier >= 3 ? 0xfef08a : 0xffffff);
+      this.particles.emitParticleAt(x, y, 2);
+    }
+  }
+
+  createToolTray(trayY, width, dpr) {
+    const tools = [
+      { id: 'tool_scraper', icon: this.getToolTextureForTier('tool_scraper'), label: 'Скребок' },
+      { id: 'tool_brush', icon: this.getToolTextureForTier('tool_brush'), label: 'Кисть' },
+      { id: 'tool_solvent', icon: this.getToolTextureForTier('tool_solvent'), label: 'Реагент' },
+      { id: 'tool_glue', icon: this.getToolTextureForTier('tool_glue'), label: 'Клей' },
+      { id: 'tool_polish', icon: this.getToolTextureForTier('tool_polish'), label: 'Блеск' }
+    ];
+
+    const trayBgGfx = this.add.graphics().setDepth(180);
+    trayBgGfx.fillGradientStyle(0x24180f, 0x24180f, 0x120b07, 0x120b07, 0.94);
+    trayBgGfx.fillRect(0, trayY - 52, width, 118);
+    trayBgGfx.lineStyle(1.5, 0xc89d54, 0.65);
+    trayBgGfx.lineBetween(0, trayY - 52, width, trayY - 52);
+
+    const stepX = (width * 0.92) / tools.length;
+    const startX = width * 0.04 + stepX / 2;
+
+    this.traySlots = [];
+
+    tools.forEach((t, i) => {
+      const slotX = startX + i * stepX;
+      const isSelected = (t.id === this.activeTool);
+
+      const slotCont = this.add.container(slotX, trayY).setDepth(185);
+
+      const slotGfx = this.add.graphics();
+      const drawSlot = (selected) => {
+        slotGfx.clear();
+        slotGfx.fillGradientStyle(
+          selected ? 0x452d18 : 0x261a10,
+          selected ? 0x452d18 : 0x261a10,
+          selected ? 0x2b1b0e : 0x170f09,
+          selected ? 0x2b1b0e : 0x170f09,
+          1
+        );
+        slotGfx.fillRoundedRect(-31, -35, 62, 70, 10);
+        slotGfx.lineStyle(selected ? 2 : 1.2, selected ? 0xfacc15 : 0x8c6239, 0.95);
+        slotGfx.strokeRoundedRect(-31, -35, 62, 70, 10);
+      };
+      drawSlot(isSelected);
+
+      const slotZone = this.add.zone(0, 0, 62, 70)
+        .setInteractive({ useHandCursor: true });
+
+      const iconImg = this.add.image(0, -8, t.icon).setDisplaySize(48, 48);
+
+      const lbl = this.add.text(0, 23, t.label, {
+        fontSize: '10px',
+        fontFamily: this.FONT_UI,
+        color: isSelected ? '#facc15' : '#e6d5bc',
+        fontStyle: 'bold',
+        resolution: dpr
+      }).setOrigin(0.5);
+
+      slotCont.add([slotGfx, iconImg, lbl, slotZone]);
+
+      slotZone.on('pointerdown', () => {
+        if (this.isGuideOpen) return;
+        this.selectTool(t.id, t.icon, true);
+        if (this.toolSprite && this.toolSprite.active) {
+          this.toolSprite.setPosition(this.centerX, this.centerY);
+          this.toolSprite.setAlpha(0.85);
+          this.tweens.killTweensOf(this.toolSprite);
+          this.tweens.add({
+            targets: this.toolSprite,
+            alpha: 0,
+            delay: 280,
+            duration: 180
+          });
+        }
+      });
+
+      this.traySlots.push({
+        id: t.id,
+        cont: slotCont,
+        drawSlot,
+        label: lbl,
+        baseY: trayY
+      });
+    });
+  }
+
+  selectTool(toolId, iconKey, isUser = false) {
+    this.activeTool = toolId;
+
+    if (this.textures.exists(iconKey)) {
+      this.toolSprite.setTexture(iconKey);
+    }
+
+    if (isUser && AudioManager.playClick) {
+      AudioManager.playClick();
+    }
+
+    this.traySlots.forEach((slot) => {
+      const active = (slot.id === toolId);
+      slot.drawSlot(active);
+      slot.label.setColor(active ? '#facc15' : '#e6d5bc');
+
+      this.tweens.add({
+        targets: slot.cont,
+        y: active ? (slot.baseY - 6) : slot.baseY,
+        duration: 120,
+        ease: 'Back.easeOut'
+      });
+    });
+
+    const currentTask = this.artifactData.tasks[this.currentTaskIndex];
+    if (currentTask && currentTask.requiredTool === toolId) {
+      this.toolWarning.setText('');
+    }
+  }
+
+  playMaterializeSequence() {
+    this.isTaskTransition = true;
+    this.cleanArt.setAlpha(0);
+    this.dirtLayer.setAlpha(0);
+    this.artifactPedestal.setAlpha(0);
+    this.artifactShadow.setAlpha(0);
+
+    if (AudioManager.playCloth) AudioManager.playCloth();
+
+    this.time.delayedCall(350, () => {
+      this.isTaskTransition = false;
+    });
+
+    this.tweens.add({
+      targets: [this.cleanArt, this.dirtLayer],
+      alpha: 1,
+      duration: 280,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.isTaskTransition = false;
+      }
+    });
+
+    this.tweens.add({
+      targets: [this.artifactPedestal, this.artifactShadow],
+      alpha: 0.85,
+      duration: 280
+    });
+  }
+
+  getToolName(toolId) {
+    const map = {
+      tool_scraper: 'Скребок',
+      tool_brush: 'Кисть',
+      tool_solvent: 'Реагент',
+      tool_glue: 'Клей',
+      tool_polish: 'Блеск'
+    };
+    return map[toolId] || 'инструмент';
+  }
+
+  getArtSnapshotCanvas(textureKey) {
+    if (this._artSnapshotCanvas && this._artSnapshotKey === textureKey) {
+      return this._artSnapshotCanvas;
+    }
+    const tex = this.textures.get(textureKey);
+    const srcImg = tex ? tex.getSourceImage() : null;
+    if (!srcImg) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.artW;
+    canvas.height = this.artH;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcImg, 0, 0, this.artW, this.artH);
+
+    this._artSnapshotCanvas = canvas;
+    this._artSnapshotKey = textureKey;
+    return canvas;
+  }
+
+  buildValidCellsMask(textureKey) {
+    this.validCellsMask.fill(0);
+    this.targetValidCells = 0;
+
+    const snapCanvas = this.getArtSnapshotCanvas(textureKey);
+
+    if (snapCanvas) {
+      const w = snapCanvas.width;
+      const h = snapCanvas.height;
+      const imgData = snapCanvas.getContext('2d').getImageData(0, 0, w, h).data;
+
+      for (let gy = 0; gy < this.gridRows; gy++) {
+        for (let gx = 0; gx < this.gridCols; gx++) {
+          const sampleX = Math.floor(((gx + 0.5) / this.gridCols) * w);
+          const sampleY = Math.floor(((gy + 0.5) / this.gridRows) * h);
+          const alpha = imgData[(sampleY * w + sampleX) * 4 + 3];
+          const idx = gy * this.gridCols + gx;
+          if (alpha > 40) {
+            this.validCellsMask[idx] = 1;
+            this.targetValidCells++;
+          }
+        }
+      }
+    }
+
+    if (this.targetValidCells === 0) {
+      this.validCellsMask.fill(1);
+      this.targetValidCells = this.totalCells;
+    }
+  }
+
+  buildMaskedDirtCanvasTexture(reqTool) {
+    const tempKey = `_dirt_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    this._tempTextureKeys.push(tempKey);
+
+    const cvs = this.textures.createCanvas(tempKey, this.artW, this.artH);
+    const ctx = cvs.getContext();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const drawBlobs = (color, count, minR, maxR) => {
+      ctx.fillStyle = color;
+      for (let i = 0; i < count; i++) {
+        const x = Phaser.Math.Between(12, this.artW - 12);
+        const y = Phaser.Math.Between(12, this.artH - 12);
+        const r = Phaser.Math.Between(minR, maxR);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    if (reqTool === 'tool_scraper') {
+      ctx.fillStyle = 'rgba(92, 74, 53, 0.92)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(66, 50, 31, 0.92)', 34, 12, 30);
+      drawBlobs('rgba(138, 109, 75, 0.65)', 20, 6, 16);
+    } else if (reqTool === 'tool_brush') {
+      ctx.fillStyle = 'rgba(168, 159, 145, 0.86)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(120, 113, 108, 0.78)', 32, 8, 24);
+    } else if (reqTool === 'tool_solvent') {
+      ctx.fillStyle = 'rgba(35, 77, 69, 0.86)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(54, 112, 99, 0.82)', 28, 10, 26);
+    } else {
+      ctx.fillStyle = 'rgba(65, 65, 58, 0.68)';
+      ctx.fillRect(0, 0, this.artW, this.artH);
+      drawBlobs('rgba(40, 40, 36, 0.52)', 24, 14, 32);
+    }
+
+    const snapCanvas = this.getArtSnapshotCanvas(this.currentArtTexKey);
+    if (snapCanvas) {
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(snapCanvas, 0, 0, this.artW, this.artH);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    cvs.refresh();
+    return tempKey;
   }
 
   renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
@@ -74,6 +1162,10 @@ export class RestoreScene extends Phaser.Scene {
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
+
+    const fallbackBg = this.add.graphics().setDepth(0.5);
+    fallbackBg.fillStyle(0x0d0805, 1);
+    fallbackBg.fillRect(0, 0, width, height);
 
     const isTextureValid = (key) => {
       if (!this.textures.exists(key)) return false;
@@ -85,7 +1177,6 @@ export class RestoreScene extends Phaser.Scene {
     const applyBgTexture = (key) => {
       if (!this.scene || !this.scene.isActive()) return;
       if (!isTextureValid(key)) return;
-
       if (this.workbenchBgImg) this.workbenchBgImg.destroy();
       this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
@@ -97,13 +1188,21 @@ export class RestoreScene extends Phaser.Scene {
       if (this.textures.exists(activeSkin)) {
         this.textures.remove(activeSkin);
       }
-
       if (isTextureValid('workbench_bg_1')) {
         applyBgTexture('workbench_bg_1');
       }
 
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         applyBgTexture(activeSkin);
+      });
+      this.load.once('loaderror', (file) => {
+        if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
+          this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
+          this.load.once('filecomplete-image-workbench_bg_1', () => {
+            applyBgTexture('workbench_bg_1');
+          });
+          this.load.start();
+        }
       });
 
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
@@ -158,450 +1257,456 @@ export class RestoreScene extends Phaser.Scene {
     this.matContainer.add(matGfx);
   }
 
-  setupArtifactLayers(width, centerY) {
-    this.artContainer = this.add.container(width / 2, centerY).setDepth(5);
-
-    const texKey = this.template.textureKey;
-    if (this.textures.exists(texKey)) {
-      this.artSprite = this.add.image(0, 0, texKey);
-      const scale = Math.min(this.artW / this.artSprite.width, this.artH / this.artSprite.height);
-      this.artSprite.setScale(scale);
-    } else {
-      this.artSprite = this.add.rectangle(0, 0, 180, 220, 0xc89d54, 1);
-    }
-    this.artContainer.add(this.artSprite);
-
-    this.tarnishOverlay = this.add.graphics();
-    this.tarnishOverlay.fillStyle(0x2d3a2e, 0.62);
-    this.tarnishOverlay.fillRoundedRect(-this.artW * 0.36, -this.artH * 0.4, this.artW * 0.72, this.artH * 0.8, 36);
-    this.artContainer.add(this.tarnishOverlay);
-
-    this.dustOverlay = this.add.graphics();
-    this.dustOverlay.fillStyle(0x8c7355, 0.74);
-    for (let i = 0; i < 42; i++) {
-      const rx = Phaser.Math.Between(-95, 95);
-      const ry = Phaser.Math.Between(-125, 125);
-      const rr = Phaser.Math.Between(12, 28);
-      this.dustOverlay.fillCircle(rx, ry, rr);
-    }
-    this.artContainer.add(this.dustOverlay);
-
-    this.crustNodes = [];
-    for (let i = 0; i < 28; i++) {
-      const rx = Phaser.Math.Between(-85, 85);
-      const ry = Phaser.Math.Between(-115, 115);
-      const rr = Phaser.Math.Between(16, 30);
-      const chunk = this.add.circle(rx, ry, rr, i % 2 === 0 ? 0x5c4938 : 0x473729, 0.96);
-      chunk.setStrokeStyle(1.5, 0x2b2017, 0.8);
-      this.artContainer.add(chunk);
-      this.crustNodes.push(chunk);
-    }
-
-    this.crackGfx = this.add.graphics();
-    this.crackGfx.lineStyle(3, 0x140d08, 0.92);
-    this.crackGfx.beginPath();
-    this.crackGfx.moveTo(-45, -70);
-    this.crackGfx.lineTo(-10, -20);
-    this.crackGfx.lineTo(-35, 35);
-    this.crackGfx.moveTo(40, -50);
-    this.crackGfx.lineTo(8, 10);
-    this.crackGfx.lineTo(48, 75);
-    this.crackGfx.strokePath();
-    this.crackGfx.setAlpha(0);
-    this.artContainer.add(this.crackGfx);
-  }
-
-  createTopHud(width, textRes, FONT_UI) {
-    const coins = Storage.getCoins();
-    const coinBox = this.add.graphics().setDepth(20);
-    coinBox.fillStyle(0x1f140c, 0.92);
-    coinBox.fillRoundedRect(14, 14, 106, 30, 8);
-    coinBox.lineStyle(1, 0xc89d54, 0.8);
-    coinBox.strokeRoundedRect(14, 14, 106, 30, 8);
-
-    this.coinText = this.add.text(67, 29, `${coins} 🪙`, {
-      fontSize: '12.5px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(21);
-
-    const menuBtn = this.add.graphics().setDepth(20);
-    menuBtn.fillStyle(0x2b1d12, 0.95);
-    menuBtn.fillRoundedRect(width - 74, 14, 60, 30, 8);
-    menuBtn.lineStyle(1, 0xc89d54, 0.85);
-    menuBtn.strokeRoundedRect(width - 74, 14, 60, 30, 8);
-
-    this.add.text(width - 44, 29, 'Меню', {
-      fontSize: '12px',
-      fontFamily: FONT_UI,
-      color: '#fdf6e3',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(21);
-
-    const menuZone = this.add.zone(width - 44, 29, 60, 30)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(22);
-    menuZone.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.scene.start('MenuScene');
-    });
-
-    const helpCircle = this.add.circle(width - 96, 29, 14, 0x2b1d12)
-      .setStrokeStyle(1.2, 0xfacc15, 0.9)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(21);
-    this.add.text(width - 96, 29, '?', {
-      fontSize: '13px',
-      fontFamily: FONT_UI,
-      color: '#facc15',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(22);
-
-    helpCircle.on('pointerdown', () => {
-      if (AudioManager.playClick) AudioManager.playClick();
-      this.showQuickTip();
-    });
-
-    const infoW = width - 28;
-    const infoGfx = this.add.graphics().setDepth(20);
-    infoGfx.fillStyle(0x1f140c, 0.92);
-    infoGfx.fillRoundedRect(14, 52, infoW, 68, 11);
-    infoGfx.lineStyle(1, 0xc89d54, 0.78);
-    infoGfx.strokeRoundedRect(14, 52, infoW, 68, 11);
-
-    const regionNames = {
-      egypt: 'ДРЕВНИЙ ЕГИПЕТ',
-      antique: 'АНТИЧНОСТЬ',
-      europe: 'СРЕДНЕВЕКОВЬЕ',
-      japan: 'ДРЕВНЯЯ ЯПОНИЯ',
-      aztec: 'ИМПЕРИЯ АЦТЕКОВ',
-      vikings: 'ЭПОХА ВИКИНГОВ',
-      renaissance: 'РЕНЕССАНС'
-    };
-
-    this.add.text(width / 2, 66, regionNames[this.regionId] || 'ЭКСПЕДИЦИЯ', {
-      fontSize: '10px',
-      fontFamily: FONT_UI,
-      color: '#e2b866',
-      fontStyle: 'bold',
-      letterSpacing: 1.2,
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(21);
-
-    this.add.text(width / 2, 83, this.template.name, {
-      fontSize: '14.5px',
-      fontFamily: FONT_UI,
-      color: '#fdf6e3',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(21);
-
-    this.stepHintText = this.add.text(width / 2, 102, '', {
-      fontSize: '11.5px',
-      fontFamily: FONT_UI,
-      color: '#d6c3a5',
-      resolution: textRes
-    }).setOrigin(0.5).setDepth(21);
-
-    this.progressBarBg = this.add.graphics().setDepth(21);
-    this.progressBarBg.fillStyle(0x0d0805, 0.95);
-    this.progressBarBg.fillRoundedRect(width / 2 - 110, 112, 220, 4, 2);
-
-    this.progressBarFill = this.add.graphics().setDepth(22);
-
-    this.kintsugiBtn = this.add.container(width / 2, 146).setDepth(25).setVisible(false);
-    const kBg = this.add.graphics();
-    kBg.fillGradientStyle(0xfacc15, 0xfacc15, 0xb47814, 0xb47814, 1);
-    kBg.fillRoundedRect(-96, -15, 192, 30, 9);
-    kBg.lineStyle(1.5, 0xfef08a, 1);
-    kBg.strokeRoundedRect(-96, -15, 192, 30, 9);
-
-    this.kintsugiLabel = this.add.text(0, 0, '', {
-      fontSize: '11.5px',
-      fontFamily: FONT_UI,
-      color: '#1a1004',
-      fontStyle: 'bold',
-      resolution: textRes
-    }).setOrigin(0.5);
-
-    const kZone = this.add.zone(0, 0, 192, 30).setInteractive({ useHandCursor: true });
-    kZone.on('pointerdown', () => {
-      if (this.kintsugiUsed) return;
-      if (Storage.useKintsugiLacquer()) {
-        this.kintsugiUsed = true;
-        if (AudioManager.playShine) AudioManager.playShine();
-        this.kintsugiLabel.setText('✨ КИНЦУГИ АКТИВИРОВАН (+60%)');
-        this.crackGfx.clear();
-        this.crackGfx.lineStyle(3.5, 0xfacc15, 1);
-        this.crackGfx.beginPath();
-        this.crackGfx.moveTo(-45, -70);
-        this.crackGfx.lineTo(-10, -20);
-        this.crackGfx.lineTo(-35, 35);
-        this.crackGfx.moveTo(40, -50);
-        this.crackGfx.lineTo(8, 10);
-        this.crackGfx.lineTo(48, 75);
-        this.crackGfx.strokePath();
-      }
-    });
-
-    this.kintsugiBtn.add([kBg, this.kintsugiLabel, kZone]);
-    this.updateHudStep();
-  }
-
-  updateHudStep() {
-    const step = this.steps[this.currentStepIdx];
-    if (!step) return;
-    this.stepHintText.setText(`ШАГ ${this.currentStepIdx + 1}/${this.steps.length}: ${step.hint}`);
-
-    const ratio = Phaser.Math.Clamp(this.stepProgress / 100, 0, 1);
-    const { width } = this.scale;
-    this.progressBarFill.clear();
-    if (ratio > 0) {
-      this.progressBarFill.fillStyle(0xfacc15, 1);
-      this.progressBarFill.fillRoundedRect(width / 2 - 110, 112, Math.max(6, 220 * ratio), 4, 2);
-    }
-
-    if (step.id === 'glue') {
-      const lacquer = Storage.getKintsugiLacquer();
-      if (lacquer > 0 || this.kintsugiUsed) {
-        this.kintsugiLabel.setText(
-          this.kintsugiUsed ? '✨ КИНЦУГИ АКТИВИРОВАН (+60%)' : `✨ КИНЦУГИ (${lacquer} шт.)`
-        );
-        this.kintsugiBtn.setVisible(true);
-      }
-    } else {
-      this.kintsugiBtn.setVisible(false);
-    }
-  }
-
-  createBottomToolbar(width, height, textRes, FONT_UI) {
-    const barH = 116;
-    const barY = height - barH / 2 - 8;
-
-    const panel = this.add.graphics().setDepth(20);
-    panel.fillStyle(0x1b120b, 0.96);
-    panel.fillRoundedRect(12, height - barH - 8, width - 24, barH, 14);
-    panel.lineStyle(1.2, 0xc89d54, 0.8);
-    panel.strokeRoundedRect(12, height - barH - 8, width - 24, barH, 14);
-
-    const activeToolSkin = Storage.getActiveToolSkin ? Storage.getActiveToolSkin() : 'default';
-    const slotW = (width - 48) / this.steps.length;
-    this.toolButtons = {};
-
-    this.steps.forEach((step, idx) => {
-      const cx = 24 + slotW * idx + slotW / 2;
-      const cont = this.add.container(cx, barY).setDepth(22);
-
-      const boxW = slotW - 8;
-      const boxH = 88;
-      const bg = this.add.graphics();
-
-      const drawBox = (selected) => {
-        bg.clear();
-        bg.fillStyle(selected ? 0x3b2614 : 0x24180f, 1);
-        bg.fillRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 10);
-        bg.lineStyle(selected ? 2 : 1, selected ? 0xfacc15 : 0x785534, 0.95);
-        bg.strokeRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 10);
-      };
-      drawBox(step.id === this.selectedTool);
-
-      let iconObj = null;
-      if (ToolArt && typeof ToolArt.createToolIcon === 'function') {
-        iconObj = ToolArt.createToolIcon(this, step.id, activeToolSkin, 0, -10, 44);
-      }
-      if (!iconObj) {
-        const emojis = { scraper: '⛏️', brush: '🖌️', reagent: '🧪', glue: '🏺', polish: '✨' };
-        iconObj = this.add.text(0, -10, emojis[step.id] || '🛠', {
-          fontSize: '26px',
-          resolution: textRes
-        }).setOrigin(0.5);
-      }
-
-      const lbl = this.add.text(0, 26, step.name, {
-        fontSize: '11px',
-        fontFamily: FONT_UI,
-        color: '#fdf6e3',
-        fontStyle: 'bold',
-        resolution: textRes
-      }).setOrigin(0.5);
-
-      const hit = this.add.zone(0, 0, boxW, boxH).setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => {
-        if (AudioManager.playClick) AudioManager.playClick();
-        this.selectTool(step.id);
-      });
-
-      cont.add([bg, iconObj, lbl, hit]);
-      this.toolButtons[step.id] = { cont, drawBox };
-    });
-  }
-
-  selectTool(toolId) {
-    this.selectedTool = toolId;
-    Object.entries(this.toolButtons).forEach(([id, btn]) => {
-      btn.drawBox(id === toolId);
-    });
-  }
-
-  setupWorkInteractions(width, height, topBound, bottomBound) {
-    const workZone = this.add.zone(width / 2, (topBound + bottomBound) / 2, width - 32, bottomBound - topBound)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(15);
-
-    let lastX = 0;
-    let lastY = 0;
-
-    workZone.on('pointerdown', (p) => {
-      lastX = p.x;
-      lastY = p.y;
-      this.handleWorkStroke(p.x, p.y, 12);
-    });
-
-    workZone.on('pointermove', (p) => {
-      if (!p.isDown) return;
-      const dist = Phaser.Math.Distance.Between(lastX, lastY, p.x, p.y);
-      if (dist >= 8) {
-        lastX = p.x;
-        lastY = p.y;
-        this.handleWorkStroke(p.x, p.y, dist * 0.45);
-      }
-    });
-  }
-
-  handleWorkStroke(px, py, power) {
-    if (this.isCompleted) return;
-    const expectedStep = this.steps[this.currentStepIdx];
-    if (!expectedStep) return;
-
-    if (this.selectedTool !== expectedStep.id) {
-      this.mistakes++;
-      this.cameras.main.shake(90, 0.004);
-      this.stepHintText.setColor('#fca5a5');
-      this.time.delayedCall(350, () => {
-        if (this.stepHintText) this.stepHintText.setColor('#d6c3a5');
-      });
+  processGlueAction(pointer) {
+    if (this.activeTool !== 'tool_glue') {
+      this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
       return;
     }
 
-    this.stepProgress = Math.min(100, this.stepProgress + power);
-    this.applyVisualStepFeedback(expectedStep.id, this.stepProgress / 100);
-    this.updateHudStep();
+    this.toolSprite.setPosition(pointer.x, pointer.y);
+    this.toolSprite.setAlpha(1);
 
-    if (this.stepProgress >= 100) {
-      this.advanceStep();
+    if (!this.shardsList || this.shardsList.length === 0) return;
+
+    let newlyGlued = false;
+
+    this.shardsList.forEach((s) => {
+      if (!s.glued) {
+        const d = Phaser.Math.Distance.Between(pointer.x, pointer.y, s.targetX, s.targetY);
+        if (d < 46) {
+          s.glued = true;
+          newlyGlued = true;
+          s.border.clear();
+          s.border.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
+          s.border.strokeCircle(0, 0, s.radius);
+
+          this.breakHoleGfx.fillStyle(0x0d0805, 0.85);
+          this.breakHoleGfx.fillCircle(s.targetX, s.targetY, s.radius);
+          this.breakHoleGfx.lineStyle(2.5, this.isKintsugiMode ? 0xfacc15 : 0x4ade80, 0.95);
+          this.breakHoleGfx.strokeCircle(s.targetX, s.targetY, s.radius);
+
+          if (this.particles) {
+            this.particles.setParticleTint(this.isKintsugiMode ? 0xfacc15 : 0x38bdf8);
+            this.particles.emitParticleAt(s.targetX, s.targetY, 6);
+          }
+        }
+      }
+    });
+
+    if (newlyGlued) {
+      if (AudioManager.playRub) AudioManager.playRub();
+      const gluedCount = this.shardsList.filter((s) => s.glued).length;
+      const total = this.shardsList.length;
+      this.updateAssemblyProgress();
+
+      if (gluedCount < total) {
+        this.toolWarning.setText(`Клей нанесён (${gluedCount}/${total}). Промажьте остальные!`);
+      } else {
+        this.toolWarning.setText('✨ Все гнезда промазаны! Перетащите осколки на места!');
+      }
     }
   }
 
-  applyVisualStepFeedback(stepId, ratio) {
-    if (stepId === 'scraper') {
-      const targetVisible = Math.ceil(this.crustNodes.length * (1 - ratio));
-      this.crustNodes.forEach((node, idx) => {
-        if (idx >= targetVisible && node.visible) {
-          node.setVisible(false);
+  updateAssemblyProgress() {
+    if (!this.shardsList || this.shardsList.length === 0) return;
+    const total = this.shardsList.length;
+    const glued = this.shardsList.filter((s) => s.glued).length;
+    const placed = this.shardsList.filter((s) => s.placed).length;
+
+    const progress = (glued * 0.4 + placed * 0.6) / total;
+    const maxBarW = Math.min(this.scale.width * 0.78, 280);
+    this.progressBarFill.width = Math.max(6, maxBarW * progress);
+  }
+
+  getRandomValidPointsOnArt(count) {
+    const candidates = [];
+    const colW = this.artW / this.gridCols;
+    const rowH = this.artH / this.gridRows;
+
+    for (let gy = 5; gy < this.gridRows - 5; gy++) {
+      for (let gx = 5; gx < this.gridCols - 5; gx++) {
+        const idx = gy * this.gridCols + gx;
+        if (this.validCellsMask[idx] === 1) {
+          candidates.push({
+            x: Math.floor(this.topLeftX + (gx + 0.5) * colW),
+            y: Math.floor(this.topLeftY + (gy + 0.5) * rowH)
+          });
+        }
+      }
+    }
+
+    Phaser.Utils.Array.Shuffle(candidates);
+    const chosen = [];
+    const minDistance = 68;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const pt = candidates[i];
+      const tooClose = chosen.some((c) => Phaser.Math.Distance.Between(pt.x, pt.y, c.x, c.y) < minDistance);
+      if (!tooClose) {
+        chosen.push(pt);
+        if (chosen.length >= count) break;
+      }
+    }
+
+    if (chosen.length === 0) {
+      chosen.push({ x: this.centerX, y: this.centerY });
+    }
+
+    return chosen;
+  }
+
+  createShardTexture(texKey, targetX, targetY, radius, idx) {
+    const shardKey = `shard_tex_${Date.now()}_${idx}`;
+    this._tempTextureKeys.push(shardKey);
+
+    const size = radius * 2 + 8;
+    const half = size / 2;
+    const cvs = this.textures.createCanvas(shardKey, size, size);
+    const ctx = cvs.getContext();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(half, half, radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    const snapCanvas = this.getArtSnapshotCanvas(texKey);
+    if (snapCanvas) {
+      const offsetX = this.topLeftX - targetX + half;
+      const offsetY = this.topLeftY - targetY + half;
+      ctx.drawImage(snapCanvas, offsetX, offsetY);
+    } else {
+      ctx.fillStyle = '#c89d54';
+      ctx.fillRect(0, 0, size, size);
+    }
+    ctx.restore();
+
+    cvs.refresh();
+    return shardKey;
+  }
+
+  setupBreakAndAssembleStage(task) {
+    const { width } = this.scale;
+    const dpr = this.dpr;
+
+    this.assemblyContainer.removeAll(true);
+    this.assemblyContainer.setVisible(true);
+    this.assemblyContainer.setDepth(35);
+
+    this.progressBarFill.width = 6;
+    this.shardsList = [];
+    this.activeDraggedShard = null;
+
+    const texKey = this.currentArtTexKey;
+
+    const shardCount = Phaser.Math.Clamp(task.shardCount || 2, 2, 3);
+    const points = this.getRandomValidPointsOnArt(shardCount);
+    this.taskNotice.setText(`ЭТАП ${this.currentTaskIndex + 1}/${this.artifactData.tasks.length}: Склейте сколы (${points.length} шт.)`);
+
+    this.breakHoleGfx.clear();
+    this.breakHoleGfx.setVisible(true);
+
+    const scatterOffsets = [
+      { dx: -115, dy: -60 },
+      { dx: 115, dy: -60 },
+      { dx: -95, dy: 100 },
+      { dx: 95, dy: 100 }
+    ];
+
+    if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+    this.cameras.main.shake(140, 0.008);
+
+    points.forEach((pt, idx) => {
+      const targetX = pt.x;
+      const targetY = pt.y;
+      const radius = 25;
+
+      this.breakHoleGfx.fillStyle(0x0d0805, 0.94);
+      this.breakHoleGfx.fillCircle(targetX, targetY, radius);
+      this.breakHoleGfx.lineStyle(2, 0xef4444, 0.9);
+      this.breakHoleGfx.strokeCircle(targetX, targetY, radius);
+
+      const shardTexKey = this.createShardTexture(texKey, targetX, targetY, radius, idx);
+
+      const pieceContainer = this.add.container(targetX, targetY);
+      const pieceImg = this.add.image(0, 0, shardTexKey);
+
+      const pieceBorder = this.add.graphics();
+      pieceBorder.lineStyle(2.5, 0xfacc15, 0.95);
+      pieceBorder.strokeCircle(0, 0, radius);
+
+      pieceContainer.add([pieceImg, pieceBorder]);
+      this.assemblyContainer.add(pieceContainer);
+
+      const scatter = scatterOffsets[idx % scatterOffsets.length];
+      const restX = this.centerX + scatter.dx;
+      const restY = this.centerY + scatter.dy;
+
+      const shardObj = {
+        id: idx,
+        targetX,
+        targetY,
+        restX,
+        restY,
+        radius,
+        texKey: shardTexKey,
+        container: pieceContainer,
+        border: pieceBorder,
+        glued: false,
+        placed: false
+      };
+      this.shardsList.push(shardObj);
+
+      this.tweens.add({
+        targets: pieceContainer,
+        x: restX,
+        y: restY,
+        duration: 380 + idx * 60,
+        ease: 'Bounce.easeOut',
+        onComplete: () => {
+          if (idx === 0) {
+            this.selectTool('tool_glue', this.getToolTextureForTier('tool_glue'), true);
+            this.toolWarning.setText(`Нанесите Клей на места сколов (${points.length} шт.)!`);
+          }
         }
       });
-      if (ratio > 0.75) {
-        this.crackGfx.setAlpha((ratio - 0.75) * 4);
-      }
-    } else if (stepId === 'brush') {
-      this.dustOverlay.setAlpha(Math.max(0, 0.74 * (1 - ratio)));
-    } else if (stepId === 'reagent') {
-      this.tarnishOverlay.setAlpha(Math.max(0, 0.62 * (1 - ratio)));
-    } else if (stepId === 'glue') {
-      this.crackGfx.setAlpha(this.kintsugiUsed ? 1 : Math.max(0.15, 1 - ratio * 0.85));
-    } else if (stepId === 'polish') {
-      this.artSprite.setScale(this.artSprite.scaleX * (1 + 0.0005));
-    }
+    });
+
+    const lacquer = Storage.getKintsugiLacquer();
+    this.showKintsugiBanner(width, dpr, lacquer > 0);
   }
 
-  advanceStep() {
-    if (AudioManager.playShine) AudioManager.playShine();
-    this.currentStepIdx++;
-    this.stepProgress = 0;
+  showKintsugiBanner(width, dpr, hasLacquer) {
+    if (this.kintsugiBanner) this.kintsugiBanner.destroy();
 
-    if (this.currentStepIdx >= this.steps.length) {
-      this.finishRestoration();
+    this.kintsugiBanner = this.add.container(width / 2, this.centerY + 165).setDepth(45);
+    const bannerW = width * 0.90;
+    const bannerH = 46;
+
+    const bannerGfx = this.add.graphics();
+    bannerGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.96);
+    bannerGfx.fillRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
+    bannerGfx.lineStyle(1.5, 0xc89d54, 0.9);
+    bannerGfx.strokeRoundedRect(-bannerW / 2, -bannerH / 2, bannerW, bannerH, 10);
+
+    const btnX = bannerW / 2 - 58;
+    const btnW = 104;
+    const btnGfx = this.add.graphics();
+    const drawBtn = (active) => {
+      btnGfx.clear();
+      btnGfx.fillStyle(active ? 0x16a34a : (hasLacquer ? 0xd99b26 : 0x1e3a8a), 1);
+      btnGfx.fillRoundedRect(btnX - btnW / 2, -15, btnW, 30, 7);
+      btnGfx.lineStyle(1, active ? 0x86efac : (hasLacquer ? 0xfef08a : 0x38bdf8), 0.95);
+      btnGfx.strokeRoundedRect(btnX - btnW / 2, -15, btnW, 30, 7);
+    };
+    drawBtn(false);
+
+    const kintsugiZone = this.add.zone(btnX, 0, btnW, 30)
+      .setInteractive({ useHandCursor: true });
+
+    const kintsugiTxt = this.add.text(btnX, 0, hasLacquer ? '✨ КИНЦУГИ' : '🎬 ЛАК +1', {
+      fontSize: '11px',
+      fontFamily: this.FONT_UI,
+      color: hasLacquer ? '#1a1004' : '#ffffff',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5);
+
+    const infoTxt = this.add.text(-bannerW / 2 + 12, 0, 'Золотой шов (+60% к цене):', {
+      fontSize: '11px',
+      fontFamily: this.FONT_UI,
+      color: '#facc15',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0, 0.5);
+
+    kintsugiZone.on('pointerdown', () => {
+      if (this.isGuideOpen) return;
+      if (!hasLacquer) {
+        YandexSDK.showRewarded(() => {
+          Storage.addKintsugiLacquer(1);
+          this.showKintsugiBanner(width, dpr, true);
+        });
+        return;
+      }
+      this.isKintsugiMode = !this.isKintsugiMode;
+      drawBtn(this.isKintsugiMode);
+      kintsugiTxt.setColor(this.isKintsugiMode ? '#ffffff' : '#1a1004');
+      kintsugiTxt.setText(this.isKintsugiMode ? '✓ ВЫБРАНО' : '✨ КИНЦУГИ');
+      infoTxt.setText(this.isKintsugiMode ? 'Золото активно на все сколы!' : 'Золотой шов (+60% к цене):');
+      if (AudioManager.playClick) AudioManager.playClick();
+    });
+
+    this.kintsugiBanner.add([bannerGfx, infoTxt, btnGfx, kintsugiTxt, kintsugiZone]);
+  }
+
+  startTask(taskIdx, animateLayer = true) {
+    this.currentTaskIndex = taskIdx;
+    this.isTaskTransition = false;
+    this.isPointerActive = false;
+    this.activeDraggedShard = null;
+    this.cleanedGrid.fill(0);
+    this.cleanedScore = 0;
+    this.progressBarFill.width = 6;
+    this.toolWarning.setText('');
+
+    const task = this.artifactData.tasks[taskIdx];
+    if (!task) return;
+
+    const reqTool = task.requiredTool || 'tool_scraper';
+    const taskTitle = task.hint || task.name || 'Очистите артефакт';
+    this.taskNotice.setText(`ШАГ ${taskIdx + 1}/${this.artifactData.tasks.length}: ${taskTitle}`);
+
+    const iconKey = this.getToolTextureForTier(reqTool);
+    this.selectTool(reqTool, iconKey, true);
+
+    if (task.type === 'break_and_assemble') {
+      if (this.dirtLayer) this.dirtLayer.clear();
+      this.setupBreakAndAssembleStage(task);
       return;
     }
 
-    const nextStep = this.steps[this.currentStepIdx];
-    this.selectTool(nextStep.id);
-    this.updateHudStep();
-  }
+    if (this.kintsugiBanner) {
+      this.kintsugiBanner.destroy();
+      this.kintsugiBanner = null;
+    }
 
-  showQuickTip() {
-    const step = this.steps[this.currentStepIdx];
-    if (!step) return;
-    this.stepHintText.setColor('#facc15');
-    this.stepHintText.setText(`ПОДСКАЗКА: Выберите инструмент «${step.name}»`);
-  }
+    this.assemblyContainer.setVisible(false);
+    this.breakHoleGfx.setVisible(false);
 
-  finishRestoration() {
-    if (this.isCompleted) return;
-    this.isCompleted = true;
+    if (this.dirtLayer) {
+      this.dirtLayer.clear();
+      const maskedDirtKey = this.buildMaskedDirtCanvasTexture(reqTool);
+      this.dirtLayer.draw(maskedDirtKey, 0, 0);
 
-    let stars = 3;
-    if (this.mistakes >= 6) stars = 1;
-    else if (this.mistakes >= 2) stars = 2;
-
-    const baseVal = this.template.baseValue || 150;
-    const starMult = stars === 3 ? 1.35 : (stars === 2 ? 1.0 : 0.7);
-    const kintsugiMult = this.kintsugiUsed ? 1.6 : 1.0;
-    const earnedCoins = Math.round(baseVal * starMult * kintsugiMult);
-    const earnedXP = Math.round((this.template.xpReward || 45) * (stars === 3 ? 1.3 : 1.0));
-
-    Storage.addCoins(earnedCoins);
-    const levelResult = Storage.addXP(earnedXP);
-
-    if (this.contract) {
-      Storage.addCoins(this.contract.rewardCoins || 0);
-      Storage.addXP(this.contract.bonusXP || 0);
-      Storage.completeDailyContract();
-    } else {
-      Storage.decrementArtifactStock(this.regionId, this.template.id);
-      Storage.setActiveSession(null);
-
-      if (stars >= 2) {
-        Storage.addArtifactToInventory({
-          instanceId: 'art_' + Date.now(),
-          templateId: this.template.id,
-          regionId: this.regionId,
-          name: this.template.name,
-          textureKey: this.template.textureKey,
-          stars,
-          kintsugi: this.kintsugiUsed,
-          marketValue: earnedCoins,
-          restoredAt: Date.now()
+      if (animateLayer) {
+        this.dirtLayer.setAlpha(0);
+        this.tweens.add({
+          targets: this.dirtLayer,
+          alpha: 1,
+          duration: 280,
+          ease: 'Quad.easeOut'
         });
       }
     }
+  }
 
-    Storage.addHistoryEntry({
-      templateId: this.template.id,
-      name: this.template.name,
-      stars,
-      coins: earnedCoins,
-      kintsugi: this.kintsugiUsed,
-      date: Date.now()
+  completeTaskTransition() {
+    if (AudioManager.playTaskChime) AudioManager.playTaskChime(this.currentTaskIndex);
+    else if (AudioManager.playCoin) AudioManager.playCoin();
+
+    const flash = this.add.rectangle(this.cleanArt.x, this.cleanArt.y, this.cleanArt.width, this.cleanArt.height, 0xfffbeb, 0.65)
+      .setDepth(25);
+    flash.setBlendMode(Phaser.BlendModes.ADD);
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 420,
+      ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy()
     });
 
-    if (YandexSDK && YandexSDK.showInterstitial) {
-      YandexSDK.showInterstitial();
+    if (this.currentTaskIndex < this.artifactData.tasks.length - 1) {
+      const stepBanner = this.add.container(this.centerX, this.centerY).setDepth(60).setScale(0.8).setAlpha(0);
+      const pill = this.add.graphics();
+      pill.fillStyle(0x140d08, 0.92);
+      pill.fillRoundedRect(-115, -20, 230, 40, 12);
+      pill.lineStyle(1.5, 0x4ade80, 0.95);
+      pill.strokeRoundedRect(-115, -20, 230, 40, 12);
+
+      const pillTxt = this.add.text(0, 0, `✓ Этап ${this.currentTaskIndex + 1} завершён!`, {
+        fontSize: '13px',
+        fontFamily: this.FONT_UI,
+        color: '#86efac',
+        fontStyle: 'bold',
+        resolution: this.dpr
+      }).setOrigin(0.5);
+
+      stepBanner.add([pill, pillTxt]);
+
+      this.tweens.add({
+        targets: stepBanner,
+        scale: 1,
+        alpha: 1,
+        duration: 200,
+        ease: 'Back.easeOut'
+      });
+
+      this.time.delayedCall(650, () => {
+        this.tweens.add({
+          targets: stepBanner,
+          alpha: 0,
+          y: this.centerY - 14,
+          duration: 180,
+          onComplete: () => stepBanner.destroy()
+        });
+        this.startTask(this.currentTaskIndex + 1, true);
+      });
+    } else {
+      YandexSDK.notifyGameplayStop();
+      if (AudioManager.playShine) AudioManager.playShine();
+      if (AudioManager.stopMusic) AudioManager.stopMusic();
+
+      let earnedStars = 3;
+      let qualityMultiplier = 1.0;
+
+      if (this.mistakesCount >= 3) {
+        earnedStars = 1;
+        qualityMultiplier = 0.6;
+      } else if (this.mistakesCount >= 1) {
+        earnedStars = 2;
+        qualityMultiplier = 0.85;
+      }
+
+      const kintsugiBonus = this.hasKintsugiMastery ? 1.6 : 1.0;
+      const finalPrice = Math.max(15, Math.round((this.artifactData.marketValue || 100) * qualityMultiplier * kintsugiBonus));
+      this.artifactData.marketValue = finalPrice;
+      this.artifactData.isKintsugi = this.hasKintsugiMastery;
+
+      try {
+        Storage.addArtifactToInventory({
+          instanceId: `art_${Date.now()}`,
+          templateId: this.artifactData.id,
+          regionId: this.artifactData.regionId,
+          regionName: this.artifactData.regionName || 'Древний Египет',
+          name: this.artifactData.name,
+          museumDesc: this.artifactData.description || this.artifactData.museumDesc || '',
+          textureKey: this.artifactData.textureKey,
+          marketValue: finalPrice,
+          stars: earnedStars,
+          isKintsugi: this.hasKintsugiMastery
+        });
+
+        Storage.addHistoryEntry({
+          templateId: this.artifactData.id,
+          name: this.artifactData.name,
+          date: Date.now()
+        });
+
+        if (!this.activeContract && Storage.decrementArtifactStock) {
+          Storage.decrementArtifactStock(this.artifactData.regionId, this.artifactData.id);
+        }
+
+        if (Storage.setActiveSession) Storage.setActiveSession(null);
+        if (this.activeContract && Storage.completeDailyContract) Storage.completeDailyContract();
+      } catch (e) {
+        console.warn('Inventory save error:', e);
+      }
+
+      this.time.delayedCall(450, () => {
+        this.scene.start('VictoryScene', {
+          artifact: this.artifactData,
+          stars: earnedStars,
+          isDuplicate: this.isDuplicate,
+          isContract: !!this.activeContract,
+          isKintsugi: this.hasKintsugiMastery
+        });
+      });
     }
-
-    this.scene.start('VictoryScene', {
-      template: this.template,
-      regionId: this.regionId,
-      stars,
-      earnedCoins,
-      earnedXP,
-      kintsugiUsed: this.kintsugiUsed,
-      contract: this.contract,
-      levelResult
-    });
   }
 }
