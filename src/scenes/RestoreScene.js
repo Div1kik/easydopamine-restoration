@@ -21,9 +21,12 @@ export class RestoreScene extends Phaser.Scene {
 
     // Гарантированная очистка временных текстур и WebGL-буферов при выходе со сцены
     this._tempTextureKeys = [];
+    this.workbenchBgImg = null;
+
     this.events.once('shutdown', () => {
       this.isPointerActive = false;
       this.activeDraggedShard = null;
+      this.workbenchBgImg = null;
       if (this.dirtLayer) {
         this.dirtLayer.destroy();
         this.dirtLayer = null;
@@ -1157,7 +1160,10 @@ export class RestoreScene extends Phaser.Scene {
     return tempKey;
   }
 
- renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+    // Сбрасываем старую ссылку на случай перезапуска сцены
+    this.workbenchBgImg = null;
+
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -1168,20 +1174,14 @@ export class RestoreScene extends Phaser.Scene {
     fallbackBg.fillStyle(0x0d0805, 1);
     fallbackBg.fillRect(0, 0, width, height);
 
-    const isTextureReady = (key) => {
-      if (!key || !this.textures.exists(key)) return false;
-      const tex = this.textures.get(key);
-      return Boolean(tex && tex.key !== '__MISSING' && tex.source && tex.source[0] && tex.source[0].width > 1);
-    };
-
     const applyBgTexture = (key) => {
-      if (!this.scene || !this.scene.isActive() || !isTextureReady(key)) return;
-      
+      if (!this.scene || !this.scene.isActive()) return;
+      if (!key || !this.textures.exists(key)) return;
+
       const tex = this.textures.get(key);
-      const srcImg = tex.getSourceImage();
-      
-      if (!this.workbenchBgImg) {
-        // Ставим строго по центру логического экрана (480x800), маппинг зума подхватит камера
+      if (!tex || tex.key === '__MISSING') return;
+
+      if (!this.workbenchBgImg || !this.workbenchBgImg.active) {
         this.workbenchBgImg = this.add.image(width / 2, height / 2, key)
           .setOrigin(0.5, 0.5)
           .setDepth(1);
@@ -1189,27 +1189,35 @@ export class RestoreScene extends Phaser.Scene {
         this.workbenchBgImg.setTexture(key);
         this.workbenchBgImg.setPosition(width / 2, height / 2);
       }
-      
+
       this.workbenchBgImg.setVisible(true);
       this.workbenchBgImg.setAlpha(1);
 
-      // Растягиваем на весь экран с сохранением пропорций (Cover)
-      const scaleX = width / srcImg.width;
-      const scaleY = height / srcImg.height;
-      this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
+      const srcImg = tex.getSourceImage();
+      if (srcImg && srcImg.width > 0 && srcImg.height > 0) {
+        const scaleX = width / srcImg.width;
+        const scaleY = height / srcImg.height;
+        this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
+      } else {
+        this.workbenchBgImg.setDisplaySize(width, height);
+      }
     };
 
-    if (isTextureReady(activeSkin)) {
+    if (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING') {
       applyBgTexture(activeSkin);
     } else {
-      if (isTextureReady('workbench_bg_1')) {
+      if (this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') {
         applyBgTexture('workbench_bg_1');
       }
+      const eventName = `filecomplete-image-${activeSkin}`;
+      this.load.off(eventName);
       this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      this.load.once(`filecomplete-image-${activeSkin}`, () => {
+      this.load.once(eventName, () => {
         applyBgTexture(activeSkin);
       });
-      this.load.start();
+      if (!this.load.isLoading()) {
+        this.load.start();
+      }
     }
 
     const artW = this.artW || 260;
@@ -1235,7 +1243,7 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    // Делаем коврик полупрозрачным, чтобы текстура стола просвечивала под ним
+    // Полупрозрачный коврик, чтобы текстура стола красиво просвечивала под ним
     matGfx.fillStyle(palette.fill, 0.12);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
@@ -1258,6 +1266,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.matContainer.add(matGfx);
   }
+
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
