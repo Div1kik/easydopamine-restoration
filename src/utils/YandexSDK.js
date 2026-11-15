@@ -1,9 +1,12 @@
+import { AudioManager } from './AudioManager.js';
+
 class YandexSDKManager {
   constructor() {
     this.ysdk = null;
     this.initialized = false;
     this.lastInterstitialTime = 0;
     this.restorationsSinceAd = 0;
+    this.isAdShowing = false;
   }
 
   isYandexEnvironment() {
@@ -62,23 +65,31 @@ class YandexSDKManager {
   }
 
   showRewarded(onReward, onClose = null) {
+    if (this.isAdShowing) return;
+
     if (this.ysdk?.adv?.showRewardedVideo) {
       let rewarded = false;
+      this.isAdShowing = true;
       this.ysdk.adv.showRewardedVideo({
         callbacks: {
           onOpen: () => {
+            AudioManager.suspendForAd();
             this.notifyGameplayStop();
           },
           onRewarded: () => {
             rewarded = true;
           },
           onClose: () => {
+            this.isAdShowing = false;
+            AudioManager.resumeAfterAd();
             this.notifyGameplayStart();
             if (rewarded && typeof onReward === 'function') onReward();
             if (typeof onClose === 'function') onClose(rewarded);
           },
           onError: (err) => {
             console.warn('Rewarded ad error:', err);
+            this.isAdShowing = false;
+            AudioManager.resumeAfterAd();
             this.notifyGameplayStart();
             if (typeof onClose === 'function') onClose(false);
           }
@@ -99,18 +110,26 @@ class YandexSDKManager {
   }
 
   showInterstitial() {
+    if (this.isAdShowing) return;
+
     if (this.ysdk?.adv?.showFullscreenAdv) {
+      this.isAdShowing = true;
       this.ysdk.adv.showFullscreenAdv({
         callbacks: {
           onOpen: () => {
+            AudioManager.suspendForAd();
             this.notifyGameplayStop();
           },
           onClose: () => {
+            this.isAdShowing = false;
             this.lastInterstitialTime = Date.now();
             this.restorationsSinceAd = 0;
+            AudioManager.resumeAfterAd();
             this.notifyGameplayStart();
           },
           onError: () => {
+            this.isAdShowing = false;
+            AudioManager.resumeAfterAd();
             this.notifyGameplayStart();
           }
         }
