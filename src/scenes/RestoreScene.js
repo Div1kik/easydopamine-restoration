@@ -1167,6 +1167,9 @@ export class RestoreScene extends Phaser.Scene {
     fallbackBg.fillStyle(0x0d0805, 1);
     fallbackBg.fillRect(0, 0, width, height);
 
+    const workspaceH = bottomBound - topBound;
+    const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
+
     const isTextureValid = (key) => {
       if (!this.textures.exists(key)) return false;
       const tex = this.textures.get(key);
@@ -1178,16 +1181,17 @@ export class RestoreScene extends Phaser.Scene {
       if (!this.scene || !this.scene.isActive()) return;
       if (!isTextureValid(key)) return;
       if (!this.workbenchBgImg) {
-        this.workbenchBgImg = this.add.image(width / 2, height / 2, key)
+        this.workbenchBgImg = this.add.image(width / 2, matCenterY, key)
           .setOrigin(0.5, 0.5)
           .setDepth(1);
       } else {
         this.workbenchBgImg.setTexture(key);
+        this.workbenchBgImg.setPosition(width / 2, matCenterY);
       }
       this.workbenchBgImg.setVisible(true);
       this.workbenchBgImg.setAlpha(1);
       const scaleX = width / this.workbenchBgImg.width;
-      const scaleY = height / this.workbenchBgImg.height;
+      const scaleY = workspaceH / this.workbenchBgImg.height;
       this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
     };
 
@@ -1225,11 +1229,10 @@ export class RestoreScene extends Phaser.Scene {
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
-    const maxMatH = (bottomBound - topBound) - 44;
+    const maxMatH = workspaceH - 44;
 
     const matW = Math.min(artW + 46, maxMatW);
     const matH = Math.min(artH + 46, maxMatH);
-    const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
 
     this.matContainer = this.add.container(width / 2, matCenterY).setDepth(2);
 
@@ -1267,7 +1270,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.matContainer.add(matGfx);
   }
-  
+
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
