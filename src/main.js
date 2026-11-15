@@ -165,5 +165,5 @@ const config = {
   ]
 };
 
-new Phaser.Game(config);
-window.game = game;
+const gameInstance = new Phaser.Game(config);
+window.game = gameInstance;
