@@ -637,21 +637,21 @@ export class ShopScene extends Phaser.Scene {
     curY += 26;
 
     const workbenches = [
-      { id: 'workbench_bg_1', title: 'Дубовый верстак ученика', price: 0 },
-      { id: 'workbench_bg_3', title: 'Архив Древнего Египта', price: 320 },
-      { id: 'workbench_bg_2', title: 'Мастерская Античности', price: 680 },
-      { id: 'workbench_bg_4', title: 'Скрипторий Средневековья', price: 1350 },
-      { id: 'workbench_bg_5', title: 'Келья алхимика', price: 1950 },
-      { id: 'workbench_bg_12', title: 'Чайный домик Киото', price: 2800 },
-      { id: 'workbench_bg_9', title: 'Сокровищница Ацтеков', price: 4600 },
-      { id: 'workbench_bg_8', title: 'Лаборатория Викингов', price: 7500 },
-      { id: 'workbench_bg_6', title: 'Кабинет Ренессанса', price: 11500 },
-      { id: 'workbench_bg_7', title: 'Зал Императорского Лувра', price: 16000 },
-      { id: 'workbench_bg_10', title: 'Обсерватория звездочёта', price: 22000 },
-      { id: 'workbench_bg_11', title: 'Павильон Нефритового Дракона', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_13', title: 'Храм Золотого Скарабея', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_14', title: 'Королевская кузница', price: 0, lootboxOnly: true },
-      { id: 'workbench_bg_15', title: 'Чертог Хранителя Вечности', price: 0, lootboxOnly: true }
+      { id: 'workbench_bg_1', title: 'Старый дубовый верстак', price: 0 },
+      { id: 'workbench_bg_2', title: 'Стол с лупой и красками', price: 320 },
+      { id: 'workbench_bg_3', title: 'Верстак с фонарём и колбами', price: 680 },
+      { id: 'workbench_bg_4', title: 'Чёрный каменный стол мастера', price: 1350 },
+      { id: 'workbench_bg_5', title: 'Лаборатория алхимика', price: 1950 },
+      { id: 'workbench_bg_9', title: 'Архив Древнего Египта', price: 2800 },
+      { id: 'workbench_bg_10', title: 'Мраморный стол Античности', price: 4200 },
+      { id: 'workbench_bg_11', title: 'Кабинет нумизмата и архивариуса', price: 6500 },
+      { id: 'workbench_bg_12', title: 'Чайная мастерская Киото', price: 9500 },
+      { id: 'workbench_bg_15', title: 'Мастерская скульптора Ренессанса', price: 13500 },
+      { id: 'workbench_bg_7', title: 'Отсек глубоководной субмарины', price: 18000 },
+      { id: 'workbench_bg_13', title: 'Святилище Ацтеков', price: 0, lootboxOnly: true },
+      { id: 'workbench_bg_14', title: 'Кузница Викингов', price: 0, lootboxOnly: true },
+      { id: 'workbench_bg_6', title: 'Кибер-лаборатория будущего', price: 0, lootboxOnly: true },
+      { id: 'workbench_bg_8', title: 'Орбитальная станция Вечности', price: 0, lootboxOnly: true }
     ];
 
     const ownedWorkbenches = Storage.getOwnedWorkbenchSkins();
@@ -756,10 +756,10 @@ export class ShopScene extends Phaser.Scene {
     const FONT_UI = this.FONT_UI;
 
     const rareWorkbenches = [
-      { id: 'workbench_bg_11', name: 'Павильон Нефритового Дракона' },
-      { id: 'workbench_bg_13', name: 'Храм Золотого Скарабея' },
-      { id: 'workbench_bg_14', name: 'Королевская кузница' },
-      { id: 'workbench_bg_15', name: 'Чертог Хранителя Вечности' }
+      { id: 'workbench_bg_13', name: 'Святилище Ацтеков' },
+      { id: 'workbench_bg_14', name: 'Кузница Викингов' },
+      { id: 'workbench_bg_6', name: 'Кибер-лаборатория будущего' },
+      { id: 'workbench_bg_8', name: 'Орбитальная станция Вечности' }
     ];
 
     const owned = Storage.getOwnedWorkbenchSkins();
