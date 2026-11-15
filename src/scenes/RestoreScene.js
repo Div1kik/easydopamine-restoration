@@ -1157,7 +1157,7 @@ export class RestoreScene extends Phaser.Scene {
     return tempKey;
   }
 
-  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+ renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -1170,16 +1170,12 @@ export class RestoreScene extends Phaser.Scene {
     const workspaceH = bottomBound - topBound;
     const matCenterY = this.centerY || ((topBound + bottomBound) / 2);
 
-    const isTextureValid = (key) => {
-      if (!this.textures.exists(key)) return false;
-      const tex = this.textures.get(key);
-      const src = tex && tex.getSourceImage ? tex.getSourceImage() : null;
-      return Boolean(src && src.width > 1 && src.height > 1 && tex.key !== '__MISSING');
-    };
-
     const applyBgTexture = (key) => {
       if (!this.scene || !this.scene.isActive()) return;
-      if (!isTextureValid(key)) return;
+      if (!this.textures.exists(key)) return;
+      const tex = this.textures.get(key);
+      if (!tex || tex.key === '__MISSING') return;
+
       if (!this.workbenchBgImg) {
         this.workbenchBgImg = this.add.image(width / 2, matCenterY, key)
           .setOrigin(0.5, 0.5)
@@ -1188,43 +1184,28 @@ export class RestoreScene extends Phaser.Scene {
         this.workbenchBgImg.setTexture(key);
         this.workbenchBgImg.setPosition(width / 2, matCenterY);
       }
-      this.workbenchBgImg.setVisible(true);
-      this.workbenchBgImg.setAlpha(1);
-      const scaleX = width / this.workbenchBgImg.width;
-      const scaleY = workspaceH / this.workbenchBgImg.height;
-      this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
+      this.workbenchBgImg.setDisplaySize(width, workspaceH);
     };
 
-    const loadWebGLBackdrop = (skinKey, isFallback = false) => {
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalWidth > 0 && this.textures && this.scene && this.scene.isActive()) {
-          if (this.textures.exists(skinKey)) {
-            this.textures.remove(skinKey);
-          }
-          const cvs = this.textures.createCanvas(skinKey, img.naturalWidth, img.naturalHeight);
-          const ctx = cvs.getContext();
-          ctx.drawImage(img, 0, 0);
-          cvs.refresh();
-          applyBgTexture(skinKey);
-        }
-      };
-      img.onerror = () => {
-        if (!isFallback && skinKey !== 'workbench_bg_1') {
-          loadWebGLBackdrop('workbench_bg_1', true);
-        }
-      };
-      img.src = `assets/workbenches/${skinKey}.webp`;
-    };
-
-    if (isTextureValid(activeSkin)) {
-      applyBgTexture(activeSkin);
-    } else {
-      if (isTextureValid('workbench_bg_1')) {
-        applyBgTexture('workbench_bg_1');
+    const loadPhaserBackdrop = (skinKey, isFallback = false) => {
+      if (this.textures.exists(skinKey) && this.textures.get(skinKey).key !== '__MISSING') {
+        applyBgTexture(skinKey);
+        return;
       }
-      loadWebGLBackdrop(activeSkin, false);
-    }
+
+      this.load.image(skinKey, `assets/workbenches/${skinKey}.webp`);
+      this.load.once(`filecomplete-image-${skinKey}`, () => {
+        applyBgTexture(skinKey);
+      });
+      this.load.once('loaderror', (fileObj) => {
+        if (fileObj && fileObj.key === skinKey && !isFallback && skinKey !== 'workbench_bg_1') {
+          loadPhaserBackdrop('workbench_bg_1', true);
+        }
+      });
+      this.load.start();
+    };
+
+    loadPhaserBackdrop(activeSkin, false);
 
     const artW = this.artW || 260;
     const artH = this.artH || 320;
@@ -1248,7 +1229,7 @@ export class RestoreScene extends Phaser.Scene {
     };
     const palette = palettes[tier] || palettes[1];
 
-    matGfx.fillStyle(palette.fill, 0.22);
+    matGfx.fillStyle(palette.fill, 0.15);
     matGfx.fillRoundedRect(-halfW, -halfH, matW, matH, 16);
 
     matGfx.lineStyle(2, palette.border, 0.85);
