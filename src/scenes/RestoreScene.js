@@ -1163,7 +1163,7 @@ export class RestoreScene extends Phaser.Scene {
       ? Storage.getActiveWorkbenchSkin()
       : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
 
-    const fallbackBg = this.add.graphics().setDepth(0.5);
+    const fallbackBg = this.add.graphics().setDepth(0);
     fallbackBg.fillStyle(0x0d0805, 1);
     fallbackBg.fillRect(0, 0, width, height);
 
@@ -1178,17 +1178,21 @@ export class RestoreScene extends Phaser.Scene {
       if (!this.scene || !this.scene.isActive()) return;
       if (!isTextureValid(key)) return;
       if (!this.workbenchBgImg) {
-        this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
+        this.workbenchBgImg = this.add.image(width / 2, height / 2, key)
+          .setOrigin(0.5, 0.5)
+          .setDepth(1);
       } else {
         this.workbenchBgImg.setTexture(key);
       }
       this.workbenchBgImg.setVisible(true);
-      this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
+      this.workbenchBgImg.setAlpha(1);
+      const scaleX = width / this.workbenchBgImg.width;
+      const scaleY = height / this.workbenchBgImg.height;
+      this.workbenchBgImg.setScale(Math.max(scaleX, scaleY));
     };
 
     const loadWebGLBackdrop = (skinKey, isFallback = false) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       img.onload = () => {
         if (img.naturalWidth > 0 && this.textures && this.scene && this.scene.isActive()) {
           if (this.textures.exists(skinKey)) {
@@ -1263,7 +1267,7 @@ export class RestoreScene extends Phaser.Scene {
 
     this.matContainer.add(matGfx);
   }
-
+  
   processGlueAction(pointer) {
     if (this.activeTool !== 'tool_glue') {
       this.toolWarning.setText('⚠️ Выберите Клей на нижней панели!');
