@@ -1176,13 +1176,19 @@ export class RestoreScene extends Phaser.Scene {
       const tex = this.textures.get(key);
       if (!tex || tex.key === '__MISSING') return;
 
+      const cam = this.cameras.main;
+      const viewW = cam ? cam.width : width;
+      const viewH = cam ? cam.height : height;
+      const cx = cam ? cam.centerX : (width / 2);
+      const cy = cam ? cam.centerY : (height / 2);
+
       if (!this.workbenchBgImg || !this.workbenchBgImg.active) {
-        this.workbenchBgImg = this.add.image(width / 2, height / 2, key)
+        this.workbenchBgImg = this.add.image(cx, cy, key)
           .setOrigin(0.5, 0.5)
           .setDepth(1);
       } else {
         this.workbenchBgImg.setTexture(key);
-        this.workbenchBgImg.setPosition(width / 2, height / 2);
+        this.workbenchBgImg.setPosition(cx, cy);
       }
 
       this.workbenchBgImg.setVisible(true);
@@ -1190,10 +1196,10 @@ export class RestoreScene extends Phaser.Scene {
 
       const srcImg = tex.getSourceImage();
       if (srcImg && srcImg.width > 0 && srcImg.height > 0) {
-        const scale = Math.max(width / srcImg.width, height / srcImg.height);
+        const scale = Math.max(viewW / srcImg.width, viewH / srcImg.height);
         this.workbenchBgImg.setScale(scale);
       } else {
-        this.workbenchBgImg.setDisplaySize(width, height);
+        this.workbenchBgImg.setDisplaySize(viewW, viewH);
       }
     };
 
