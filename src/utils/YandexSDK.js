@@ -2,99 +2,72 @@ import { AudioManager } from './AudioManager.js';
 
 class YandexSDKManager {
   constructor() {
-    this.ysdk = null;
+    this.bridge = null;
     this.initialized = false;
     this.lastInterstitialTime = 0;
     this.restorationsSinceAd = 0;
     this.isAdShowing = false;
   }
 
-  isYandexEnvironment() {
-    if (typeof window === 'undefined') return false;
-    try {
-      return window.self !== window.top && Boolean(window.YaGames);
-    } catch {
-      return Boolean(window.YaGames);
+  getBridge() {
+    if (typeof window !== 'undefined' && window.vkBridge) {
+      return window.vkBridge;
     }
+    return null;
   }
 
   async init() {
-    if (this.initialized) return this.ysdk;
+    if (this.initialized) return this.bridge;
 
-    if (!this.isYandexEnvironment()) {
+    const bridge = this.getBridge();
+    if (!bridge) {
       this.initialized = true;
       return null;
     }
 
     try {
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('YaGames init timeout')), 3000)
-      );
-      this.ysdk = await Promise.race([window.YaGames.init(), timeout]);
+      await bridge.send('VKWebAppInit');
+      this.bridge = bridge;
       this.initialized = true;
+
+      bridge.send('VKWebAppCheckNativeAds', { ad_format: 'reward' }).catch(() => {});
+      bridge.send('VKWebAppCheckNativeAds', { ad_format: 'interstitial' }).catch(() => {});
     } catch (e) {
       this.initialized = true;
-      console.warn('YaGames init fallback:', e);
+      console.warn('VK Bridge init fallback:', e);
     }
 
-    return this.ysdk;
+    return this.bridge;
   }
 
-  notifyLoadingReady() {
-    try {
-      if (this.ysdk?.features?.LoadingAPI) {
-        this.ysdk.features.LoadingAPI.ready();
-      }
-    } catch {}
-  }
+  notifyLoadingReady() {}
 
-  notifyGameplayStart() {
-    try {
-      if (this.ysdk?.features?.GameplayAPI) {
-        this.ysdk.features.GameplayAPI.start();
-      }
-    } catch {}
-  }
+  notifyGameplayStart() {}
 
-  notifyGameplayStop() {
-    try {
-      if (this.ysdk?.features?.GameplayAPI) {
-        this.ysdk.features.GameplayAPI.stop();
-      }
-    } catch {}
-  }
+  notifyGameplayStop() {}
 
   showRewarded(onReward, onClose = null) {
     if (this.isAdShowing) return;
 
-    if (this.ysdk?.adv?.showRewardedVideo) {
-      let rewarded = false;
+    if (this.bridge) {
       this.isAdShowing = true;
-      this.ysdk.adv.showRewardedVideo({
-        callbacks: {
-          onOpen: () => {
-            AudioManager.suspendForAd();
-            this.notifyGameplayStop();
-          },
-          onRewarded: () => {
-            rewarded = true;
-          },
-          onClose: () => {
-            this.isAdShowing = false;
-            AudioManager.resumeAfterAd();
-            this.notifyGameplayStart();
-            if (rewarded && typeof onReward === 'function') onReward();
-            if (typeof onClose === 'function') onClose(rewarded);
-          },
-          onError: (err) => {
-            console.warn('Rewarded ad error:', err);
-            this.isAdShowing = false;
-            AudioManager.resumeAfterAd();
-            this.notifyGameplayStart();
-            if (typeof onClose === 'function') onClose(false);
-          }
-        }
-      });
+      AudioManager.suspendForAd();
+
+      this.bridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
+        .then((data) => {
+          this.isAdShowing = false;
+          AudioManager.resumeAfterAd();
+          const rewarded = Boolean(data && data.result);
+          if (rewarded && typeof onReward === 'function') onReward();
+          if (typeof onClose === 'function') onClose(rewarded);
+          this.bridge.send('VKWebAppCheckNativeAds', { ad_format: 'reward' }).catch(() => {});
+        })
+        .catch((err) => {
+          console.warn('VK Rewarded ad error:', err);
+          this.isAdShowing = false;
+          AudioManager.resumeAfterAd();
+          if (typeof onClose === 'function') onClose(false);
+        });
     } else {
       if (typeof onReward === 'function') onReward();
       if (typeof onClose === 'function') onClose(true);
@@ -112,28 +85,22 @@ class YandexSDKManager {
   showInterstitial() {
     if (this.isAdShowing) return;
 
-    if (this.ysdk?.adv?.showFullscreenAdv) {
+    if (this.bridge) {
       this.isAdShowing = true;
-      this.ysdk.adv.showFullscreenAdv({
-        callbacks: {
-          onOpen: () => {
-            AudioManager.suspendForAd();
-            this.notifyGameplayStop();
-          },
-          onClose: () => {
-            this.isAdShowing = false;
-            this.lastInterstitialTime = Date.now();
-            this.restorationsSinceAd = 0;
-            AudioManager.resumeAfterAd();
-            this.notifyGameplayStart();
-          },
-          onError: () => {
-            this.isAdShowing = false;
-            AudioManager.resumeAfterAd();
-            this.notifyGameplayStart();
-          }
-        }
-      });
+      AudioManager.suspendForAd();
+
+      this.bridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+        .then(() => {
+          this.isAdShowing = false;
+          this.lastInterstitialTime = Date.now();
+          this.restorationsSinceAd = 0;
+          AudioManager.resumeAfterAd();
+          this.bridge.send('VKWebAppCheckNativeAds', { ad_format: 'interstitial' }).catch(() => {});
+        })
+        .catch(() => {
+          this.isAdShowing = false;
+          AudioManager.resumeAfterAd();
+        });
     } else {
       this.lastInterstitialTime = Date.now();
       this.restorationsSinceAd = 0;
