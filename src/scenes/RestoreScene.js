@@ -309,7 +309,7 @@ export class RestoreScene extends Phaser.Scene {
 
     artInfoCont.add([badgeTxt, artTitle, this.taskNotice, progressBarBg, this.progressBarFill, this.toolWarning]);
 
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (мгновенно из предзагруженного кэша BootScene)
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
     this.artifactShadow = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.44, this.artW * 0.82, 26, 0x000000, 0.5)
       .setDepth(5);
 
@@ -1177,15 +1177,20 @@ export class RestoreScene extends Phaser.Scene {
     const applyBgTexture = (key) => {
       if (!this.scene || !this.scene.isActive()) return;
       if (!isTextureValid(key)) return;
-      if (this.workbenchBgImg) this.workbenchBgImg.destroy();
-      this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
+      if (!this.workbenchBgImg) {
+        this.workbenchBgImg = this.add.image(width / 2, height / 2, key).setDepth(1);
+      } else {
+        this.workbenchBgImg.setTexture(key);
+      }
+      this.workbenchBgImg.setVisible(true);
       this.workbenchBgImg.setScale(Math.max(width / this.workbenchBgImg.width, height / this.workbenchBgImg.height));
     };
 
     const loadWebGLBackdrop = (skinKey, isFallback = false) => {
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => {
-        if (img.naturalWidth > 0 && this.textures) {
+        if (img.naturalWidth > 0 && this.textures && this.scene && this.scene.isActive()) {
           if (this.textures.exists(skinKey)) {
             this.textures.remove(skinKey);
           }
