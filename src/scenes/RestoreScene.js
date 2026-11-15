@@ -309,7 +309,7 @@ export class RestoreScene extends Phaser.Scene {
 
     artInfoCont.add([badgeTxt, artTitle, this.taskNotice, progressBarBg, this.progressBarFill, this.toolWarning]);
 
-    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ
+    // 5. РАБОЧАЯ ЗОНА И АРТЕФАКТ (мгновенно из предзагруженного кэша BootScene)
     this.artifactShadow = this.add.ellipse(this.centerX, this.centerY + this.artH * 0.44, this.artW * 0.82, 26, 0x000000, 0.5)
       .setDepth(5);
 
@@ -317,36 +317,12 @@ export class RestoreScene extends Phaser.Scene {
       .setStrokeStyle(1.5, 0xc89d54, 0.75)
       .setDepth(6);
 
-    const texKey = this.artifactData.textureKey || 'art_egypt_scarab';
+    const texKey = this.textures.exists(this.artifactData.textureKey) ? this.artifactData.textureKey : 'art_egypt_scarab';
     this.currentArtTexKey = texKey;
 
     this.cleanArt = this.add.image(this.centerX, this.centerY, texKey)
       .setDisplaySize(this.artW, this.artH)
       .setDepth(7);
-
-    if (!this.artifactData._webpLoaded) {
-      const artImg = new Image();
-      artImg.onload = () => {
-        if (artImg.naturalWidth > 0 && this.scene && this.scene.isActive()) {
-          if (this.textures.exists(texKey)) this.textures.remove(texKey);
-          const cvs = this.textures.createCanvas(texKey, artImg.naturalWidth, artImg.naturalHeight);
-          cvs.getContext().drawImage(artImg, 0, 0);
-          cvs.refresh();
-          this.artifactData._webpLoaded = true;
-          this._artSnapshotCanvas = null;
-          if (this.cleanArt && this.cleanArt.active) {
-            this.cleanArt.setTexture(texKey).setDisplaySize(this.artW, this.artH);
-          }
-          this.buildValidCellsMask(texKey);
-          const curTask = this.artifactData.tasks[this.currentTaskIndex];
-          if (curTask && curTask.type !== 'break_and_assemble' && this.dirtLayer) {
-            this.dirtLayer.clear();
-            this.dirtLayer.draw(this.buildMaskedDirtCanvasTexture(curTask.requiredTool || 'tool_scraper'), 0, 0);
-          }
-        }
-      };
-      artImg.src = `assets/artifacts/${texKey}.webp`;
-    }
 
     this.breakHoleGfx = this.add.graphics().setDepth(7.5);
 
