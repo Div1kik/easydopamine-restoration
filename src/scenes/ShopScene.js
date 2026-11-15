@@ -46,7 +46,7 @@ export class ShopScene extends Phaser.Scene {
     this.coinsText = this.add.text(
       width / 2,
       48,
-      `Казна: ${coins} 🪙   |   Лак Кинцуги: ${lacquer} ✨`,
+      `Казна: ${coins} 🪙    |    Лак Кинцуги: ${lacquer} ✨`,
       {
         fontSize: '12px',
         fontFamily: FONT_UI,
@@ -101,24 +101,10 @@ export class ShopScene extends Phaser.Scene {
     });
   }
 
-  preloadWorkbenchInBackground(skinId) {
-    if (!skinId) return;
-    if (this.textures.exists(skinId)) {
-      const tex = this.textures.get(skinId);
-      const src = tex && tex.getSourceImage ? tex.getSourceImage() : null;
-      if (src && src.width > 1 && tex.key !== '__MISSING') return;
-      this.textures.remove(skinId);
-    }
-
-    this.load.reset();
-    this.load.image(skinId, `assets/workbenches/${skinId}.webp`);
-    this.load.start();
-  }
-
   updateHeaderBalance() {
     const coins = Storage.getCoins();
     const lacquer = Storage.getKintsugiLacquer();
-    this.coinsText.setText(`Казна: ${coins} 🪙   |   Лак Кинцуги: ${lacquer} ✨`);
+    this.coinsText.setText(`Казна: ${coins} 🪙    |    Лак Кинцуги: ${lacquer} ✨`);
   }
 
   createCategoryTabs(width, y) {
@@ -640,7 +626,6 @@ export class ShopScene extends Phaser.Scene {
 
     curY += 10;
 
-    // 3. Интерьер мастерской (сбалансированные цены по эпохам + 4 эксклюзива в сундуке)
     const wbTitle = this.add.text(width * 0.04, curY, '🏛 ИНТЕРЬЕР МАСТЕРСКОЙ (15 СТОЛОВ)', {
       fontSize: '13px',
       fontFamily: FONT_UI,
@@ -671,9 +656,6 @@ export class ShopScene extends Phaser.Scene {
 
     const ownedWorkbenches = Storage.getOwnedWorkbenchSkins();
     const activeWorkbench = Storage.getActiveWorkbenchSkin();
-
-    this.preloadWorkbenchInBackground(activeWorkbench);
-    ownedWorkbenches.forEach((wbId) => this.preloadWorkbenchInBackground(wbId));
 
     workbenches.forEach((wb) => {
       const cardH = 64;
@@ -743,14 +725,12 @@ export class ShopScene extends Phaser.Scene {
         if (this.isDraggingList || this.isModalOpen) return;
         if (owned) {
           Storage.setActiveWorkbenchSkin(wb.id);
-          this.preloadWorkbenchInBackground(wb.id);
           if (AudioManager.playClick) AudioManager.playClick();
           this.renderShopItems();
         } else if (!wb.lootboxOnly && Storage.getCoins() >= wb.price) {
           Storage.addCoins(-wb.price);
           Storage.unlockWorkbenchSkin(wb.id);
           Storage.setActiveWorkbenchSkin(wb.id);
-          this.preloadWorkbenchInBackground(wb.id);
           if (AudioManager.playCoin) AudioManager.playCoin();
           this.updateHeaderBalance();
           this.renderShopItems();
@@ -796,7 +776,6 @@ export class ShopScene extends Phaser.Scene {
       const won = unownedRare[Math.floor(Math.random() * unownedRare.length)];
       Storage.unlockWorkbenchSkin(won.id);
       Storage.setActiveWorkbenchSkin(won.id);
-      this.preloadWorkbenchInBackground(won.id);
       pity = 0;
       rewardType = 'rare_workbench';
       rewardIcon = '🏛';
