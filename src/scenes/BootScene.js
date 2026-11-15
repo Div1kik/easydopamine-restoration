@@ -8,11 +8,33 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('menu_bg', 'assets/backgrounds/menu_bg.png');
-    this.load.image('museum_bg', 'assets/backgrounds/museum_bg.png');
-    this.load.image('shop_bg', 'assets/backgrounds/shop_bg.png');
-    this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
-    this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
+    const { width, height } = this.scale;
+
+    const barW = Math.min(width * 0.65, 240);
+    const barBg = this.add.rectangle(width / 2, height / 2, barW, 8, 0x24180f).setOrigin(0.5);
+    const barFill = this.add.rectangle(width / 2 - barW / 2, height / 2, 4, 6, 0xfacc15).setOrigin(0, 0.5);
+    const loadTxt = this.add.text(width / 2, height / 2 - 20, 'Загрузка мастерской...', {
+      fontSize: '13px',
+      fontFamily: '"Inter", sans-serif',
+      color: '#fdf6e3'
+    }).setOrigin(0.5);
+
+    this.load.on('progress', (val) => {
+      barFill.width = Math.max(4, barW * val);
+    });
+
+    this.load.once('complete', () => {
+      barBg.destroy();
+      barFill.destroy();
+      loadTxt.destroy();
+    });
+
+    // 5 фонов сцен в лёгком .webp
+    this.load.image('menu_bg', 'assets/backgrounds/menu_bg.webp');
+    this.load.image('museum_bg', 'assets/backgrounds/museum_bg.webp');
+    this.load.image('shop_bg', 'assets/backgrounds/shop_bg.webp');
+    this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.webp');
+    this.load.image('victory_bg', 'assets/backgrounds/victory_bg.webp');
 
     let activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
