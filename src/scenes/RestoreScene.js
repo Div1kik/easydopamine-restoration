@@ -9,12 +9,28 @@ export class RestoreScene extends Phaser.Scene {
     super('RestoreScene');
   }
 
+  preload() {
+    let activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : 'workbench_bg_1';
+    if (!activeSkin || !String(activeSkin).startsWith('workbench_bg_')) {
+      activeSkin = 'workbench_bg_1';
+    }
+
+    if (!this.textures.exists(activeSkin) || this.textures.get(activeSkin).key === '__MISSING') {
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+    }
+    if (!this.textures.exists('workbench_bg_1') || this.textures.get('workbench_bg_1').key === '__MISSING') {
+      this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
+    }
+  }
+
   create(data) {
     const { width, height } = this.scale;
     const dpr = 3;
     this.dpr = dpr;
 
-    const FONT_UI = '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const FONT_UI = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     this.FONT_UI = FONT_UI;
 
     YandexSDK.notifyGameplayStart();
@@ -1160,45 +1176,31 @@ export class RestoreScene extends Phaser.Scene {
     this.workbenchBgImg = null;
 
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
-    const activeSkin = Storage.getActiveWorkbenchSkin
+    let activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
-      : (localStorage.getItem('active_workbench_skin') || `workbench_bg_${tier}`);
+      : 'workbench_bg_1';
+    if (!activeSkin || !String(activeSkin).startsWith('workbench_bg_')) {
+      activeSkin = 'workbench_bg_1';
+    }
 
-    // Базовая тёмная подложка (как в MenuScene)
+    // Базовая тёмная подложка
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805).setDepth(0);
 
-    const drawBg = (key) => {
-      if (!this.sys || !this.sys.isActive()) return;
-      if (!this.textures.exists(key)) return;
-      const tex = this.textures.get(key);
-      if (!tex || tex.key === '__MISSING') return;
+    const keyToUse = (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING')
+      ? activeSkin
+      : ((this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') ? 'workbench_bg_1' : null);
 
-      if (this.workbenchBgImg && this.workbenchBgImg.active) {
-        this.workbenchBgImg.destroy();
-      }
-      const bg = this.add.image(width / 2, height / 2, key).setDepth(1);
+    if (keyToUse) {
+      const bg = this.add.image(width / 2, height / 2, keyToUse).setDepth(1);
       if (bg.width > 0 && bg.height > 0) {
         bg.setScale(Math.max(width / bg.width, height / bg.height));
       } else {
         bg.setDisplaySize(width, height);
       }
       this.workbenchBgImg = bg;
-    };
-
-    if (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING') {
-      drawBg(activeSkin);
-    } else {
-      if (this.textures.exists('workbench_bg_1') && this.textures.get('workbench_bg_1').key !== '__MISSING') {
-        drawBg('workbench_bg_1');
-      }
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      this.load.once(`filecomplete-image-${activeSkin}`, () => {
-        drawBg(activeSkin);
-      });
-      this.load.start();
     }
 
-    // Декоративная рамка коврика с прозрачным центром (чтобы фон верстака был полностью виден)
+    // Декоративная рамка коврика с прозрачным центром (весь рисунок стола полностью виден)
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
