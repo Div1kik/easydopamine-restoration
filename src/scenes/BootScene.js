@@ -14,6 +14,14 @@ export class BootScene extends Phaser.Scene {
     this.load.image('expedition_bg', 'assets/backgrounds/expedition_bg.png');
     this.load.image('victory_bg', 'assets/backgrounds/victory_bg.png');
 
+    const activeSkin = Storage.getActiveWorkbenchSkin
+      ? Storage.getActiveWorkbenchSkin()
+      : (localStorage.getItem('active_workbench_skin') || 'workbench_bg_1');
+    this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
+    if (activeSkin !== 'workbench_bg_1') {
+      this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
+    }
+
     ARTIFACT_TEMPLATES.forEach((art) => {
       if (art.textureKey) {
         this.load.image(art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
