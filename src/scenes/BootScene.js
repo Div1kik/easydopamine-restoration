@@ -21,6 +21,12 @@ export class BootScene extends Phaser.Scene {
     if (activeSkin !== 'workbench_bg_1') {
       this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
     }
+
+    ARTIFACT_TEMPLATES.forEach((art) => {
+      if (art.textureKey) {
+        this.load.image(art.textureKey, `assets/artifacts/${art.textureKey}.webp`);
+      }
+    });
   }
 
   create() {
