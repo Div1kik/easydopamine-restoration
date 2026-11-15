@@ -122,7 +122,7 @@ function makeRetinaScene(SceneClass) {
         this._scaleRetinaWrapped = true;
         this.scale = new Proxy(this.sys.scale, {
           get(target, prop) {
-            if (prop === 'width') return BASE_WIDTH;
+            if (prop === '') return BASE_WIDTH;
             if (prop === 'height') return LOGICAL_HEIGHT;
             const val = target[prop];
             return typeof val === 'function' ? val.bind(target) : val;
