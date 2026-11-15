@@ -1157,7 +1157,7 @@ export class RestoreScene extends Phaser.Scene {
     return tempKey;
   }
 
-  renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
+    renderWorkbenchBackdrop(width, height, topBound, bottomBound) {
     const tier = Storage.getWorkshopTier ? Storage.getWorkshopTier() : 1;
     const activeSkin = Storage.getActiveWorkbenchSkin
       ? Storage.getActiveWorkbenchSkin()
@@ -1171,7 +1171,7 @@ export class RestoreScene extends Phaser.Scene {
       if (!this.textures.exists(key)) return false;
       const tex = this.textures.get(key);
       const src = tex && tex.getSourceImage ? tex.getSourceImage() : null;
-      return Boolean(src && src.width > 1 && src.height > 1);
+      return Boolean(src && src.width > 1 && src.height > 1 && tex.key !== '__MISSING');
     };
 
     const applyBgTexture = (key) => {
@@ -1188,15 +1188,16 @@ export class RestoreScene extends Phaser.Scene {
       if (this.textures.exists(activeSkin)) {
         this.textures.remove(activeSkin);
       }
-      if (isTextureValid('workbench_bg_1')) {
-        applyBgTexture('workbench_bg_1');
-      }
 
+      // Сбрасываем загрузчик сцены, иначе Phaser 3.80 игнорирует start() после завершения create()
+      this.load.reset();
+      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
       this.load.once(`filecomplete-image-${activeSkin}`, () => {
         applyBgTexture(activeSkin);
       });
       this.load.once('loaderror', (file) => {
         if (file && file.key === activeSkin && activeSkin !== 'workbench_bg_1') {
+          this.load.reset();
           this.load.image('workbench_bg_1', 'assets/workbenches/workbench_bg_1.webp');
           this.load.once('filecomplete-image-workbench_bg_1', () => {
             applyBgTexture('workbench_bg_1');
@@ -1204,11 +1205,7 @@ export class RestoreScene extends Phaser.Scene {
           this.load.start();
         }
       });
-
-      this.load.image(activeSkin, `assets/workbenches/${activeSkin}.webp`);
-      if (!this.load.isLoading()) {
-        this.load.start();
-      }
+      this.load.start();
     }
 
     const artW = this.artW || 260;
