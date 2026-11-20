@@ -18,6 +18,9 @@ export const Storage = {
     CLAIMED_LEVEL_REWARDS: 'art_claimed_level_rewards',
     ACTIVE_CONTRACT: 'art_active_contract',
     EXPEDITION_STOCKS: 'art_expedition_stocks',
+    DISCOVERED_ARTIFACTS: 'art_discovered_artifacts',
+    ENERGY: 'art_energy_val',
+    ENERGY_LAST_TS: 'art_energy_last_ts',
     KINTSUGI_LACQUER: 'art_kintsugi_lacquer',
     UNLOCKED_REGIONS: 'art_unlocked_regions'
   },
@@ -35,6 +38,154 @@ export const Storage = {
     const cur = this.getCoins();
     this.setCoins(cur + amount);
     return this.getCoins();
+  },
+
+  // --- ПОЛЕВОЕ СНАРЯЖЕНИЕ (УРОВНИ 1..4) ---
+  getDigToolTier(toolKey) {
+    if (localStorage.getItem(`dig_upg_${toolKey}_4`) === 'true') return 4;
+    if (localStorage.getItem(`dig_upg_${toolKey}_3`) === 'true') return 3;
+    if (localStorage.getItem(`dig_upg_${toolKey}_2`) === 'true') return 2;
+    return 1;
+  },
+
+  getExpeditionGearBonuses() {
+    const pickaxeTier = this.getDigToolTier('pickaxe');
+    const radarTier = this.getDigToolTier('radar');
+    const fieldBrushTier = this.getDigToolTier('fieldbrush');
+    const campTier = this.getDigToolTier('camp');
+
+    return {
+      pickaxeTier,
+      radarTier,
+      fieldBrushTier,
+      campTier,
+      // Бонусы для авто-экспедиции
+      autoItemCount: 1 + pickaxeTier, // от 2 до 5 находок за авто-рейс
+      rareWeightMult: 1 + (radarTier - 1) * 0.45, // выше шанс на дорогие разведанные реликвии
+      bonusItemChance: (fieldBrushTier - 1) * 0.22, // до 66% шанса на +1 доп. предмет
+      lacquerChance: (fieldBrushTier >= 3 ? 0.14 : 0.04) * radarTier * 0.5
+    };
+  },
+
+  // --- ЭНЕРГИЯ ЭКСПЕДИЦИЙ ---
+  getMaxEnergy() {
+    const campTier = this.getDigToolTier('camp');
+    return 30 + (campTier - 1) * 10; // 30 -> 40 -> 50 -> 60
+  },
+
+  getEnergyRegenIntervalMs() {
+    const campTier = this.getDigToolTier('camp');
+    const secondsMap = [120, 120, 95, 75, 60];
+    return (secondsMap[campTier] || 120) * 1000;
+  },
+
+  syncEnergy() {
+    const maxEnergy = this.getMaxEnergy();
+    const intervalMs = this.getEnergyRegenIntervalMs();
+    const now = Date.now();
+
+    let rawVal = localStorage.getItem(this.KEYS.ENERGY);
+    let rawTs = localStorage.getItem(this.KEYS.ENERGY_LAST_TS);
+
+    if (rawVal === null) {
+      localStorage.setItem(this.KEYS.ENERGY, maxEnergy.toString());
+      localStorage.setItem(this.KEYS.ENERGY_LAST_TS, now.toString());
+      return { current: maxEnergy, max: maxEnergy, nextInMs: 0 };
+    }
+
+    let current = parseInt(rawVal, 10);
+    let lastTs = parseInt(rawTs || now.toString(), 10);
+
+    if (Number.isNaN(current)) current = maxEnergy;
+    if (Number.isNaN(lastTs) || lastTs > now) lastTs = now;
+
+    if (current >= maxEnergy) {
+      localStorage.setItem(this.KEYS.ENERGY, current.toString());
+      localStorage.setItem(this.KEYS.ENERGY_LAST_TS, now.toString());
+      return { current, max: maxEnergy, nextInMs: 0 };
+    }
+
+    const elapsed = now - lastTs;
+    const gained = Math.floor(elapsed / intervalMs);
+
+    if (gained > 0) {
+      current = Math.min(maxEnergy, current + gained);
+      if (current >= maxEnergy) {
+        lastTs = now;
+      } else {
+        lastTs = lastTs + gained * intervalMs;
+      }
+      localStorage.setItem(this.KEYS.ENERGY, current.toString());
+      localStorage.setItem(this.KEYS.ENERGY_LAST_TS, lastTs.toString());
+    }
+
+    const nextInMs = current >= maxEnergy ? 0 : Math.max(0, intervalMs - (now - lastTs));
+    return { current, max: maxEnergy, nextInMs };
+  },
+
+  getEnergy() {
+    return this.syncEnergy().current;
+  },
+
+  spendEnergy(amount) {
+    const state = this.syncEnergy();
+    if (state.current < amount) return false;
+    const wasFull = state.current >= state.max;
+    const updated = Math.max(0, state.current - amount);
+    localStorage.setItem(this.KEYS.ENERGY, updated.toString());
+    if (wasFull) {
+      localStorage.setItem(this.KEYS.ENERGY_LAST_TS, Date.now().toString());
+    }
+    return true;
+  },
+
+  addEnergy(amount) {
+    const state = this.syncEnergy();
+    // Позволяем рекламе/пайку временно превышать кап на +15
+    const hardCap = state.max + 20;
+    const updated = Math.min(hardCap, state.current + amount);
+    localStorage.setItem(this.KEYS.ENERGY, updated.toString());
+    if (updated >= state.max) {
+      localStorage.setItem(this.KEYS.ENERGY_LAST_TS, Date.now().toString());
+    }
+    return updated;
+  },
+
+  // --- ЖУРНАЛ РАЗВЕДКИ (ТОЛЬКО ЛИЧНО ОТКОПАННЫЕ АРТЕФАКТЫ) ---
+  getDiscoveredMap() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.KEYS.DISCOVERED_ARTIFACTS));
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
+    // Стартово в Египте разведан базовый скарабей, чтобы новичок видел работу авто-сбора после 1-го раскопа
+    const initial = { egypt: ['egypt_scarab'] };
+    localStorage.setItem(this.KEYS.DISCOVERED_ARTIFACTS, JSON.stringify(initial));
+    return initial;
+  },
+
+  getDiscoveredInRegion(regionId) {
+    const map = this.getDiscoveredMap();
+    return Array.isArray(map[regionId]) ? map[regionId] : [];
+  },
+
+  isArtifactDiscovered(regionId, templateId) {
+    return this.getDiscoveredInRegion(regionId).includes(templateId);
+  },
+
+  markArtifactDiscovered(regionId, templateId) {
+    if (!regionId || !templateId) return false;
+    const map = this.getDiscoveredMap();
+    if (!Array.isArray(map[regionId])) map[regionId] = [];
+    if (!map[regionId].includes(templateId)) {
+      map[regionId].push(templateId);
+      localStorage.setItem(this.KEYS.DISCOVERED_ARTIFACTS, JSON.stringify(map));
+      return true; // Впервые открыт!
+    }
+    return false;
+  },
+
+  isAutoExpeditionUnlocked(regionId) {
+    return this.getDiscoveredInRegion(regionId).length > 0;
   },
 
   // --- СКИНЫ ВЕРСТАКА (15 ТЕМ) ---
@@ -122,15 +273,31 @@ export const Storage = {
     return false;
   },
 
-  // --- СБАЛАНСИРОВАННЫЙ БАЛАНС ЭПОХ ---
+  // --- БАЛАНС ЭПОХ ---
   REGION_UNLOCK_REQS: {
-    egypt: { minLevel: 1, cost: 0, expeditionCost: 80, name: 'Древний Египет' },
-    antique: { minLevel: 3, cost: 220, expeditionCost: 190, name: 'Античность' },
-    europe: { minLevel: 6, cost: 650, expeditionCost: 420, name: 'Средневековье' },
-    japan: { minLevel: 10, cost: 1450, expeditionCost: 820, name: 'Япония' },
-    aztec: { minLevel: 15, cost: 3200, expeditionCost: 1450, name: 'Ацтеки' },
-    vikings: { minLevel: 20, cost: 6800, expeditionCost: 2300, name: 'Викинги' },
-    renaissance: { minLevel: 25, cost: 13500, expeditionCost: 3600, name: 'Ренессанс' }
+    egypt: { minLevel: 1, cost: 0, expeditionCost: 80, energyCost: 10, name: 'Древний Египет' },
+    antique: { minLevel: 3, cost: 220, expeditionCost: 190, energyCost: 10, name: 'Античность' },
+    europe: { minLevel: 6, cost: 650, expeditionCost: 420, energyCost: 10, name: 'Средневековье' },
+    japan: { minLevel: 10, cost: 1450, expeditionCost: 820, energyCost: 10, name: 'Япония' },
+    aztec: { minLevel: 15, cost: 3200, expeditionCost: 1450, energyCost: 10, name: 'Ацтеки' },
+    vikings: { minLevel: 20, cost: 6800, expeditionCost: 2300, energyCost: 10, name: 'Викинги' },
+    renaissance: { minLevel: 25, cost: 13500, expeditionCost: 3600, energyCost: 10, name: 'Ренессанс' }
+  },
+
+  getManualDigCost(regionId) {
+    const req = this.REGION_UNLOCK_REQS[regionId] || { expeditionCost: 80, energyCost: 10 };
+    return {
+      coins: Math.round((req.expeditionCost || 80) * 0.5),
+      energy: req.energyCost || 10
+    };
+  },
+
+  getAutoExpeditionCost(regionId) {
+    const req = this.REGION_UNLOCK_REQS[regionId] || { expeditionCost: 80, energyCost: 10 };
+    return {
+      coins: req.expeditionCost || 80,
+      energy: req.energyCost || 10
+    };
   },
 
   getUnlockedRegions() {
@@ -241,7 +408,7 @@ export const Storage = {
     };
   },
 
-getLevelRewardDetails(level) {
+  getLevelRewardDetails(level) {
     const bonusCoins = level * 65 + 80;
     let lacquerBonus = 0;
     if (level % 5 === 0) lacquerBonus = 2;
@@ -311,7 +478,8 @@ getLevelRewardDetails(level) {
     const regionTemplates = templates.filter(t => t.regionId === regionId);
     const initialStock = {};
     regionTemplates.forEach(t => {
-      initialStock[t.id] = regionId === 'egypt' ? 3 : 1;
+      // На старте в Египте даём только 2 скарабея, остальные нужно откопать в раскопках
+      initialStock[t.id] = (regionId === 'egypt' && t.id === 'egypt_scarab') ? 2 : 0;
     });
 
     all[regionId] = initialStock;
@@ -334,28 +502,76 @@ getLevelRewardDetails(level) {
     }
   },
 
-  fundExpedition(regionId, cost, templates = []) {
-    const coins = this.getCoins();
-    if (coins < cost) return false;
-
-    if (cost > 0) {
-      this.addCoins(-cost);
+  // АВТО-ЭКСПЕДИЦИЯ: привозит ТОЛЬКО лично раскопанные артефакты + бонусы от уровня снаряжения
+  runAutoExpedition(regionId, templates = [], isFreeAd = false) {
+    const discoveredIds = this.getDiscoveredInRegion(regionId);
+    if (discoveredIds.length === 0) {
+      return { ok: false, reason: 'not_discovered' };
     }
-    const all = this.getAllStocks();
-    const regionTemplates = templates.filter(t => t.regionId === regionId);
 
-    if (!all[regionId]) all[regionId] = {};
+    const costCfg = this.getAutoExpeditionCost(regionId);
+    if (!isFreeAd) {
+      if (this.getEnergy() < costCfg.energy) return { ok: false, reason: 'no_energy' };
+      if (this.getCoins() < costCfg.coins) return { ok: false, reason: 'no_coins' };
+      this.spendEnergy(costCfg.energy);
+      this.addCoins(-costCfg.coins);
+    }
 
-    regionTemplates.forEach(t => {
-      const added = Math.floor(Math.random() * 2) + 1;
-      all[regionId][t.id] = (all[regionId][t.id] || 0) + added;
+    const regionTemplates = templates.filter(
+      (t) => t.regionId === regionId && discoveredIds.includes(t.id)
+    );
+    if (regionTemplates.length === 0) {
+      return { ok: false, reason: 'not_discovered' };
+    }
+
+    const gear = this.getExpeditionGearBonuses();
+    let totalFinds = gear.autoItemCount;
+    if (Math.random() < gear.bonusItemChance) {
+      totalFinds += 1;
+    }
+
+    // Вес выбора зависит от уровня Георадара (более дорогие разведанные предметы выпадают чаще)
+    const weightedPool = regionTemplates.map((tmpl, idx) => {
+      const rarityFactor = 1 + idx * 0.25 * gear.rareWeightMult;
+      return { tmpl, weight: rarityFactor };
     });
+    const weightSum = weightedPool.reduce((acc, item) => acc + item.weight, 0);
 
-    localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(all));
-    return true;
+    const allStocks = this.getAllStocks();
+    if (!allStocks[regionId]) allStocks[regionId] = {};
+
+    const lootSummary = {};
+    for (let i = 0; i < totalFinds; i++) {
+      let roll = Math.random() * weightSum;
+      let picked = weightedPool[0].tmpl;
+      for (const entry of weightedPool) {
+        roll -= entry.weight;
+        if (roll <= 0) {
+          picked = entry.tmpl;
+          break;
+        }
+      }
+      allStocks[regionId][picked.id] = (allStocks[regionId][picked.id] || 0) + 1;
+      lootSummary[picked.id] = (lootSummary[picked.id] || 0) + 1;
+    }
+
+    localStorage.setItem(this.KEYS.EXPEDITION_STOCKS, JSON.stringify(allStocks));
+
+    let bonusLacquer = 0;
+    if (Math.random() < gear.lacquerChance) {
+      bonusLacquer = 1;
+      this.addKintsugiLacquer(1);
+    }
+
+    return {
+      ok: true,
+      lootSummary,
+      totalFinds,
+      bonusLacquer
+    };
   },
 
-  // --- СРОЧНЫЕ КОНТРАКТЫ (ЛЮБОЙ ПРЕДМЕТ ИЗ ИГРЫ + НАГРАДА ОТ УРОВНЯ ИГРОКА) ---
+  // --- СРОЧНЫЕ КОНТРАКТЫ ---
   computeContractRewardsForLevel(level) {
     const safeLvl = Math.max(1, level || 1);
     const rewardCoins = Math.round((130 + safeLvl * 52 + Math.pow(safeLvl, 1.35) * 14) / 5) * 5;
@@ -384,9 +600,7 @@ getLevelRewardDetails(level) {
 
     if (!templates || templates.length === 0) return null;
 
-    // Может выпасть любой предмет из всей игры
     const target = templates[Math.floor(Math.random() * templates.length)];
-
     const clients = [
       'Мэр Александрии', 'Королевский музей', 'Частный коллекционер', 'Гильдия архивариусов', 'Императорский посол'
     ];
@@ -423,7 +637,7 @@ getLevelRewardDetails(level) {
     } catch {}
   },
 
-  // --- ОФФЛАЙН И ПАССИВНЫЙ ДОХОД МУЗЕЯ (С УЧЁТОМ ЦЕННОСТИ ЭКСПОНАТОВ) ---
+  // --- ОФФЛАЙН И ПАССИВНЫЙ ДОХОД МУЗЕЯ ---
   getMuseumHourlyIncome() {
     const inventory = this.getInventory();
     const validExhibits = inventory.filter(item => (item.stars === undefined || item.stars >= 2));
