@@ -169,7 +169,7 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
       ctx.lineTo(82, 35);
     }
     ctx.stroke();
-  } else if (toolType === 'brush') {
+  } else if (toolType === 'brush' || toolType === 'fieldbrush') {
     const hGrad = ctx.createLinearGradient(56, 0, 72, 0);
     hGrad.addColorStop(0, p.woodDark);
     hGrad.addColorStop(0.5, p.woodLight);
@@ -203,7 +203,7 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
     ctx.fillStyle = hairGrad;
 
     ctx.beginPath();
-    if (tier >= 3) {
+    if (tier >= 3 || toolType === 'fieldbrush') {
       ctx.moveTo(52, 42);
       ctx.lineTo(76, 42);
       ctx.lineTo(96, 16);
@@ -214,6 +214,111 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
       ctx.bezierCurveTo(84, 24, 78, 10, 64, 8);
       ctx.bezierCurveTo(50, 10, 44, 24, 52, 42);
     }
+    ctx.closePath();
+    ctx.fill();
+  } else if (toolType === 'pickaxe') {
+    // Рукоять кирки
+    const hGrad = ctx.createLinearGradient(58, 0, 70, 0);
+    hGrad.addColorStop(0, p.woodDark);
+    hGrad.addColorStop(0.5, p.woodLight);
+    hGrad.addColorStop(1, p.woodDark);
+    ctx.fillStyle = hGrad;
+    roundRect(58, 22, 12, 96, 5);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Изогнутый металлический боёк кирки
+    const headGrad = ctx.createLinearGradient(16, 26, 112, 42);
+    headGrad.addColorStop(0, tier >= 3 ? '#fef08a' : p.metalLight);
+    headGrad.addColorStop(0.5, p.metalDark);
+    headGrad.addColorStop(1, tier >= 3 ? '#38bdf8' : p.metalLight);
+    ctx.fillStyle = headGrad;
+
+    ctx.beginPath();
+    ctx.moveTo(14, 44);
+    ctx.quadraticCurveTo(64, 16, 114, 44);
+    ctx.quadraticCurveTo(64, 30, 14, 44);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = tier === 4 ? '#38bdf8' : p.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Центральная муфта
+    ctx.fillStyle = p.accent;
+    roundRect(54, 24, 20, 16, 4);
+    ctx.fill();
+  } else if (toolType === 'radar') {
+    // Корпус георадара
+    const bodyGrad = ctx.createLinearGradient(34, 34, 94, 114);
+    bodyGrad.addColorStop(0, p.woodLight);
+    bodyGrad.addColorStop(1, p.woodDark);
+    ctx.fillStyle = bodyGrad;
+    roundRect(36, 44, 56, 70, 12);
+    ctx.fill();
+    ctx.strokeStyle = p.accent;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Экран сонара
+    ctx.fillStyle = '#06201a';
+    ctx.beginPath();
+    ctx.arc(64, 76, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = tier >= 3 ? '#38bdf8' : '#34d399';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Волны радара
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(64, 76, 11, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Антенна сверху
+    ctx.strokeStyle = p.metalLight;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(64, 44);
+    ctx.lineTo(64, 18);
+    ctx.stroke();
+
+    ctx.fillStyle = tier >= 3 ? '#facc15' : '#34d399';
+    ctx.beginPath();
+    ctx.arc(64, 15, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (toolType === 'camp') {
+    // Экспедиционный фонарь / генератор лагеря
+    ctx.fillStyle = p.metalDark;
+    roundRect(36, 94, 56, 18, 6);
+    ctx.fill();
+    roundRect(42, 26, 44, 14, 5);
+    ctx.fill();
+
+    // Колба с тёплой энергией
+    const glowGrad = ctx.createRadialGradient(64, 66, 6, 64, 66, 28);
+    glowGrad.addColorStop(0, '#fef9c3');
+    glowGrad.addColorStop(0.55, '#facc15');
+    glowGrad.addColorStop(1, '#b45309');
+    ctx.fillStyle = glowGrad;
+    roundRect(44, 40, 40, 54, 8);
+    ctx.fill();
+    ctx.strokeStyle = p.accent;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Значок молнии внутри
+    ctx.fillStyle = '#1a1004';
+    ctx.beginPath();
+    ctx.moveTo(68, 50);
+    ctx.lineTo(54, 68);
+    ctx.lineTo(64, 68);
+    ctx.lineTo(60, 84);
+    ctx.lineTo(74, 64);
+    ctx.lineTo(64, 64);
     ctx.closePath();
     ctx.fill();
   } else if (toolType === 'solvent') {
@@ -316,7 +421,6 @@ export function drawDetailedToolCanvas(ctx, toolType, tier = 1, skinId = 'defaul
   ctx.restore();
 }
 
-// Рисует сразу полный комплект из 5 инструментов в ряд для витрины стилей
 export function drawFullToolSetPreview(ctx, skinId = 'default', width = 360, height = 84) {
   ctx.clearRect(0, 0, width, height);
   const items = [
