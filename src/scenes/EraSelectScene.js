@@ -8,7 +8,7 @@ export class EraSelectScene extends Phaser.Scene {
     super('EraSelectScene');
   }
 
-  create() {
+  create(data) {
     const { width, height } = this.scale;
     const textRes = 3;
     this.textRes = textRes;
@@ -28,7 +28,6 @@ export class EraSelectScene extends Phaser.Scene {
     }
 
     const levelData = Storage.getLevelData();
-    const coins = Storage.getCoins();
 
     this.eras = REGIONS.map((region) => {
       const req = Storage.REGION_UNLOCK_REQS[region.id] || { minLevel: 1, cost: 0, expeditionCost: 100 };
@@ -44,20 +43,24 @@ export class EraSelectScene extends Phaser.Scene {
     });
 
     this.selectedEraIndex = 0;
+    if (data && data.regionId) {
+      const foundIdx = this.eras.findIndex((e) => e.id === data.regionId);
+      if (foundIdx >= 0) this.selectedEraIndex = foundIdx;
+    }
 
-    if (this.eras[0] && AudioManager.playEraMusic) {
-      AudioManager.playEraMusic(this.eras[0].id);
+    if (this.eras[this.selectedEraIndex] && AudioManager.playEraMusic) {
+      AudioManager.playEraMusic(this.eras[this.selectedEraIndex].id);
     }
 
     // Верхняя шапка (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
-    headerBg.fillRect(0, 0, width, 114);
+    headerBg.fillRect(0, 0, width, 128);
     headerBg.lineStyle(1.5, 0xc89d54, 0.65);
-    headerBg.lineBetween(0, 114, width, 114);
+    headerBg.lineBetween(0, 128, width, 128);
 
-    this.add.text(width / 2, 22, '🧭 КАРТА ЭКСПЕДИЦИЙ', {
-      fontSize: '20px',
+    this.add.text(width / 2, 20, '🧭 КАРТА ЭКСПЕДИЦИЙ', {
+      fontSize: '19px',
       fontFamily: FONT_TITLE,
       color: '#fdf6e3',
       fontStyle: 'bold',
@@ -65,40 +68,75 @@ export class EraSelectScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5).setDepth(20);
 
-    this.subInfoText = this.add.text(
-      width / 2,
-      48,
-      `Ур. ${levelData.level} (${levelData.title})  |  Казна: ${coins} 🪙`,
-      {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: '#e2b866',
-        fontStyle: 'bold',
-        resolution: textRes
-      }
-    ).setOrigin(0.5).setDepth(20);
+    this.subInfoText = this.add.text(width / 2, 44, '', {
+      fontSize: '11.5px',
+      fontFamily: FONT_UI,
+      color: '#e2b866',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(20);
 
-    // Кнопка сброса в углу
+    // Полоска энергии + кнопка полевого пайка (+15 ⚡ за рекламу)
+    this.energyText = this.add.text(16, 66, '', {
+      fontSize: '11.5px',
+      fontFamily: FONT_UI,
+      color: '#38bdf8',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0, 0.5).setDepth(20);
+
+    const rationBtnW = 114;
+    const rationBtnH = 22;
+    const rationBtnX = width - 16 - rationBtnW / 2;
+    const rationBtnY = 66;
+
+    const rationGfx = this.add.graphics().setDepth(20);
+    rationGfx.fillStyle(0x1e3a8a, 0.96);
+    rationGfx.fillRoundedRect(rationBtnX - rationBtnW / 2, rationBtnY - rationBtnH / 2, rationBtnW, rationBtnH, 6);
+    rationGfx.lineStyle(1, 0x38bdf8, 0.95);
+    rationGfx.strokeRoundedRect(rationBtnX - rationBtnW / 2, rationBtnY - rationBtnH / 2, rationBtnW, rationBtnH, 6);
+
+    this.add.text(rationBtnX, rationBtnY, '🎬 ПАЁК +15 ⚡', {
+      fontSize: '10px',
+      fontFamily: FONT_UI,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5).setDepth(21);
+
+    const rationZone = this.add.zone(rationBtnX, rationBtnY, rationBtnW, rationBtnH)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(22);
+
+    rationZone.on('pointerdown', () => {
+      YandexSDK.showRewarded(() => {
+        Storage.addEnergy(15);
+        if (AudioManager.playCoin) AudioManager.playCoin();
+        this.updateHeader();
+      });
+    });
+
+    // Кнопка сброса в правом верхнем углу
     const resetGfx = this.add.graphics().setDepth(24);
     resetGfx.fillStyle(0x2b1512, 0.9);
-    resetGfx.fillRoundedRect(width - 50, 16, 32, 32, 8);
+    resetGfx.fillRoundedRect(width - 46, 12, 30, 30, 8);
     resetGfx.lineStyle(1.2, 0xf87171, 0.85);
-    resetGfx.strokeRoundedRect(width - 50, 16, 32, 32, 8);
+    resetGfx.strokeRoundedRect(width - 46, 12, 30, 30, 8);
 
-    const resetBtn = this.add.zone(width - 34, 32, 32, 32)
+    const resetBtn = this.add.zone(width - 31, 27, 30, 30)
       .setInteractive({ useHandCursor: true })
       .setDepth(26);
 
-    this.add.text(width - 34, 32, '🗑', {
-      fontSize: '14px',
+    this.add.text(width - 31, 27, '🗑', {
+      fontSize: '13px',
       resolution: textRes
     }).setOrigin(0.5).setDepth(25);
 
     resetBtn.on('pointerdown', () => this.showResetModal());
 
-    this.createScrollableTabs(width, 86);
+    this.createScrollableTabs(width, 102);
 
-    this.listTopY = 120;
+    this.listTopY = 134;
     this.listBottomY = height - 68;
     this.listHeight = this.listBottomY - this.listTopY;
 
@@ -107,7 +145,13 @@ export class EraSelectScene extends Phaser.Scene {
     this.setupScrollHandlers();
     this.renderArtifactsList();
 
-    // Нижняя панель с кнопкой возврата (depth 30 перекрывает низ списка)
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => this.updateHeader()
+    });
+
+    // Нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
@@ -143,9 +187,21 @@ export class EraSelectScene extends Phaser.Scene {
   }
 
   updateHeader() {
+    if (!this.subInfoText || !this.subInfoText.active) return;
     const levelData = Storage.getLevelData();
     const coins = Storage.getCoins();
+    const en = Storage.syncEnergy();
+
     this.subInfoText.setText(`Ур. ${levelData.level} (${levelData.title})  |  Казна: ${coins} 🪙`);
+
+    if (en.current >= en.max) {
+      this.energyText.setText(`⚡ Энергия: ${en.current}/${en.max} (МАКС.)`);
+    } else {
+      const secTotal = Math.ceil(en.nextInMs / 1000);
+      const mm = Math.floor(secTotal / 60);
+      const ss = String(secTotal % 60).padStart(2, '0');
+      this.energyText.setText(`⚡ Энергия: ${en.current}/${en.max} (+1 через ${mm}:${ss})`);
+    }
   }
 
   createScrollableTabs(width, y) {
@@ -154,7 +210,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.tabsScrollContainer = this.add.container(0, y).setDepth(20);
 
     const tabWidth = 104;
-    const tabHeight = 32;
+    const tabHeight = 30;
     const spacing = 8;
     const startX = 16;
 
@@ -241,7 +297,7 @@ export class EraSelectScene extends Phaser.Scene {
     this.isDraggingTabs = false;
 
     this.input.on('pointerdown', (p) => {
-      if (p.y >= 64 && p.y <= 112) {
+      if (p.y >= 82 && p.y <= 126) {
         tabsPointerActive = true;
         tabStartX = p.x;
         tabsContainerStartX = this.tabsScrollContainer ? this.tabsScrollContainer.x : 0;
@@ -284,7 +340,7 @@ export class EraSelectScene extends Phaser.Scene {
     });
 
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
-      if (pointer.y >= 64 && pointer.y <= 112 && this.tabsScrollContainer) {
+      if (pointer.y >= 82 && pointer.y <= 126 && this.tabsScrollContainer) {
         const minX = this.minTabsScrollX !== undefined ? this.minTabsScrollX : 0;
         const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
         this.tabsScrollContainer.x = Phaser.Math.Clamp(this.tabsScrollContainer.x - delta * 0.45, minX, 0);
@@ -368,7 +424,7 @@ export class EraSelectScene extends Phaser.Scene {
           if (Storage.unlockRegion(currentEra.id)) {
             if (AudioManager.playShine) AudioManager.playShine();
             currentEra.unlocked = true;
-            this.createScrollableTabs(width, 86);
+            this.createScrollableTabs(width, 102);
             this.renderArtifactsList();
           } else if (AudioManager.playBreakSnap) {
             AudioManager.playBreakSnap();
@@ -380,106 +436,189 @@ export class EraSelectScene extends Phaser.Scene {
       return;
     }
 
-    // 1. Карточка снаряжения экспедиции
+    // 1. ПАНЕЛЬ ПОЛЕВЫХ РАБОТ: РУЧНЫЕ РАСКОПКИ vs АВТО-ЭКСПЕДИЦИЯ
     const expW = width * 0.92;
-    const expH = 92;
-    const expY = 52;
+    const expH = 148;
+    const expY = 80;
     const expeditionBox = this.add.container(width / 2, expY);
 
     const expGfx = this.add.graphics();
-    expGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.78);
+    expGfx.fillGradientStyle(0x261a10, 0x261a10, 0x170f09, 0x170f09, 0.84);
     expGfx.fillRoundedRect(-expW / 2, -expH / 2, expW, expH, 12);
     expGfx.lineStyle(1.5, 0xc89d54, 0.88);
     expGfx.strokeRoundedRect(-expW / 2, -expH / 2, expW, expH, 12);
 
-    const textMaxW = expW - 144;
-    const expTitle = this.add.text(-expW / 2 + 14, -22, '🧭 СНАРЯДИТЬ ЭКСПЕДИЦИЮ', {
-      fontSize: '12px',
+    const discoveredList = Storage.getDiscoveredInRegion(currentEra.id);
+    const eraArtifacts = ARTIFACT_TEMPLATES.filter((a) => a.regionId === currentEra.id);
+    const autoUnlocked = discoveredList.length > 0;
+    const gear = Storage.getExpeditionGearBonuses();
+
+    const expTitle = this.add.text(-expW / 2 + 14, -54, `🧭 РАЗВЕДКА ЭПОХИ (${discoveredList.length}/${eraArtifacts.length} ОТКРЫТО)`, {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: textRes
     }).setOrigin(0, 0.5);
 
-    const expDesc = this.add.text(-expW / 2 + 14, 10, 'Доставка 1–2 находок каждого вида на склад эпохи', {
+    const expDesc = this.add.text(
+      -expW / 2 + 14,
+      -28,
+      'Раскопайте находку вручную, чтобы разведгруппа могла привозить её автоматически.',
+      {
+        fontSize: '10.5px',
+        fontFamily: FONT_UI,
+        color: '#e6d5bc',
+        wordWrap: { width: expW - 28 },
+        resolution: textRes
+      }
+    ).setOrigin(0, 0.5);
+
+    // Кнопка А: РУЧНЫЕ РАСКОПКИ (10 ⚡ + 50% стоимости)
+    const manualCost = Storage.getManualDigCost(currentEra.id);
+    const halfBtnW = (expW - 36) / 2;
+    const digBtnX = -expW / 2 + 14 + halfBtnW / 2;
+    const row1Y = 12;
+
+    const digGfx = this.add.graphics();
+    digGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
+    digGfx.fillRoundedRect(digBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+    digGfx.lineStyle(1, 0xfef08a, 0.95);
+    digGfx.strokeRoundedRect(digBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+
+    const digTxt = this.add.text(digBtnX, row1Y, `⛏ РАСКОПАТЬ\n${manualCost.energy}⚡ + ${manualCost.coins}🪙`, {
       fontSize: '10.5px',
-      fontFamily: FONT_UI,
-      color: '#e6d5bc',
-      wordWrap: { width: textMaxW },
-      resolution: textRes
-    }).setOrigin(0, 0.5);
-
-    const fundBtnW = 112;
-    const fundBtnX = expW / 2 - fundBtnW / 2 - 12;
-    const fundBtnH = 34;
-
-    const fundGfx = this.add.graphics();
-    fundGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 0.98);
-    fundGfx.fillRoundedRect(fundBtnX - fundBtnW / 2, -20 - fundBtnH / 2, fundBtnW, fundBtnH, 8);
-    fundGfx.lineStyle(1, 0xfef08a, 0.95);
-    fundGfx.strokeRoundedRect(fundBtnX - fundBtnW / 2, -20 - fundBtnH / 2, fundBtnW, fundBtnH, 8);
-
-    const fundZone = this.add.zone(fundBtnX, -20, fundBtnW, fundBtnH)
-      .setInteractive({ useHandCursor: true });
-
-    const fundTxt = this.add.text(fundBtnX, -20, `${currentEra.cost} 🪙`, {
-      fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#1a1004',
       fontStyle: 'bold',
+      align: 'center',
       resolution: textRes
     }).setOrigin(0.5);
 
-    fundZone.on('pointerup', () => {
+    const digZone = this.add.zone(digBtnX, row1Y, halfBtnW, 38).setInteractive({ useHandCursor: true });
+    digZone.on('pointerup', () => {
       if (this.isDraggingList) return;
-      const success = Storage.fundExpedition(
-        currentEra.id,
-        currentEra.cost,
-        ARTIFACT_TEMPLATES
-      );
-      if (success) {
-        if (AudioManager.playCoin) AudioManager.playCoin();
-        this.renderArtifactsList();
-      } else if (AudioManager.playBreakSnap) {
-        AudioManager.playBreakSnap();
+      if (Storage.getEnergy() < manualCost.energy) {
+        this.showToast('Недостаточно энергии ⚡! Возьмите полевой паёк сверху.');
+        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+        return;
       }
+      if (Storage.getCoins() < manualCost.coins) {
+        this.showToast(`Нужно ${manualCost.coins} 🪙 на снаряжение раскопа!`);
+        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+        return;
+      }
+      Storage.spendEnergy(manualCost.energy);
+      Storage.addCoins(-manualCost.coins);
+      if (AudioManager.playClick) AudioManager.playClick();
+      this.scene.start('DigScene', { regionId: currentEra.id });
     });
 
-    const adExpGfx = this.add.graphics();
-    adExpGfx.fillStyle(0x1e3a8a, 0.98);
-    adExpGfx.fillRoundedRect(fundBtnX - fundBtnW / 2, 20 - 15, fundBtnW, 30, 8);
-    adExpGfx.lineStyle(1, 0x38bdf8, 0.95);
-    adExpGfx.strokeRoundedRect(fundBtnX - fundBtnW / 2, 20 - 15, fundBtnW, 30, 8);
+    // Кнопка Б: АВТО-ЭКСПЕДИЦИЯ (возит только разведанные артефакты)
+    const autoCost = Storage.getAutoExpeditionCost(currentEra.id);
+    const autoBtnX = expW / 2 - 14 - halfBtnW / 2;
 
-    const adExpZone = this.add.zone(fundBtnX, 20, fundBtnW, 30).setInteractive({ useHandCursor: true });
-    const adExpTxt = this.add.text(fundBtnX, 20, '🎬 БЕСПЛАТНО', {
-      fontSize: '10.5px',
+    const autoGfx = this.add.graphics();
+    if (autoUnlocked) {
+      autoGfx.fillGradientStyle(0x15803d, 0x15803d, 0x14532d, 0x14532d, 1);
+      autoGfx.fillRoundedRect(autoBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+      autoGfx.lineStyle(1, 0x4ade80, 0.95);
+      autoGfx.strokeRoundedRect(autoBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+    } else {
+      autoGfx.fillStyle(0x1f1712, 0.95);
+      autoGfx.fillRoundedRect(autoBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+      autoGfx.lineStyle(1, 0x5c4330, 0.85);
+      autoGfx.strokeRoundedRect(autoBtnX - halfBtnW / 2, row1Y - 19, halfBtnW, 38, 8);
+    }
+
+    const autoLabel = autoUnlocked
+      ? `⚡ АВТО-СБОР (~${gear.autoItemCount} шт)\n${autoCost.energy}⚡ + ${autoCost.coins}🪙`
+      : '🔒 АВТО-СБОР\nСначала откопайте 1 шт.';
+
+    const autoTxt = this.add.text(autoBtnX, row1Y, autoLabel, {
+      fontSize: '10px',
+      fontFamily: FONT_UI,
+      color: autoUnlocked ? '#ffffff' : '#9c8265',
+      fontStyle: 'bold',
+      align: 'center',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const autoZone = this.add.zone(autoBtnX, row1Y, halfBtnW, 38).setInteractive({ useHandCursor: autoUnlocked });
+    autoZone.on('pointerup', () => {
+      if (this.isDraggingList) return;
+      if (!autoUnlocked) {
+        this.showToast('Сначала проведите ручные раскопки в этой эпохе!');
+        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+        return;
+      }
+      const res = Storage.runAutoExpedition(currentEra.id, ARTIFACT_TEMPLATES, false);
+      if (!res.ok) {
+        if (res.reason === 'no_energy') this.showToast('Недостаточно энергии ⚡!');
+        else if (res.reason === 'no_coins') this.showToast(`Нужно ${autoCost.coins} 🪙 для авто-экспедиции!`);
+        if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
+        return;
+      }
+      if (AudioManager.playCoin) AudioManager.playCoin();
+      let msg = `Разведгруппа доставила ${res.totalFinds} наход. на склад!`;
+      if (res.bonusLacquer > 0) msg += ' +1 ✨ Лак Кинцуги!';
+      this.showToast(msg);
+      this.renderArtifactsList();
+    });
+
+    // Нижняя строка: Бесплатный выезд за рекламу (если есть разведанные — авто-сбор, иначе вход в раскопки)
+    const adBarY = 51;
+    const adBarW = expW - 28;
+    const adGfx = this.add.graphics();
+    adGfx.fillStyle(0x1e3a8a, 0.96);
+    adGfx.fillRoundedRect(-adBarW / 2, adBarY - 13, adBarW, 26, 7);
+    adGfx.lineStyle(1, 0x38bdf8, 0.9);
+    adGfx.strokeRoundedRect(-adBarW / 2, adBarY - 13, adBarW, 26, 7);
+
+    const adLabelStr = autoUnlocked
+      ? '🎬 БЕСПЛАТНЫЙ АВТО-РЕЙС РАЗВЕДГРУППЫ (БЕЗ ЗАТРАТ ⚡ И 🪙)'
+      : '🎬 БЕСПЛАТНЫЙ ВЫЕЗД НА РАСКОПКИ (БЕЗ ЗАТРАТ ⚡ И 🪙)';
+
+    const adTxt = this.add.text(0, adBarY, adLabelStr, {
+      fontSize: '9.5px',
       fontFamily: FONT_UI,
       color: '#ffffff',
       fontStyle: 'bold',
       resolution: textRes
     }).setOrigin(0.5);
 
-    adExpZone.on('pointerup', () => {
+    const adZone = this.add.zone(0, adBarY, adBarW, 26).setInteractive({ useHandCursor: true });
+    adZone.on('pointerup', () => {
       if (this.isDraggingList) return;
       YandexSDK.showRewarded(() => {
-        Storage.fundExpedition(currentEra.id, 0, ARTIFACT_TEMPLATES);
-        if (AudioManager.playCoin) AudioManager.playCoin();
-        this.renderArtifactsList();
+        if (autoUnlocked) {
+          const res = Storage.runAutoExpedition(currentEra.id, ARTIFACT_TEMPLATES, true);
+          if (res.ok) {
+            if (AudioManager.playCoin) AudioManager.playCoin();
+            this.showToast(`Бесплатный рейс доставил ${res.totalFinds} наход.!`);
+            this.renderArtifactsList();
+          }
+        } else {
+          this.scene.start('DigScene', { regionId: currentEra.id });
+        }
       });
     });
 
-    expeditionBox.add([expGfx, expTitle, expDesc, fundGfx, fundTxt, fundZone, adExpGfx, adExpTxt, adExpZone]);
+    expeditionBox.add([
+      expGfx, expTitle, expDesc,
+      digGfx, digTxt, digZone,
+      autoGfx, autoTxt, autoZone,
+      adGfx, adTxt, adZone
+    ]);
     this.listContainer.add(expeditionBox);
 
-    // 2. Список артефактов
-    const eraArtifacts = ARTIFACT_TEMPLATES.filter((a) => a.regionId === currentEra.id);
+    // 2. СПИСОК АРТЕФАКТОВ ЭПОХИ (СО СТАТУСОМ РАЗВЕДКИ И СКЛАДА)
     const stocks = Storage.getRegionStock(currentEra.id, ARTIFACT_TEMPLATES);
 
-    const cardH = 96;
+    const cardH = 98;
     const spacing = 10;
     const cardW = width * 0.92;
-    const listOffsetY = 110;
+    const listOffsetY = 166;
 
     let touchDownTime = 0;
 
@@ -487,6 +626,7 @@ export class EraSelectScene extends Phaser.Scene {
       const cardY = listOffsetY + index * (cardH + spacing) + cardH / 2;
       const countLeft = stocks[art.id] !== undefined ? stocks[art.id] : 0;
       const hasStock = countLeft > 0;
+      const isDiscovered = discoveredList.includes(art.id);
 
       const cardCont = this.add.container(width / 2, cardY);
 
@@ -496,35 +636,43 @@ export class EraSelectScene extends Phaser.Scene {
         hasStock ? 0x261a10 : 0x160f0a,
         hasStock ? 0x170f09 : 0x110b07,
         hasStock ? 0x170f09 : 0x110b07,
-        hasStock ? 0.72 : 0.50
+        hasStock ? 0.78 : 0.55
       );
       cardGfx.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-      cardGfx.lineStyle(1.3, hasStock ? 0xc89d54 : 0x5c3d22, hasStock ? 0.88 : 0.5);
+      cardGfx.lineStyle(1.3, hasStock ? 0xc89d54 : (isDiscovered ? 0x785532 : 0x45301f), hasStock ? 0.88 : 0.55);
       cardGfx.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
 
-      cardGfx.fillStyle(0x0d0805, 0.45);
+      cardGfx.fillStyle(0x0d0805, 0.5);
       cardGfx.fillRoundedRect(-cardW / 2 + 10, -34, 68, 68, 10);
 
       const texKey = this.textures.exists(art.textureKey) ? art.textureKey : 'art_egypt_scarab';
       const icon = this.add.image(-cardW / 2 + 44, 0, texKey)
         .setDisplaySize(50, 62)
-        .setAlpha(hasStock ? 1 : 0.45);
+        .setAlpha(hasStock ? 1 : (isDiscovered ? 0.6 : 0.32));
 
-      const title = this.add.text(-cardW / 2 + 88, -26, art.name, {
+      const title = this.add.text(-cardW / 2 + 88, -28, art.name, {
         fontSize: '13.5px',
         fontFamily: FONT_UI,
-        color: hasStock ? '#fdf6e3' : '#9c8265',
+        color: hasStock ? '#fdf6e3' : (isDiscovered ? '#d6c3a5' : '#8c735b'),
         fontStyle: 'bold',
         wordWrap: { width: cardW - 155 },
         resolution: textRes
       });
 
-      const stockBadgeColor = hasStock ? '#86efac' : '#fca5a5';
-      const stockBadgeText = hasStock
-        ? `📦 На складе: ${countLeft} шт.`
-        : 'Склад пуст (нужна экспедиция)';
+      const discoveryTag = isDiscovered ? '🔍 Разведан (доступен авто-сбору)' : '❓ Не найден (нужны раскопки)';
+      const discoveryTxt = this.add.text(-cardW / 2 + 88, -7, discoveryTag, {
+        fontSize: '10px',
+        fontFamily: FONT_UI,
+        color: isDiscovered ? '#38bdf8' : '#e2b866',
+        resolution: textRes
+      });
 
-      const stockBadge = this.add.text(-cardW / 2 + 88, -3, stockBadgeText, {
+      const stockBadgeColor = hasStock ? '#86efac' : '#9c8265';
+      const stockBadgeText = hasStock
+        ? `📦 На складе: ${countLeft} шт.  •  ⚒ Взять на верстак ›`
+        : '📦 На складе: 0 шт.';
+
+      const stockBadge = this.add.text(-cardW / 2 + 88, 17, stockBadgeText, {
         fontSize: '11px',
         fontFamily: FONT_UI,
         color: stockBadgeColor,
@@ -532,16 +680,7 @@ export class EraSelectScene extends Phaser.Scene {
         resolution: textRes
       });
 
-      const takeBtnText = hasStock ? '⚒ ВЗЯТЬ НА ВЕРСТАК ›' : 'Нет в наличии';
-      const takeBtn = this.add.text(-cardW / 2 + 88, 21, takeBtnText, {
-        fontSize: '11.5px',
-        fontFamily: FONT_UI,
-        color: hasStock ? '#facc15' : '#7a6552',
-        fontStyle: 'bold',
-        resolution: textRes
-      });
-
-      const valueBadge = this.add.text(cardW / 2 - 14, -22, `${art.marketValue || 100} 🪙`, {
+      const valueBadge = this.add.text(cardW / 2 - 14, -24, `${art.marketValue || 100} 🪙`, {
         fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: hasStock ? '#facc15' : '#7a6552',
@@ -558,7 +697,6 @@ export class EraSelectScene extends Phaser.Scene {
 
       hitZone.on('pointerup', () => {
         const elapsed = this.time.now - touchDownTime;
-
         if (!this.isDraggingList && elapsed < 500 && hasStock) {
           Storage.setActiveSession(currentEra.id, art.id);
           if (AudioManager.playClick) AudioManager.playClick();
@@ -569,12 +707,55 @@ export class EraSelectScene extends Phaser.Scene {
         }
       });
 
-      cardCont.add([cardGfx, icon, title, stockBadge, takeBtn, valueBadge, hitZone]);
+      cardCont.add([cardGfx, icon, title, discoveryTxt, stockBadge, valueBadge, hitZone]);
       this.listContainer.add(cardCont);
     });
 
     const totalContentHeight = listOffsetY + eraArtifacts.length * (cardH + spacing) + 30;
     this.minListY = Math.min(this.listTopY, this.listBottomY - totalContentHeight);
+  }
+
+  showToast(message) {
+    const { width, height } = this.scale;
+    const toast = this.add.container(width / 2, height - 96).setDepth(90).setAlpha(0);
+
+    const w = width * 0.88;
+    const h = 38;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x140d08, 0.96);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 10);
+    bg.lineStyle(1.4, 0xfacc15, 0.95);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 10);
+
+    const txt = this.add.text(0, 0, message, {
+      fontSize: '11px',
+      fontFamily: this.FONT_UI,
+      color: '#fdf6e3',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: w - 20 },
+      resolution: this.textRes
+    }).setOrigin(0.5);
+
+    toast.add([bg, txt]);
+
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      y: height - 104,
+      duration: 200,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.time.delayedCall(1900, () => {
+          this.tweens.add({
+            targets: toast,
+            alpha: 0,
+            duration: 250,
+            onComplete: () => toast.destroy()
+          });
+        });
+      }
+    });
   }
 
   showResetModal() {
