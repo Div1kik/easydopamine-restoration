@@ -1,12 +1,14 @@
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { EraSelectScene } from './scenes/EraSelectScene.js';
+import { DigScene } from './scenes/DigScene.js';
 import { RestoreScene } from './scenes/RestoreScene.js';
 import { VictoryScene } from './scenes/VictoryScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { MuseumScene } from './scenes/MuseumScene.js';
 import { ArtifactDetailScene } from './scenes/ArtifactDetailScene.js';
 import { YandexSDK } from './utils/YandexSDK.js';
+export { Storage } from './utils/Storage.js';
 
 const RETINA_MULT = 3;
 const TEXT_RES = 3;
@@ -157,6 +159,7 @@ const config = {
     makeRetinaScene(BootScene),
     makeRetinaScene(MenuScene),
     makeRetinaScene(EraSelectScene),
+    makeRetinaScene(DigScene),
     makeRetinaScene(RestoreScene),
     makeRetinaScene(VictoryScene),
     makeRetinaScene(ShopScene),
