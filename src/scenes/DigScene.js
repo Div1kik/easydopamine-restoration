@@ -8,15 +8,15 @@ const ERA_DIG_THEMES = {
   egypt: {
     name: 'Пески Долины Царей',
     rockTop: 0xc29349,
-    rockDark: 0x7c5321,
+    rockDark: 0x8c6229,
     sandBase: 0xe6be7a,
     sandGrain: 0x9c6e2e,
-    hardness: 1 // ударов кирки на клетку
+    hardness: 1
   },
   antique: {
     name: 'Терракотовый холм',
     rockTop: 0xa85538,
-    rockDark: 0x612b1a,
+    rockDark: 0x733521,
     sandBase: 0xd69e7c,
     sandGrain: 0x7c432c,
     hardness: 1
@@ -24,7 +24,7 @@ const ERA_DIG_THEMES = {
   europe: {
     name: 'Руины старой крепости',
     rockTop: 0x6b635b,
-    rockDark: 0x3b3530,
+    rockDark: 0x453f39,
     sandBase: 0x9c8e7e,
     sandGrain: 0x54493e,
     hardness: 2
@@ -32,7 +32,7 @@ const ERA_DIG_THEMES = {
   japan: {
     name: 'Бамбуковый склон Киото',
     rockTop: 0x5c5346,
-    rockDark: 0x302b24,
+    rockDark: 0x3b352c,
     sandBase: 0x8f826d,
     sandGrain: 0x473f33,
     hardness: 2
@@ -40,7 +40,7 @@ const ERA_DIG_THEMES = {
   aztec: {
     name: 'Вулканический пепел',
     rockTop: 0x47434a,
-    rockDark: 0x221f24,
+    rockDark: 0x2b282e,
     sandBase: 0x736c78,
     sandGrain: 0x322e36,
     hardness: 3
@@ -48,7 +48,7 @@ const ERA_DIG_THEMES = {
   vikings: {
     name: 'Мёрзлый фьорд',
     rockTop: 0x526575,
-    rockDark: 0x27333d,
+    rockDark: 0x313f4a,
     sandBase: 0x8799a8,
     sandGrain: 0x394854,
     hardness: 3
@@ -56,7 +56,7 @@ const ERA_DIG_THEMES = {
   renaissance: {
     name: 'Мраморные каменоломни',
     rockTop: 0x7d746b,
-    rockDark: 0x423c36,
+    rockDark: 0x4d4640,
     sandBase: 0xb5aaa0,
     sandGrain: 0x595149,
     hardness: 3
@@ -83,12 +83,15 @@ export class DigScene extends Phaser.Scene {
     this.theme = ERA_DIG_THEMES[this.regionId] || ERA_DIG_THEMES.egypt;
 
     this.gear = Storage.getExpeditionGearBonuses();
-    this.activeTool = 'pickaxe'; // 'radar' | 'pickaxe' | 'fieldbrush'
+    this.activeTool = 'radar'; // Начинаем с георадара, чтобы игрок мог сразу просканировать шурф
     this.isModalOpen = false;
     this.isFinished = false;
     this.adChargeUsed = false;
 
-    // Заряд раскопок (удары кирки и импульсы радара)
+    // Раздельные ресурсы: импульсы Георадара и удары Кирки
+    this.maxRadarPulses = 2 + this.gear.radarTier; // от 3 до 6 сканирований
+    this.radarPulses = this.maxRadarPulses;
+
     this.maxStamina = 16 + (this.gear.pickaxeTier - 1) * 3;
     this.stamina = this.maxStamina;
 
@@ -132,24 +135,32 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5).setDepth(42);
 
-    // Шкала заряда (ударов) и счётчик находок
-    this.staminaTxt = this.add.text(16, 68, '', {
-      fontSize: '12px',
+    // Индикаторы: Удары кирки, Импульсы радара и Найденные артефакты
+    this.staminaTxt = this.add.text(14, 68, '', {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(0, 0.5).setDepth(42);
 
-    this.foundCounterTxt = this.add.text(width - 16, 68, '', {
-      fontSize: '12px',
+    this.radarTxt = this.add.text(width / 2 + 8, 68, '', {
+      fontSize: '11.5px',
+      fontFamily: FONT_UI,
+      color: '#38bdf8',
+      fontStyle: 'bold',
+      resolution: dpr
+    }).setOrigin(0.5).setDepth(42);
+
+    this.foundCounterTxt = this.add.text(width - 14, 68, '', {
+      fontSize: '11.5px',
       fontFamily: FONT_UI,
       color: '#86efac',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(1, 0.5).setDepth(42);
 
-    // 3. ГЕОМЕТРИЯ ШУРФА (СЕТКА 6x8 ПЛИТОК ВНУТРИ ДЕРЕВЯННОЙ РАМКИ ФОНА)
+    // 3. ГЕОМЕТРИЯ ШУРФА (6x8 ПЛИТОК БЕЗ ЩЕЛЕЙ)
     const trayH = 104;
     const pitTop = headerH + 34;
     const pitBottom = height - trayH - 38;
@@ -166,9 +177,8 @@ export class DigScene extends Phaser.Scene {
     this.pitLeft = Math.floor(width / 2 - this.pitW / 2);
     this.pitTop = Math.floor(pitTop + (pitAvailableH - this.pitH) / 2);
 
-    // Подложка дна раскопа
     const pitFrame = this.add.graphics().setDepth(4);
-    pitFrame.fillStyle(0x140d08, 0.92);
+    pitFrame.fillStyle(0x140d08, 0.96);
     pitFrame.fillRoundedRect(this.pitLeft - 6, this.pitTop - 6, this.pitW + 12, this.pitH + 12, 10);
     pitFrame.lineStyle(2, 0xc89d54, 0.85);
     pitFrame.strokeRoundedRect(this.pitLeft - 6, this.pitTop - 6, this.pitW + 12, this.pitH + 12, 10);
@@ -183,7 +193,6 @@ export class DigScene extends Phaser.Scene {
     this.buildExcavationGrid();
     this.updateTopCounters();
 
-    // Подсказка по текущему инструменту над треем
     this.hintBanner = this.add.text(width / 2, height - trayH - 18, '', {
       fontSize: '11.5px',
       fontFamily: FONT_UI,
@@ -194,9 +203,8 @@ export class DigScene extends Phaser.Scene {
 
     // 5. НИЖНИЙ ТРЕЙ ПОЛЕВЫХ ИНСТРУМЕНТОВ
     this.createFieldToolTray(width, height - trayH / 2 - 4, dpr);
-    this.selectFieldTool('pickaxe', false);
+    this.selectFieldTool('radar', false);
 
-    // Частицы породы и пыли
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 220, max: 380 },
       speed: { min: 45, max: 110 },
@@ -205,7 +213,7 @@ export class DigScene extends Phaser.Scene {
       emitting: false
     }).setDepth(35);
 
-    // 6. ВВОД (ТАП И ПРОВЕДЕНИЕ ПАЛЬЦЕМ)
+    // 6. ВВОД
     this.isPointerDown = false;
     this.lastWorkedCellKey = null;
 
@@ -218,7 +226,6 @@ export class DigScene extends Phaser.Scene {
 
     this.input.on('pointermove', (p) => {
       if (this.isModalOpen || this.isFinished || !this.isPointerDown) return;
-      // Кистью и киркой удобно вести по соседним клеткам; радар работает по нажатию
       if (this.activeTool !== 'radar') {
         this.handlePitPointer(p, false);
       }
@@ -234,7 +241,6 @@ export class DigScene extends Phaser.Scene {
     const eraTemplates = ARTIFACT_TEMPLATES.filter((t) => t.regionId === this.regionId);
     const discovered = Storage.getDiscoveredInRegion(this.regionId);
 
-    // Выбираем 2 или 3 артефакта с приоритетом на ещё НЕ разведанные
     const artifactCount = (this.gear.fieldBrushTier >= 3 && Math.random() < 0.45) ? 3 : 2;
     const chosenTemplates = [];
     const pool = [...eraTemplates];
@@ -242,7 +248,6 @@ export class DigScene extends Phaser.Scene {
     for (let i = 0; i < artifactCount && pool.length > 0; i++) {
       const weights = pool.map((t, idx) => {
         const isNew = !discovered.includes(t.id);
-        // Неразведанные артефакты имеют в 3.2 раза выше шанс выпадения
         const baseW = isNew ? 3.2 : 1.0;
         const radarBoost = 1 + idx * 0.18 * (this.gear.radarTier - 1);
         return baseW * radarBoost;
@@ -284,7 +289,6 @@ export class DigScene extends Phaser.Scene {
       return cells;
     };
 
-    // Размещаем артефакты (размер 2x2 клетки)
     chosenTemplates.forEach((tmpl) => {
       const candidates = [];
       for (let r = 0; r <= this.rows - 2; r++) {
@@ -300,11 +304,13 @@ export class DigScene extends Phaser.Scene {
       const cy = this.pitTop + (pos.r + 1) * this.cellSize;
       const texKey = this.textures.exists(tmpl.textureKey) ? tmpl.textureKey : 'art_egypt_scarab';
 
+      // Скрываем спрайт до первого вскрытия породы над ним, чтобы ничего не просвечивало!
       const sprite = this.add.image(cx, cy, texKey)
-        .setDisplaySize(this.cellSize * 1.68, this.cellSize * 1.68)
+        .setDisplaySize(this.cellSize * 1.62, this.cellSize * 1.62)
+        .setVisible(false)
         .setDepth(8);
 
-      const radarGlow = this.add.rectangle(cx, cy, this.cellSize * 1.9, this.cellSize * 1.9, 0xfacc15, 0)
+      const radarGlow = this.add.rectangle(cx, cy, this.cellSize * 1.92, this.cellSize * 1.92, 0xfacc15, 0)
         .setStrokeStyle(2, 0xfacc15, 0)
         .setDepth(26);
 
@@ -316,11 +322,11 @@ export class DigScene extends Phaser.Scene {
         radarGlow,
         cx,
         cy,
+        revealed: false,
         collected: false
       });
     });
 
-    // Размещаем 1–2 бонусных клада (1x1 клетка: кошель монет или Лак Кинцуги)
     const cacheCount = this.gear.radarTier >= 2 ? 2 : 1;
     for (let k = 0; k < cacheCount; k++) {
       const candidates = [];
@@ -338,11 +344,11 @@ export class DigScene extends Phaser.Scene {
       const isLacquer = (k === 0 && Math.random() < 0.22);
 
       const badge = this.add.text(cx, cy, isLacquer ? '✨' : '🪙', {
-        fontSize: `${Math.round(this.cellSize * 0.58)}px`,
+        fontSize: `${Math.round(this.cellSize * 0.56)}px`,
         resolution: this.dpr
-      }).setOrigin(0.5).setDepth(8);
+      }).setOrigin(0.5).setVisible(false).setDepth(8);
 
-      const radarGlow = this.add.rectangle(cx, cy, this.cellSize * 0.9, this.cellSize * 0.9, 0x38bdf8, 0)
+      const radarGlow = this.add.rectangle(cx, cy, this.cellSize * 0.92, this.cellSize * 0.92, 0x38bdf8, 0)
         .setStrokeStyle(1.8, 0x38bdf8, 0)
         .setDepth(26);
 
@@ -356,6 +362,7 @@ export class DigScene extends Phaser.Scene {
         radarGlow,
         cx,
         cy,
+        revealed: false,
         collected: false
       });
     }
@@ -371,23 +378,25 @@ export class DigScene extends Phaser.Scene {
         const x = this.pitLeft + c * cs;
         const y = this.pitTop + r * cs;
 
-        // Слой 1 (нижний): мягкий песок/пыль, сметается Полевой кистью
+        // Сплошной нижний слой песка без щелей
         const sandGfx = this.add.graphics().setDepth(12);
-        sandGfx.fillStyle(this.theme.sandBase, 0.96);
-        sandGfx.fillRect(x + 1, y + 1, cs - 2, cs - 2);
+        sandGfx.fillStyle(this.theme.sandBase, 1);
+        sandGfx.fillRect(x, y, cs + 0.5, cs + 0.5);
         sandGfx.fillStyle(this.theme.sandGrain, 0.45);
         sandGfx.fillCircle(x + cs * 0.3, y + cs * 0.35, 2.2);
         sandGfx.fillCircle(x + cs * 0.72, y + cs * 0.68, 2.6);
+        sandGfx.lineStyle(1, this.theme.sandGrain, 0.35);
+        sandGfx.strokeRect(x, y, cs, cs);
 
-        // Слой 2 (верхний): твёрдый пласт породы, откалывается Киркой
+        // Сплошной верхний слой твёрдой породы (без дырок по углам!)
         const rockGfx = this.add.graphics().setDepth(16);
         const shade = ((r + c) % 2 === 0) ? this.theme.rockTop : this.theme.rockDark;
-        rockGfx.fillStyle(shade, 0.98);
-        rockGfx.fillRoundedRect(x + 1.5, y + 1.5, cs - 3, cs - 3, 5);
-        rockGfx.lineStyle(1, 0x0d0805, 0.55);
-        rockGfx.strokeRoundedRect(x + 1.5, y + 1.5, cs - 3, cs - 3, 5);
+        rockGfx.fillStyle(shade, 1);
+        rockGfx.fillRect(x, y, cs + 0.5, cs + 0.5);
+        rockGfx.lineStyle(1.2, 0x0d0805, 0.65);
+        rockGfx.strokeRect(x + 0.5, y + 0.5, cs - 1, cs - 1);
 
-        // Камешек/рельеф на плитке
+        // Декоративный блик на камне
         rockGfx.fillStyle(0xffffff, 0.08);
         rockGfx.fillRoundedRect(x + 4, y + 4, cs * 0.45, 4, 2);
 
@@ -397,8 +406,8 @@ export class DigScene extends Phaser.Scene {
           key,
           cx: x + cs / 2,
           cy: y + cs / 2,
-          rockHp: this.theme.hardness, // сколько ударов киркой нужно
-          dustHp: 1, // 1 взмах кистью после снятия породы
+          rockHp: this.theme.hardness,
+          dustHp: 1,
           sandGfx,
           rockGfx
         };
@@ -425,18 +434,19 @@ export class DigScene extends Phaser.Scene {
   }
 
   useRadarAt(col, row) {
-    if (this.stamina <= 0) {
-      this.promptOutOfStamina();
+    if (this.radarPulses <= 0) {
+      this.hintBanner.setText('📡 Импульсы георадара закончились! Копайте Киркой.');
+      if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
       return;
     }
 
-    this.stamina = Math.max(0, this.stamina - 1);
+    this.radarPulses = Math.max(0, this.radarPulses - 1);
     this.updateTopCounters();
     if (AudioManager.playShine) AudioManager.playShine();
 
     const cx = this.pitLeft + (col + 0.5) * this.cellSize;
     const cy = this.pitTop + (row + 0.5) * this.cellSize;
-    const scanRadius = this.cellSize * (1.5 + (this.gear.radarTier - 1) * 0.45);
+    const scanRadius = this.cellSize * (1.55 + (this.gear.radarTier - 1) * 0.45);
 
     const pulse = this.add.circle(cx, cy, 12, 0x38bdf8, 0.25)
       .setStrokeStyle(2.5, 0x38bdf8, 0.95)
@@ -455,27 +465,23 @@ export class DigScene extends Phaser.Scene {
     this.targets.forEach((t) => {
       if (t.collected) return;
       const dist = Phaser.Math.Distance.Between(cx, cy, t.cx, t.cy);
-      if (dist <= scanRadius + this.cellSize * 0.6) {
+      if (dist <= scanRadius + this.cellSize * 0.65) {
         detectedAny = true;
-        t.radarGlow.setFillStyle(t.type === 'artifact' ? 0xfacc15 : 0x38bdf8, 0.22);
-        t.radarGlow.setStrokeStyle(2, t.type === 'artifact' ? 0xfacc15 : 0x38bdf8, 0.95);
+        t.radarGlow.setFillStyle(t.type === 'artifact' ? 0xfacc15 : 0x38bdf8, 0.26);
+        t.radarGlow.setStrokeStyle(2.2, t.type === 'artifact' ? 0xfacc15 : 0x38bdf8, 0.95);
         this.tweens.add({
           targets: t.radarGlow,
-          alpha: { from: 1, to: 0.15 },
-          duration: 1800,
+          alpha: { from: 1, to: 0.28 },
+          duration: 1600,
           ease: 'Sine.easeOut'
         });
       }
     });
 
-    this.hintBanner.setText(
-      detectedAny
-        ? '📡 Сигнал обнаружен! Вскрывайте подсвеченную зону Киркой!'
-        : '📡 В этом секторе пусто. Проверьте соседний участок!'
-    );
-
-    if (this.stamina <= 0) {
-      this.time.delayedCall(400, () => this.checkCompletionOrStamina());
+    if (detectedAny) {
+      this.hintBanner.setText('📡 Сигнал пойман! Переключитесь на Кирку и вскройте зону!');
+    } else {
+      this.hintBanner.setText('📡 Здесь пусто. Просканируйте другой участок шурфа!');
     }
   }
 
@@ -483,9 +489,8 @@ export class DigScene extends Phaser.Scene {
     const centerCell = this.cells[`${col}_${row}`];
     if (!centerCell) return;
 
-    // Если под пальцем уже чистый песок — подсказываем переключиться на кисть и не тратим заряд
     if (centerCell.rockHp <= 0 && centerCell.dustHp > 0) {
-      this.hintBanner.setText('🖌 Порода снята! Переключитесь на Кисть, чтобы смести пыль!');
+      this.hintBanner.setText('🖌 Порода снята! Возьмите Кисть и сметите песок!');
       return;
     }
 
@@ -500,12 +505,10 @@ export class DigScene extends Phaser.Scene {
     this.updateTopCounters();
 
     if (AudioManager.playScrape) AudioManager.playScrape(this.gear.pickaxeTier);
-    this.cameras.main.shake(65, 0.0035);
 
     const power = this.gear.pickaxeTier >= 3 ? 2 : 1;
     const splashCells = [centerCell];
 
-    // Улучшенная кирка задевает соседнюю плитку
     if (this.gear.pickaxeTier >= 2) {
       const neighbors = [
         this.cells[`${col + 1}_${row}`],
@@ -522,6 +525,8 @@ export class DigScene extends Phaser.Scene {
       }
     }
 
+    let brokeAnyRock = false;
+
     splashCells.forEach((cell, idx) => {
       if (cell.rockHp <= 0) return;
       const dmg = idx === 0 ? power : 1;
@@ -531,14 +536,30 @@ export class DigScene extends Phaser.Scene {
       this.particles.emitParticleAt(cell.cx, cell.cy, 5);
 
       if (cell.rockHp <= 0) {
+        brokeAnyRock = true;
         cell.rockGfx.destroy();
       } else {
-        // Рисуем трещины на надколотой породе
+        // Локальное подёргивание только самой плитки без тряски всего экрана
+        this.tweens.add({
+          targets: cell.rockGfx,
+          x: { from: -2, to: 2 },
+          duration: 35,
+          yoyo: true,
+          repeat: 1,
+          onComplete: () => {
+            if (cell.rockGfx && cell.rockGfx.active) cell.rockGfx.x = 0;
+          }
+        });
         cell.rockGfx.lineStyle(1.5, 0x0d0805, 0.85);
         cell.rockGfx.lineBetween(cell.cx - 10, cell.cy - 8, cell.cx + 8, cell.cy + 10);
         cell.rockGfx.lineBetween(cell.cx + 6, cell.cy - 9, cell.cx - 7, cell.cy + 6);
       }
     });
+
+    // Едва заметный тактильный отклик только при расколе камня
+    if (brokeAnyRock) {
+      this.cameras.main.shake(45, 0.0007);
+    }
 
     this.checkTargetsRevealed();
 
@@ -581,6 +602,18 @@ export class DigScene extends Phaser.Scene {
 
     this.targets.forEach((t) => {
       if (t.collected) return;
+
+      // Показываем спрайт находки только когда хотя бы 1 клетка над ним расчищена от породы
+      if (!t.revealed) {
+        const anyRockCleared = t.cells.some((key) => {
+          const cell = this.cells[key];
+          return cell && cell.rockHp <= 0;
+        });
+        if (anyRockCleared) {
+          t.revealed = true;
+          t.sprite.setVisible(true);
+        }
+      }
 
       const allClear = t.cells.every((key) => {
         const cell = this.cells[key];
@@ -664,8 +697,9 @@ export class DigScene extends Phaser.Scene {
   updateTopCounters() {
     const totalArtifacts = this.targets.filter((t) => t.type === 'artifact').length;
     const foundArtifacts = this.collectedArtifacts.length;
-    this.staminaTxt.setText(`⛏ Заряд: ${this.stamina}/${this.maxStamina}`);
-    this.foundCounterTxt.setText(`🏺 Найдено: ${foundArtifacts}/${totalArtifacts}`);
+    this.staminaTxt.setText(`⛏ Удары: ${this.stamina}/${this.maxStamina}`);
+    this.radarTxt.setText(`📡 Радар: ${this.radarPulses}/${this.maxRadarPulses}`);
+    this.foundCounterTxt.setText(`🏺 ${foundArtifacts}/${totalArtifacts}`);
   }
 
   checkCompletionOrStamina() {
@@ -677,10 +711,9 @@ export class DigScene extends Phaser.Scene {
       return;
     }
 
-    // Проверяем, есть ли ещё клетки с неснятой пылью (кисть не тратит заряд!)
     const hasDustToSweep = Object.values(this.cells).some((c) => c.rockHp <= 0 && c.dustHp > 0);
     if (hasDustToSweep) {
-      this.hintBanner.setText('🖌 Заряд кирки на нуле, но можно смести пыль Кистью!');
+      this.hintBanner.setText('🖌 Удары кирки на нуле, но можно смести пыль Кистью!');
       return;
     }
 
@@ -695,34 +728,35 @@ export class DigScene extends Phaser.Scene {
     const dpr = this.dpr;
     const items = [];
 
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.86)
+    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x080503, 0.88)
       .setDepth(100)
       .setInteractive();
     items.push(overlay);
 
     const boxW = width * 0.86;
-    const boxH = 236;
-    const card = this.add.container(width / 2, height / 2).setDepth(101);
-    items.push(card);
+    const boxH = this.adChargeUsed ? 196 : 246;
+    const boxTop = height / 2 - boxH / 2;
 
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.98);
-    bg.fillRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 14);
+    const bg = this.add.graphics().setDepth(101);
+    bg.fillGradientStyle(0x24180f, 0x24180f, 0x160f0a, 0x160f0a, 0.99);
+    bg.fillRoundedRect(width / 2 - boxW / 2, boxTop, boxW, boxH, 14);
     bg.lineStyle(1.5, 0xc89d54, 0.92);
-    bg.strokeRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 14);
+    bg.strokeRoundedRect(width / 2 - boxW / 2, boxTop, boxW, boxH, 14);
+    items.push(bg);
 
-    const title = this.add.text(0, -boxH / 2 + 28, '⛏ ЗАРЯД КИРКИ ИСЧЕРПАН', {
-      fontSize: '15px',
+    const title = this.add.text(width / 2, boxTop + 28, '⛏ УДАРЫ КИРКИ ЗАКОНЧИЛИСЬ', {
+      fontSize: '14.5px',
       fontFamily: this.FONT_UI,
       color: '#facc15',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(102);
+    items.push(title);
 
     const desc = this.add.text(
-      0,
-      -22,
-      'В шурфе ещё остались нераскрытые пласты.\nВосстановите +6 ударов или завершите выезд с текущей добычей.',
+      width / 2,
+      boxTop + 76,
+      'В шурфе ещё остались нераскрытые пласты.\nВозьмите +6 ударов кирки или завершите выезд.',
       {
         fontSize: '12px',
         fontFamily: this.FONT_UI,
@@ -732,28 +766,35 @@ export class DigScene extends Phaser.Scene {
         lineSpacing: 4,
         resolution: dpr
       }
-    ).setOrigin(0.5);
+    ).setOrigin(0.5).setDepth(102);
+    items.push(desc);
 
     const btnW = boxW * 0.84;
-    let curBtnY = 34;
+    let curBtnY = boxTop + 134;
 
     if (!this.adChargeUsed) {
-      const adGfx = this.add.graphics();
+      const adGfx = this.add.graphics().setDepth(102);
       adGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
-      adGfx.fillRoundedRect(-btnW / 2, curBtnY - 19, btnW, 38, 9);
+      adGfx.fillRoundedRect(width / 2 - btnW / 2, curBtnY - 19, btnW, 38, 9);
       adGfx.lineStyle(1, 0xfef08a, 0.95);
-      adGfx.strokeRoundedRect(-btnW / 2, curBtnY - 19, btnW, 38, 9);
+      adGfx.strokeRoundedRect(width / 2 - btnW / 2, curBtnY - 19, btnW, 38, 9);
+      items.push(adGfx);
 
-      const adTxt = this.add.text(0, curBtnY, '🎬 +6 УДАРОВ (ДОП. ЗАРЯД)', {
-        fontSize: '12.5px',
+      const adTxt = this.add.text(width / 2, curBtnY, '🎬 +6 УДАРОВ КИРКИ (ДОП. ЗАРЯД)', {
+        fontSize: '12px',
         fontFamily: this.FONT_UI,
         color: '#1a1004',
         fontStyle: 'bold',
         resolution: dpr
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setDepth(103);
+      items.push(adTxt);
 
-      const adZone = this.add.zone(0, curBtnY, btnW, 38).setInteractive({ useHandCursor: true });
-      adZone.on('pointerup', () => {
+      const adZone = this.add.zone(width / 2, curBtnY, btnW, 38)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(105);
+      items.push(adZone);
+
+      adZone.on('pointerdown', () => {
         YandexSDK.showRewarded(() => {
           this.adChargeUsed = true;
           this.stamina = 6;
@@ -763,33 +804,36 @@ export class DigScene extends Phaser.Scene {
         });
       });
 
-      card.add([adGfx, adTxt, adZone]);
-      curBtnY += 48;
+      curBtnY += 50;
     }
 
-    const endGfx = this.add.graphics();
+    const endGfx = this.add.graphics().setDepth(102);
     endGfx.fillStyle(0x332215, 1);
-    endGfx.fillRoundedRect(-btnW / 2, curBtnY - 18, btnW, 36, 9);
+    endGfx.fillRoundedRect(width / 2 - btnW / 2, curBtnY - 18, btnW, 36, 9);
     endGfx.lineStyle(1, 0xc89d54, 0.9);
-    endGfx.strokeRoundedRect(-btnW / 2, curBtnY - 18, btnW, 36, 9);
+    endGfx.strokeRoundedRect(width / 2 - btnW / 2, curBtnY - 18, btnW, 36, 9);
+    items.push(endGfx);
 
-    const endTxt = this.add.text(0, curBtnY, 'ЗАВЕРШИТЬ РАСКОПКИ', {
+    const endTxt = this.add.text(width / 2, curBtnY, 'ЗАВЕРШИТЬ РАСКОПКИ', {
       fontSize: '12px',
       fontFamily: this.FONT_UI,
       color: '#fdf6e3',
       fontStyle: 'bold',
       resolution: dpr
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(103);
+    items.push(endTxt);
 
-    const endZone = this.add.zone(0, curBtnY, btnW, 36).setInteractive({ useHandCursor: true });
-    endZone.on('pointerup', () => {
+    const endZone = this.add.zone(width / 2, curBtnY, btnW, 36)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(105);
+    items.push(endZone);
+
+    endZone.on('pointerdown', () => {
       items.forEach((o) => o && o.destroy && o.destroy());
       this.isModalOpen = false;
       this.isFinished = true;
       this.showDigSummaryModal();
     });
-
-    card.add([bg, title, desc, endGfx, endTxt, endZone]);
   }
 
   showDigSummaryModal() {
@@ -799,7 +843,6 @@ export class DigScene extends Phaser.Scene {
 
     if (AudioManager.playShine) AudioManager.playShine();
 
-    // Начисляем немного опыта за сам полевой выезд
     const digXp = 25 + this.collectedArtifacts.length * 15;
     Storage.addXP(digXp);
 
@@ -868,8 +911,8 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5);
 
-    const adZone = this.add.zone(0, adY, btnW, 38).setInteractive({ useHandCursor: true });
-    adZone.on('pointerup', () => {
+    const adZone = this.add.zone(0, adY, btnW, 38).setInteractive({ useHandCursor: true }).setDepth(125);
+    adZone.on('pointerdown', () => {
       if (doubled) return;
       YandexSDK.showRewarded(() => {
         doubled = true;
@@ -902,8 +945,8 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5);
 
-    const backZone = this.add.zone(0, backY, btnW, 38).setInteractive({ useHandCursor: true });
-    backZone.on('pointerup', () => {
+    const backZone = this.add.zone(0, backY, btnW, 38).setInteractive({ useHandCursor: true }).setDepth(125);
+    backZone.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
       this.scene.start('EraSelectScene', { regionId: this.regionId });
     });
@@ -1002,7 +1045,7 @@ export class DigScene extends Phaser.Scene {
     } else if (id === 'pickaxe') {
       this.hintBanner.setText('⛏ Бейте или ведите по твёрдой породе, чтобы вскрыть пласт');
     } else {
-      this.hintBanner.setText('🖌 Сметайте песок и пыль с обнажённых находок (без траты заряда)');
+      this.hintBanner.setText('🖌 Сметайте песок и пыль с обнажённых находок (без траты ударов)');
     }
   }
 }
