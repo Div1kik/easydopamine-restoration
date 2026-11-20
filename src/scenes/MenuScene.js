@@ -201,10 +201,11 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('MuseumScene');
     });
 
-    // Нижний бейдж золотого лака и казны
+   // Нижний бейдж золотого лака, энергии и казны
     const lacquer = Storage.getKintsugiLacquer();
     const coins = Storage.getCoins();
-    const badgeW = width * 0.86;
+    const enState = Storage.syncEnergy();
+    const badgeW = width * 0.90;
     const badgeH = 34;
     const badgeY = height * 0.935;
 
@@ -218,7 +219,7 @@ export class MenuScene extends Phaser.Scene {
       highlight: false
     });
 
-    this.add.text(width / 2, badgeY, `🪙 Казна: ${coins}   |   ✨ Лак Кинцуги: ${lacquer} шт.`, {
+    this.add.text(width / 2, badgeY, `🪙 ${coins}   |   ⚡ ${enState.current}/${enState.max}   |   ✨ Лак: ${lacquer}`, {
       fontSize: '12px',
       fontFamily: FONT_UI,
       color: '#facc15',
