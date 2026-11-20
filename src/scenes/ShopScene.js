@@ -109,14 +109,15 @@ export class ShopScene extends Phaser.Scene {
 
   createCategoryTabs(width, y) {
     const tabs = [
-      { id: 'tools', label: 'Инструменты' },
+      { id: 'tools', label: 'Верстак' },
+      { id: 'expedition', label: 'Раскопки' },
       { id: 'cosmetics', label: 'Стиль' },
       { id: 'museum', label: 'Музей' }
     ];
 
-    const tabW = (width * 0.90) / tabs.length - 6;
+    const tabW = (width * 0.92) / tabs.length - 5;
     const tabH = 32;
-    const spacing = 8;
+    const spacing = 6;
     const startX = width / 2 - ((tabW + spacing) * tabs.length - spacing) / 2 + tabW / 2;
 
     this.tabItems = [];
@@ -129,14 +130,15 @@ export class ShopScene extends Phaser.Scene {
       const drawTab = (selected) => {
         gfx.clear();
         gfx.fillStyle(selected ? 0xd99b26 : 0x24180f, selected ? 0.96 : 0.85);
-        gfx.fillRoundedRect(tx - tabW / 2, y - tabH / 2, tabW, tabH, 8);
+        gfx.fillRoundedRect(tx - tabW / 2, y - tabH / 2, tabWidthSafe(tabW), tabH, 8);
         gfx.lineStyle(selected ? 1.5 : 1, selected ? 0xfef08a : 0x8c6239, 0.9);
-        gfx.strokeRoundedRect(tx - tabW / 2, y - tabH / 2, tabW, tabH, 8);
+        gfx.strokeRoundedRect(tx - tabW / 2, y - tabH / 2, tabWidthSafe(tabW), tabH, 8);
       };
+      function tabWidthSafe(w) { return Math.max(40, w); }
       drawTab(isSelected);
 
       const txt = this.add.text(tx, y, t.label, {
-        fontSize: '12px',
+        fontSize: '11.5px',
         fontFamily: this.FONT_UI,
         color: isSelected ? '#1a1004' : '#fdf6e3',
         fontStyle: 'bold',
@@ -260,6 +262,26 @@ export class ShopScene extends Phaser.Scene {
       ];
 
       this.renderCardList(upgrades, width, textRes, FONT_UI, activeToolSkin);
+    } else if (this.activeTab === 'expedition') {
+      const digUpgrades = [
+        { key: 'dig_upg_pickaxe_2', toolType: 'pickaxe', tier: 2, title: 'Кирка II: Стальная', desc: '+3 заряда в раскопе, задевает 2 клетки и +1 находка в авто-сборе', price: 210 },
+        { key: 'dig_upg_pickaxe_3', reqKey: 'dig_upg_pickaxe_2', reqLabel: 'НУЖНА КИРКА II', toolType: 'pickaxe', tier: 3, title: 'Кирка III: Шахтёрская', desc: 'Двойной удар по твёрдой породе и 4 находки за авто-рейс', price: 690 },
+        { key: 'dig_upg_pickaxe_4', reqKey: 'dig_upg_pickaxe_3', reqLabel: 'НУЖНА КИРКА III', toolType: 'pickaxe', tier: 4, title: 'Кирка IV: Первопроходца', desc: 'Вскрывает 3 клетки за удар и 5 находок за авто-рейс!', price: 2450 },
+
+        { key: 'dig_upg_radar_2', toolType: 'radar', tier: 2, title: 'Георадар II: Импульсный', desc: 'Шире радиус сонара, +1 тайник в грунте и выше шанс редких находок', price: 240 },
+        { key: 'dig_upg_radar_3', reqKey: 'dig_upg_radar_2', reqLabel: 'НУЖЕН РАДАР II', toolType: 'radar', tier: 3, title: 'Георадар III: Глубинный', desc: 'Сканирует пол-шурфа и сильно повышает ценность авто-добычи', price: 780 },
+        { key: 'dig_upg_radar_4', reqKey: 'dig_upg_radar_3', reqLabel: 'НУЖЕН РАДАР III', toolType: 'radar', tier: 4, title: 'Георадар IV: Хроно-сканер', desc: 'Максимальный обзор шурфа и поиск самых дорогих реликвий', price: 2800 },
+
+        { key: 'dig_upg_fieldbrush_2', toolType: 'fieldbrush', tier: 2, title: 'Полевая кисть II: Широкая', desc: '+22% шанс на доп. артефакт в авто-сборе', price: 190 },
+        { key: 'dig_upg_fieldbrush_3', reqKey: 'dig_upg_fieldbrush_2', reqLabel: 'НУЖНА КИСТЬ II', toolType: 'fieldbrush', tier: 3, title: 'Полевая кисть III: Археолога', desc: 'Сметает пыль 3×3 клетки, шанс 3-го артефакта и Лака Кинцуги!', price: 640 },
+        { key: 'dig_upg_fieldbrush_4', reqKey: 'dig_upg_fieldbrush_3', reqLabel: 'НУЖНА КИСТЬ III', toolType: 'fieldbrush', tier: 4, title: 'Полевая кисть IV: Ювелирная', desc: '+66% шанс на бонусную находку в каждом авто-рейсе', price: 2250 },
+
+        { key: 'dig_upg_camp_2', toolType: 'camp', tier: 2, title: 'Полевой лагерь II: Палатка', desc: 'Лимит энергии 40 ⚡ и ускоренная регенерация (+1 за 95 сек)', price: 320 },
+        { key: 'dig_upg_camp_3', reqKey: 'dig_upg_camp_2', reqLabel: 'НУЖЕН ЛАГЕРЬ II', toolType: 'camp', tier: 3, title: 'Полевой лагерь III: Генератор', desc: 'Лимит энергии 50 ⚡ и восстановление +1 за 75 сек', price: 960 },
+        { key: 'dig_upg_camp_4', reqKey: 'dig_upg_camp_3', reqLabel: 'НУЖЕН ЛАГЕРЬ III', toolType: 'camp', tier: 4, title: 'Полевой лагерь IV: База гильдии', desc: 'Максимум энергии 60 ⚡ и регенерация +1 каждую минуту!', price: 3100 }
+      ];
+
+      this.renderCardList(digUpgrades, width, textRes, FONT_UI, activeToolSkin);
     } else if (this.activeTab === 'cosmetics') {
       this.renderCosmeticsTab(width, textRes, FONT_UI);
     } else if (this.activeTab === 'museum') {
@@ -276,7 +298,7 @@ export class ShopScene extends Phaser.Scene {
 
   renderCardList(items, width, textRes, FONT_UI, activeToolSkin) {
     const cardW = width * 0.92;
-    const cardH = 84;
+    const cardH = 88;
     const spacing = 10;
 
     items.forEach((item, index) => {
@@ -316,8 +338,8 @@ export class ShopScene extends Phaser.Scene {
       }
 
       const textMaxW = cardW - 190;
-      const titleTxt = this.add.text(-cardW / 2 + 76, -15, item.title, {
-        fontSize: '13px',
+      const titleTxt = this.add.text(-cardW / 2 + 76, -18, item.title, {
+        fontSize: '12.5px',
         fontFamily: FONT_UI,
         color: isLocked ? '#8c735b' : '#fdf6e3',
         fontStyle: 'bold',
@@ -326,7 +348,7 @@ export class ShopScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
 
       const descTxt = this.add.text(-cardW / 2 + 76, 14, item.desc, {
-        fontSize: '11px',
+        fontSize: '10.5px',
         fontFamily: FONT_UI,
         color: isLocked ? '#6b5643' : '#d6c3a5',
         wordWrap: { width: textMaxW },
