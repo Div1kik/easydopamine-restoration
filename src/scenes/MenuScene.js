@@ -179,21 +179,30 @@ export class MenuScene extends Phaser.Scene {
       return cont;
     };
 
-    const startY = height * 0.568;
+      const startY = height * 0.568;
 
     createBtn(startY, '⚒  НА ВЕРСТАК', true, () => {
       this.startQuickRestore();
     });
 
     createBtn(startY + 58, '🧭  ЭКСПЕДИЦИИ', false, () => {
+      if (!TutorialManager.isDone() && TutorialManager.getStep() === 3) {
+        TutorialManager.setStep(4);
+      }
       this.scene.start('EraSelectScene');
     });
 
     createBtn(startY + 116, '🕯  ЛАВКА МАСТЕРА', false, () => {
+      if (!TutorialManager.isDone() && TutorialManager.getStep() === 6) {
+        TutorialManager.setStep(7);
+      }
       this.scene.start('ShopScene');
     });
 
     createBtn(startY + 174, '🏛  ЗАЛ СЛАВЫ (МУЗЕЙ)', false, () => {
+      if (!TutorialManager.isDone() && TutorialManager.getStep() === 8) {
+        TutorialManager.setStep(9);
+      }
       this.scene.start('MuseumScene');
     });
 
@@ -230,7 +239,7 @@ export class MenuScene extends Phaser.Scene {
       this.checkOfflineEarnings(width, height, textRes, FONT_UI);
     }
 
-    // Сквозной маршрут обучения в главном меню
+    // Сквозной маршрут обучения в главном меню (шаг переводится только при реальном нажатии на кнопку!)
     if (!this.isModalOpen && !TutorialManager.isDone()) {
       const curStep = TutorialManager.getStep();
       const btnW = width * 0.86;
@@ -239,74 +248,45 @@ export class MenuScene extends Phaser.Scene {
         if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
 
         if (curStep === 0) {
-          TutorialManager.runIfStep(
-            this,
-            0,
-            [
-              {
-                badge: 'ШАГ 1 ИЗ 5 • ПЕРВЫЙ ЗАКАЗ',
-                rect: { x: width / 2 - btnW / 2, y: startY - 26, w: btnW, h: 52 },
-                title: '⚒ Отправляемся на верстак',
-                body: 'На складе вас уже ждёт Золотой скарабей! Нажмите «НА ВЕРСТАК», чтобы освоить все приборы реставрации и Золотой шов Кинцуги.'
-              }
-            ],
-            () => {
-              TutorialManager.setStep(1);
+          TutorialManager.runIfStep(this, 0, [
+            {
+              badge: 'ШАГ 1 ИЗ 5 • ПЕРВЫЙ ЗАКАЗ',
+              rect: { x: width / 2 - btnW / 2, y: startY - 26, w: btnW, h: 52 },
+              title: '⚒ Отправляемся на верстак',
+              body: 'На складе вас уже ждёт Золотой скарабей! Нажмите «ПОНЯТНО», а затем кнопку «НА ВЕРСТАК», чтобы освоить реставрацию и Золотой шов Кинцуги.'
             }
-          );
+          ]);
         } else if (curStep === 3) {
-          TutorialManager.runIfStep(
-            this,
-            3,
-            [
-              {
-                badge: 'ШАГ 3 ИЗ 5 • ПОЛЕВЫЕ РАСКОПКИ',
-                rect: { x: width / 2 - btnW / 2, y: startY + 58 - 26, w: btnW, h: 52 },
-                title: '🧭 Пора добыть новые реликвии!',
-                body: 'Откройте «ЭКСПЕДИЦИИ» — там вы узнаете, как работает энергия (⚡), как искать клады на раскопе и как открыть авто-сбор.'
-              }
-            ],
-            () => {
-              TutorialManager.setStep(4);
+          TutorialManager.runIfStep(this, 3, [
+            {
+              badge: 'ШАГ 3 ИЗ 5 • ПОЛЕВЫЕ РАСКОПКИ',
+              rect: { x: width / 2 - btnW / 2, y: startY + 58 - 26, w: btnW, h: 52 },
+              title: '🧭 Пора добыть новые реликвии!',
+              body: 'Откройте «ЭКСПЕДИЦИИ» — там вы узнаете, как работает энергия (⚡), как искать клады на раскопе и как открыть авто-сбор.'
             }
-          );
+          ]);
         } else if (curStep === 6) {
-          TutorialManager.runIfStep(
-            this,
-            6,
-            [
-              {
-                badge: 'ШАГ 4 ИЗ 5 • ПРОКАЧКА И СТИЛЬ',
-                rect: { x: width / 2 - btnW / 2, y: startY + 116 - 26, w: btnW, h: 52 },
-                title: '🕯 Заглянем в Лавку Мастера',
-                body: 'Нажмите «ЛАВКА МАСТЕРА», чтобы увидеть улучшения инструментов верстака, снаряжение для раскопок и 15 уникальных верстаков.'
-              }
-            ],
-            () => {
-              TutorialManager.setStep(7);
+          TutorialManager.runIfStep(this, 6, [
+            {
+              badge: 'ШАГ 4 ИЗ 5 • ПРОКАЧКА И СТИЛЬ',
+              rect: { x: width / 2 - btnW / 2, y: startY + 116 - 26, w: btnW, h: 52 },
+              title: '🕯 Заглянем в Лавку Мастера',
+              body: 'Нажмите «ЛАВКА МАСТЕРА», чтобы увидеть улучшения инструментов верстака, снаряжение для раскопок и 15 уникальных верстаков.'
             }
-          );
+          ]);
         } else if (curStep === 8) {
-          TutorialManager.runIfStep(
-            this,
-            8,
-            [
-              {
-                badge: 'ШАГ 5 ИЗ 5 • ВАША КОЛЛЕКЦИЯ',
-                rect: { x: width / 2 - btnW / 2, y: startY + 174 - 26, w: btnW, h: 52 },
-                title: '🏛 Зал Славы (Музей)',
-                body: 'Откройте «ЗАЛ СЛАВЫ» — там стоит ваш отреставрированный Золотой скарабей, который уже приносит пассивный доход в час!'
-              }
-            ],
-            () => {
-              TutorialManager.setStep(9);
+          TutorialManager.runIfStep(this, 8, [
+            {
+              badge: 'ШАГ 5 ИЗ 5 • ВАША КОЛЛЕКЦИЯ',
+              rect: { x: width / 2 - btnW / 2, y: startY + 174 - 26, w: btnW, h: 52 },
+              title: '🏛 Зал Славы (Музей)',
+              body: 'Откройте «ЗАЛ СЛАВЫ» — там стоит ваш отреставрированный Золотой скарабей, который уже приносит пассивный доход в час!'
             }
-          );
+          ]);
         }
       });
     }
   }
-
   drawStyledBox(x, y, w, h, opts) {
     const gfx = this.add.graphics();
     const r = opts.radius || 10;
