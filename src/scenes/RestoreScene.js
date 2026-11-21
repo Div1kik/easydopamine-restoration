@@ -1,9 +1,9 @@
-import { TutorialManager } from '../utils/TutorialManager.js';
 import * as ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
 
 export class RestoreScene extends Phaser.Scene {
   constructor() {
@@ -65,6 +65,7 @@ export class RestoreScene extends Phaser.Scene {
 
     // 1. ДАННЫЕ И СЕССИЯ
     this.activeContract = (data && data.contract) ? data.contract : null;
+    this.isTutorialRun = !!(data && data.isTutorialRun);
 
     const history = Storage.getRestoreHistory ? Storage.getRestoreHistory() : [];
     let reqRegion = (data && data.regionId) ? data.regionId : 'egypt';
@@ -86,8 +87,19 @@ export class RestoreScene extends Phaser.Scene {
       this.artifactData = { ...found, instanceId: `art_${Date.now()}` };
     }
 
+    // В обучающем запуске даём все этапы (Скребок -> Кисть -> Реагент -> Скол с Кинцуги -> Блеск)
+    if (this.isTutorialRun) {
+      this.artifactData.tasks = [
+        { name: 'Сколоть окаменевший пласт породы', hint: 'Сколоть окаменевший пласт породы', requiredTool: 'tool_scraper' },
+        { name: 'Смести минеральную пыль и песок', hint: 'Смести минеральную пыль и песок', requiredTool: 'tool_brush' },
+        { name: 'Смыть химические окислы растворителем', hint: 'Смыть химические окислы растворителем', requiredTool: 'tool_solvent' },
+        { name: 'Закрепить отколовшийся фрагмент', hint: 'Закрепить отколовшийся фрагмент', type: 'break_and_assemble', requiredTool: 'tool_glue', shardCount: 2 },
+        { name: 'Натереть воском и навести глянец', hint: 'Натереть воском и навести глянец', requiredTool: 'tool_polish' }
+      ];
+    }
+
     this.isDuplicate = history.some((item) => item.templateId === this.artifactData.id);
-    if (this.isDuplicate && this.activeContract) {
+    if (this.isDuplicate && (this.activeContract || this.isTutorialRun)) {
       this.isDuplicate = false;
     }
 
@@ -373,22 +385,31 @@ export class RestoreScene extends Phaser.Scene {
     this.buildValidCellsMask(texKey);
     this.startTask(0, false);
     this.playMaterializeSequence();
-    this.time.delayedCall(450, () => {
+
+    // Обучение верстаку (сквозной шаг 1)
+    this.time.delayedCall(420, () => {
       if (!this.scene || !this.scene.isActive() || this.isGuideOpen) return;
-      TutorialManager.startTour(this, 'restore_basics', [
-        {
-          badge: 'ЭТАПЫ РЕСТАВРАЦИИ',
-          rect: { x: 8, y: systemTopPad + 46, w: width - 16, h: infoPanelHeight },
-          title: '📋 Задача и прогресс слоя',
-          body: 'Сверху указано, какой слой нужно снять сейчас (породу, пыль или окислы). Водите пальцем по артефакту, пока полоска не заполнится.'
-        },
-        {
-          badge: 'ПРИБОРЫ МАСТЕРА',
-          rect: { x: 8, y: trayY - 42, w: width - 16, h: 84 },
-          title: '🧰 Панель инструментов',
-          body: 'Выбирайте нужный прибор: Скребок, Кисть, Реагент, Клей или Блеск. Ошибка при выборе снижает итоговую оценку в звёздах!'
+      TutorialManager.runIfStep(
+        this,
+        1,
+        [
+          {
+            badge: 'ШАГ 2 ИЗ 5 • ЗАДАЧА ЭТАПА',
+            rect: { x: 8, y: systemTopPad + 46, w: width - 16, h: infoPanelHeight },
+            title: '📋 Панель реставрации',
+            body: 'Сверху указано, какой слой снять сейчас и какой прибор нужен. Водите пальцем по артефакту, пока полоска прогресса не заполнится.'
+          },
+          {
+            badge: 'ШАГ 2 ИЗ 5 • ИНСТРУМЕНТЫ МАСТЕРА',
+            rect: { x: 8, y: trayY - 42, w: width - 16, h: 84 },
+            title: '🧰 Все 5 приборов верстака',
+            body: '• Скребок — откалывает породу;\n• Кисть — сметает пыль;\n• Реагент — смывает окислы;\n• Клей — скрепляет осколки;\n• Блеск — натирает воск. Ошибки снижают звёзды!'
+          }
+        ],
+        () => {
+          TutorialManager.setStep(2);
         }
-      ]);
+      );
     });
 
     // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД
@@ -430,7 +451,7 @@ export class RestoreScene extends Phaser.Scene {
           this.lastWarnTime = this.time.now;
           this.mistakesCount++;
           if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
-          this.cameras.main.shake(80, 0.004);
+          this.cameras.main.shake(80, 0.002);
         }
         return;
       }
@@ -1201,7 +1222,6 @@ export class RestoreScene extends Phaser.Scene {
       activeSkin = 'workbench_bg_1';
     }
 
-    // Базовая тёмная подложка
     this.add.rectangle(width / 2, height / 2, width, height, 0x0d0805).setDepth(0);
 
     const keyToUse = (this.textures.exists(activeSkin) && this.textures.get(activeSkin).key !== '__MISSING')
@@ -1218,7 +1238,6 @@ export class RestoreScene extends Phaser.Scene {
       this.workbenchBgImg = bg;
     }
 
-    // Декоративная рамка коврика с прозрачным центром
     const artW = this.artW || 260;
     const artH = this.artH || 320;
     const maxMatW = width - 56;
@@ -1421,7 +1440,7 @@ export class RestoreScene extends Phaser.Scene {
     ];
 
     if (AudioManager.playBreakSnap) AudioManager.playBreakSnap();
-    this.cameras.main.shake(140, 0.008);
+    this.cameras.main.shake(110, 0.0025);
 
     points.forEach((pt, idx) => {
       const targetX = pt.x;
@@ -1545,16 +1564,25 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.kintsugiBanner.add([bannerGfx, infoTxt, btnGfx, kintsugiTxt, kintsugiZone]);
-    this.time.delayedCall(300, () => {
+
+    // Подсветка Золотого лака Кинцуги на шаге 2
+    this.time.delayedCall(350, () => {
       if (!this.scene || !this.scene.isActive() || !this.kintsugiBanner) return;
-      TutorialManager.startTour(this, 'restore_kintsugi', [
-        {
-          badge: 'ИСКУССТВО ЗОЛОТОГО ШВА',
-          rect: { x: width * 0.05, y: this.centerY + 140, w: width * 0.90, h: 50 },
-          title: '✨ Золотой лак Кинцуги (+60% к цене)',
-          body: 'Сначала промажьте Клеем красные лунки, затем нажмите «✨ КИНЦУГИ» и перетащите осколки на места — золотой шов поднимет стоимость реликвии на 60%!'
+      TutorialManager.runIfStep(
+        this,
+        2,
+        [
+          {
+            badge: 'ШАГ 2 ИЗ 5 • ИСКУССТВО КИНЦУГИ',
+            rect: { x: width * 0.05, y: this.centerY + 140, w: width * 0.90, h: 50 },
+            title: '✨ Золотой лак Кинцуги (+60% к цене)',
+            body: 'Сначала промажьте Клеем красные лунки, затем нажмите «✨ КИНЦУГИ» и перетащите осколки на места — золотой шов поднимет стоимость реликвии на 60%!'
+          }
+        ],
+        () => {
+          TutorialManager.setStep(3);
         }
-      ]);
+      );
     });
   }
 
@@ -1667,6 +1695,10 @@ export class RestoreScene extends Phaser.Scene {
       YandexSDK.notifyGameplayStop();
       if (AudioManager.playShine) AudioManager.playShine();
       if (AudioManager.stopMusic) AudioManager.stopMusic();
+
+      if (TutorialManager.getStep() === 2) {
+        TutorialManager.setStep(3);
+      }
 
       let earnedStars = 3;
       let qualityMultiplier = 1.0;
