@@ -1,8 +1,8 @@
-import { TutorialManager } from '../utils/TutorialManager.js';
 import { REGIONS, ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
 
 export class EraSelectScene extends Phaser.Scene {
   constructor() {
@@ -53,7 +53,6 @@ export class EraSelectScene extends Phaser.Scene {
       AudioManager.playEraMusic(this.eras[this.selectedEraIndex].id);
     }
 
-    // Верхняя шапка (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 128);
@@ -77,7 +76,6 @@ export class EraSelectScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5).setDepth(20);
 
-    // Полоска энергии + кнопка полевого пайка (+15 ⚡ за рекламу)
     this.energyText = this.add.text(16, 66, '', {
       fontSize: '11.5px',
       fontFamily: FONT_UI,
@@ -117,7 +115,6 @@ export class EraSelectScene extends Phaser.Scene {
       });
     });
 
-    // Кнопка сброса в правом верхнем углу
     const resetGfx = this.add.graphics().setDepth(24);
     resetGfx.fillStyle(0x2b1512, 0.9);
     resetGfx.fillRoundedRect(width - 46, 12, 30, 30, 8);
@@ -145,22 +142,43 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.setupScrollHandlers();
     this.renderArtifactsList();
-    this.time.delayedCall(350, () => {
+
+    // Сквозной шаг 4: Энергия -> Ручные раскопки -> Авто-сбор
+    this.time.delayedCall(340, () => {
       if (!this.scene || !this.scene.isActive()) return;
-      TutorialManager.startTour(this, 'expedition_map', [
-        {
-          badge: 'ЭНЕРГИЯ ЭКСПЕДИЦИЙ',
-          rect: { x: 10, y: 52, w: width - 20, h: 28 },
-          title: '⚡ Запас сил и Полевой паёк',
-          body: 'Каждый выезд тратит 10 ⚡ энергии. Она восстанавливается сама по +1 ⚡ каждые 2 минуты (даже офлайн), а её лимит растёт при прокачке Полевого лагеря.'
-        },
-        {
-          badge: 'РУЧНОЙ ПОИСК И АВТО-СБОР',
-          rect: { x: width * 0.04, y: this.listTopY + 6, w: width * 0.92, h: 148 },
-          title: '⛏ Раскопки vs ⚡ Авто-сбор',
-          body: 'Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками! Прокачка полевого снаряжения увеличивает количество и редкость авто-добычи.'
+      const expW = width * 0.92;
+      const halfBtnW = (expW - 36) / 2;
+      const leftBtnX = width / 2 - expW / 2 + 14;
+      const rightBtnX = width / 2 + expW / 2 - 14 - halfBtnW;
+      const btnTopY = this.listTopY + 80 + 12 - 20;
+
+      TutorialManager.runIfStep(
+        this,
+        4,
+        [
+          {
+            badge: 'ШАГ 3 ИЗ 5 • ЭНЕРГИЯ ЭКСПЕДИЦИЙ',
+            rect: { x: 10, y: 52, w: width - 20, h: 28 },
+            title: '⚡ Энергия и Полевой паёк',
+            body: 'Каждый выезд тратит 10 ⚡ энергии. Она восстанавливается сама по +1 ⚡ каждые 2 минуты (даже когда игра закрыта), а лимит расширяется прокачкой Лагеря.'
+          },
+          {
+            badge: 'ШАГ 3 ИЗ 5 • РУЧНОЙ ПОИСК',
+            rect: { x: leftBtnX, y: btnTopY, w: halfBtnW, h: 40 },
+            title: '⛏ Ручные раскопки',
+            body: 'Сначала выезжайте на раскопки лично! Там вы сами вскрываете пласт, находите новые артефакты эпохи и откапываете тайники с монетами и Лаком Кинцуги.'
+          },
+          {
+            badge: 'ШАГ 3 ИЗ 5 • АВТОМАТИЧЕСКИЙ СБОР',
+            rect: { x: rightBtnX, y: btnTopY, w: halfBtnW, h: 40 },
+            title: '⚡ Авто-сбор разведгруппы',
+            body: 'Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками! Прокачка полевого снаряжения увеличивает количество и редкость добычи.'
+          }
+        ],
+        () => {
+          TutorialManager.setStep(5);
         }
-      ]);
+      );
     });
 
     this.time.addEvent({
@@ -169,7 +187,6 @@ export class EraSelectScene extends Phaser.Scene {
       callback: () => this.updateHeader()
     });
 
-    // Нижняя панель с кнопкой возврата
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
@@ -454,7 +471,6 @@ export class EraSelectScene extends Phaser.Scene {
       return;
     }
 
-    // 1. ПАНЕЛЬ ПОЛЕВЫХ РАБОТ: РУЧНЫЕ РАСКОПКИ vs АВТО-ЭКСПЕДИЦИЯ
     const expW = width * 0.92;
     const expH = 148;
     const expY = 80;
@@ -492,7 +508,6 @@ export class EraSelectScene extends Phaser.Scene {
       }
     ).setOrigin(0, 0.5);
 
-    // Кнопка А: РУЧНЫЕ РАСКОПКИ (10 ⚡ + 50% стоимости)
     const manualCost = Storage.getManualDigCost(currentEra.id);
     const halfBtnW = (expW - 36) / 2;
     const digBtnX = -expW / 2 + 14 + halfBtnW / 2;
@@ -532,7 +547,6 @@ export class EraSelectScene extends Phaser.Scene {
       this.scene.start('DigScene', { regionId: currentEra.id });
     });
 
-    // Кнопка Б: АВТО-ЭКСПЕДИЦИЯ (возит только разведанные артефакты)
     const autoCost = Storage.getAutoExpeditionCost(currentEra.id);
     const autoBtnX = expW / 2 - 14 - halfBtnW / 2;
 
@@ -584,7 +598,6 @@ export class EraSelectScene extends Phaser.Scene {
       this.renderArtifactsList();
     });
 
-    // Нижняя строка: Бесплатный выезд за рекламу (если есть разведанные — авто-сбор, иначе вход в раскопки)
     const adBarY = 51;
     const adBarW = expW - 28;
     const adGfx = this.add.graphics();
@@ -630,7 +643,6 @@ export class EraSelectScene extends Phaser.Scene {
     ]);
     this.listContainer.add(expeditionBox);
 
-    // 2. СПИСОК АРТЕФАКТОВ ЭПОХИ (СО СТАТУСОМ РАЗВЕДКИ И СКЛАДА)
     const stocks = Storage.getRegionStock(currentEra.id, ARTIFACT_TEMPLATES);
 
     const cardH = 98;
