@@ -93,6 +93,42 @@ jobs:
           EOF
           npx cap copy android
 
+      - name: Generate Android App Icons & Store Icon (512x512)
+        run: |
+          mkdir -p release-outputs
+          RES_DIR="android/app/src/main/res"
+          ICON_SRC="assets/icon.png"
+
+          if [ -f "$ICON_SRC" ]; then
+            echo "Нарезка иконки assets/icon.png под все плотности Android..."
+            npm install --no-save sharp
+            node -e '
+              const sharp = require("sharp");
+              const fs = require("fs");
+              const src = "assets/icon.png";
+              const res = "android/app/src/main/res";
+              const densities = [
+                { dir: "mipmap-mdpi", size: 48 },
+                { dir: "mipmap-hdpi", size: 72 },
+                { dir: "mipmap-xhdpi", size: 96 },
+                { dir: "mipmap-xxhdpi", size: 144 },
+                { dir: "mipmap-xxxhdpi", size: 192 }
+              ];
+              (async () => {
+                for (const d of densities) {
+                  fs.mkdirSync(`${res}/${d.dir}`, { recursive: true });
+                  await sharp(src).resize(d.size, d.size).png().toFile(`${res}/${d.dir}/ic_launcher.png`);
+                  await sharp(src).resize(d.size, d.size).png().toFile(`${res}/${d.dir}/ic_launcher_round.png`);
+                  await sharp(src).resize(d.size, d.size).png().toFile(`${res}/${d.dir}/ic_launcher_foreground.png`);
+                }
+                await sharp(src).resize(512, 512).png().toFile("release-outputs/StoreIcon-512x512.png");
+                console.log("Все иконки успешно сгенерированы!");
+              })();
+            '
+          else
+            echo "Файл assets/icon.png не найден, используются стандартные иконки."
+          fi
+
       - name: Prepare Android Signing Keystore
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -148,7 +184,7 @@ jobs:
           cp android/app/build/outputs/bundle/release/app-release.aab release-outputs/ArtefactsOfTime-GooglePlay-release.aab
           cp web-release.zip release-outputs/ArtefactsOfTime-Web-Yandex-VK.zip
 
-      - name: Upload Release Artifacts (Web + APK + AAB)
+      - name: Upload Release Artifacts (Web + APK + AAB + StoreIcon)
         uses: actions/upload-artifact@v4
         with:
           name: ArtefactsOfTime-All-Platforms
