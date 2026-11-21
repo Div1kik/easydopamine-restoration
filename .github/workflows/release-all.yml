@@ -27,6 +27,8 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
       - name: Prepare clean www bundle (Web / Yandex / VK)
         run: |
@@ -46,10 +48,8 @@ jobs:
       - name: Configure Android Manifest, Orientation & Theme
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # Портретная ориентация и полноэкранный режим для игры
           sed -i 's/android:exported="true"/android:exported="true" android:screenOrientation="portrait"/g' "$MANIFEST"
 
-          # Разрешаем cleartext / локальные ассеты в capacitor.config.json
           cat << 'EOF' > capacitor.config.json
           {
             "appId": "com.easydopamine.artefactsoftime",
@@ -88,7 +88,6 @@ jobs:
             echo "SIGN_KEY_PASSWORD=Artefacts2026!" >> $GITHUB_ENV
           fi
 
-          # Настраиваем signingConfigs в android/app/build.gradle
           cat << 'EOF' >> android/app/build.gradle
 
           android {
