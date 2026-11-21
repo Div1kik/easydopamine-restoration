@@ -1,3 +1,4 @@
+import { TutorialManager } from '../utils/TutorialManager.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
@@ -229,6 +230,48 @@ export class MenuScene extends Phaser.Scene {
 
     if (AudioManager.playMusic) AudioManager.playMusic('menu');
     this.checkOfflineEarnings(width, height, textRes, FONT_UI);
+
+    // Запуск интерактивного Spotlight-обучения при первом входе
+    if (!this.isModalOpen) {
+      this.time.delayedCall(350, () => {
+        if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
+        const btnW = width * 0.86;
+        const startY = height * 0.568;
+
+        TutorialManager.startTour(this, 'menu_intro', [
+          {
+            badge: 'ДОБРО ПОЖАЛОВАТЬ В МАСТЕРСКУЮ',
+            rect: { x: width / 2 - btnW / 2, y: startY - 26, w: btnW, h: 52 },
+            title: '⚒ Верстак реставратора',
+            body: 'Здесь вы очищаете древние находки от породы, пыли и окислов. На старте у вас уже есть 2 Золотых скарабея на складе!'
+          },
+          {
+            badge: 'ЭКСПЕДИЦИИ И ЭНЕРГИЯ',
+            rect: { x: width / 2 - btnW / 2, y: startY + 58 - 26, w: btnW, h: 52 },
+            title: '🧭 Раскопки и Разведгруппа',
+            body: 'В 7 эпохах спрятаны 35 уникальных артефактов. Выезжайте на ручные раскопки, чтобы открывать реликвии для автоматического сбора!'
+          },
+          {
+            badge: 'СНАРЯЖЕНИЕ И КАСТОМИЗАЦИЯ',
+            rect: { x: width / 2 - btnW / 2, y: startY + 116 - 26, w: btnW, h: 52 },
+            title: '🕯 Лавка Мастера',
+            body: 'Улучшайте приборы верстака и полевое снаряжение (Кирку, Георадар, Кисть, Лагерь), открывайте 15 верстаков и 5 стилей инструментов.'
+          },
+          {
+            badge: 'ПАССИВНЫЙ ДОХОД',
+            rect: { x: width / 2 - btnW / 2, y: startY + 174 - 26, w: btnW, h: 52 },
+            title: '🏛 Зал Славы (Музей)',
+            body: 'Отреставрированные экспонаты (2★ и 3★) встают на витрины и приносят золото каждый час — даже когда игра закрыта.'
+          },
+          {
+            badge: 'СРОЧНЫЕ КОНТРАКТЫ И РЕСУРСЫ',
+            rect: { x: width / 2 - width * 0.45, y: height * 0.935 - 19, w: width * 0.90, h: 38 },
+            title: '🪙 Монеты, ⚡ Энергия и ✨ Лак Кинцуги',
+            body: 'Энергия (⚡) тратится на экспедиции и сама восстанавливается каждые 2 минуты (даже офлайн). А Лак Кинцуги делает золотой шов на сколах (+60% к цене)!'
+          }
+        ]);
+      });
+    }
   }
 
   lazyPreloadOwnedWorkbenches() {
