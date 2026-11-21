@@ -1,9 +1,9 @@
-import { TutorialManager } from '../utils/TutorialManager.js';
 import { REGIONS, ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
 
 const ERA_DIG_THEMES = {
   egypt: {
@@ -84,13 +84,12 @@ export class DigScene extends Phaser.Scene {
     this.theme = ERA_DIG_THEMES[this.regionId] || ERA_DIG_THEMES.egypt;
 
     this.gear = Storage.getExpeditionGearBonuses();
-    this.activeTool = 'radar'; // Начинаем с георадара, чтобы игрок мог сразу просканировать шурф
+    this.activeTool = 'radar';
     this.isModalOpen = false;
     this.isFinished = false;
     this.adChargeUsed = false;
 
-    // Раздельные ресурсы: импульсы Георадара и удары Кирки
-    this.maxRadarPulses = 2 + this.gear.radarTier; // от 3 до 6 сканирований
+    this.maxRadarPulses = 2 + this.gear.radarTier;
     this.radarPulses = this.maxRadarPulses;
 
     this.maxStamina = 16 + (this.gear.pickaxeTier - 1) * 3;
@@ -100,7 +99,6 @@ export class DigScene extends Phaser.Scene {
       AudioManager.playEraMusic(this.regionId);
     }
 
-    // 1. ФОН РАСКОПОК
     if (this.textures.exists('dig_bg') && this.textures.get('dig_bg').key !== '__MISSING') {
       const bg = this.add.image(width / 2, height / 2, 'dig_bg').setDepth(0);
       bg.setScale(Math.max(width / bg.width, height / bg.height));
@@ -112,7 +110,6 @@ export class DigScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x120b07).setDepth(0);
     }
 
-    // 2. ВЕРХНЯЯ ПАНЕЛЬ
     const headerH = 92;
     const headerBg = this.add.graphics().setDepth(40);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.95);
@@ -136,7 +133,6 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5).setDepth(42);
 
-    // Индикаторы: Удары кирки, Импульсы радара и Найденные артефакты
     this.staminaTxt = this.add.text(14, 68, '', {
       fontSize: '11.5px',
       fontFamily: FONT_UI,
@@ -161,7 +157,6 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(1, 0.5).setDepth(42);
 
-    // 3. ГЕОМЕТРИЯ ШУРФА (6x8 ПЛИТОК БЕЗ ЩЕЛЕЙ)
     const trayH = 104;
     const pitTop = headerH + 34;
     const pitBottom = height - trayH - 38;
@@ -184,7 +179,6 @@ export class DigScene extends Phaser.Scene {
     pitFrame.lineStyle(2, 0xc89d54, 0.85);
     pitFrame.strokeRoundedRect(this.pitLeft - 6, this.pitTop - 6, this.pitW + 12, this.pitH + 12, 10);
 
-    // 4. ГЕНЕРАЦИЯ НАХОДОК И ТАЙНИКОВ В ГРУНТЕ
     this.targets = [];
     this.collectedArtifacts = [];
     this.collectedCoins = 0;
@@ -202,27 +196,45 @@ export class DigScene extends Phaser.Scene {
       resolution: dpr
     }).setOrigin(0.5).setDepth(42);
 
-    // 5. НИЖНИЙ ТРЕЙ ПОЛЕВЫХ ИНСТРУМЕНТОВ
-    this.createFieldToolTray(width, height - trayH / 2 - 4, dpr);
+    const trayY = height - trayH / 2 - 4;
+    this.createFieldToolTray(width, trayY, dpr);
     this.selectFieldTool('radar', false);
 
+    // Сквозной шаг 5: 3 отдельных окна по каждому инструменту раскопок!
     this.time.delayedCall(350, () => {
       if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
-      const trayY = height - trayH / 2 - 4;
-      TutorialManager.startTour(this, 'dig_mechanics', [
-        {
-          badge: 'ШАГ 1 • ПОИСК В ГРУНТЕ',
-          rect: { x: width * 0.14, y: trayY - 40, w: width * 0.72, h: 80 },
-          title: '📡 Георадар, Кирка и Кисть',
-          body: '1. Нажмите Георадаром на шурф, чтобы подсветить спрятанные реликвии и тайники с золотом.\n2. Переключитесь на Кирку, чтобы расколоть породу.\n3. Сметите песок Кистью — она не тратит удары кирки!'
-        },
-        {
-          badge: 'КАТАЛОГ РАЗВЕДКИ',
-          rect: { x: this.pitLeft - 6, y: this.pitTop - 6, w: this.pitW + 12, h: this.pitH + 12 },
-          title: '🏺 Открытие новых реликвий',
-          body: 'Каждая откопанная здесь реликвия попадает на склад и навсегда открывается для автоматических экспедиций в этой эпохе!'
+      const slotW = 86;
+      const spacing = 18;
+      const totalW = 3 * slotW + 2 * spacing;
+      const startX = width / 2 - totalW / 2;
+
+      TutorialManager.runIfStep(
+        this,
+        5,
+        [
+          {
+            badge: 'ПОЛЕВОЙ ПРИБОР 1 ИЗ 3',
+            rect: { x: startX - 4, y: trayY - 40, w: slotW + 8, h: 80 },
+            title: '📡 Георадар (Сонар)',
+            body: 'Нажмите на участок шурфа: сонар пустит волну и подсветит спрятанные артефакты и тайники сквозь породу. У радара свои импульсы — они не тратят удары кирки!'
+          },
+          {
+            badge: 'ПОЛЕВОЙ ПРИБОР 2 ИЗ 3',
+            rect: { x: startX + (slotW + spacing) - 4, y: trayY - 40, w: slotW + 8, h: 80 },
+            title: '⛏ Кирка археолога',
+            body: 'Раскалывает верхний твёрдый пласт породы. В поздних эпохах грунт крепче, поэтому прокачка Кирки в Лавке помогает вскрывать сразу несколько плиток за удар.'
+          },
+          {
+            badge: 'ПОЛЕВОЙ ПРИБОР 3 ИЗ 3',
+            rect: { x: startX + 2 * (slotW + spacing) - 4, y: trayY - 40, w: slotW + 8, h: 80 },
+            title: '🖌 Полевая кисть',
+            body: 'Когда порода расколота, переключитесь на Кисть и сметите слой песка. Кисть работает БЕСПЛАТНО и не тратит удары кирки!'
+          }
+        ],
+        () => {
+          TutorialManager.setStep(6);
         }
-      ]);
+      );
     });
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
@@ -233,7 +245,6 @@ export class DigScene extends Phaser.Scene {
       emitting: false
     }).setDepth(35);
 
-    // 6. ВВОД
     this.isPointerDown = false;
     this.lastWorkedCellKey = null;
 
@@ -324,7 +335,6 @@ export class DigScene extends Phaser.Scene {
       const cy = this.pitTop + (pos.r + 1) * this.cellSize;
       const texKey = this.textures.exists(tmpl.textureKey) ? tmpl.textureKey : 'art_egypt_scarab';
 
-      // Скрываем спрайт до первого вскрытия породы над ним, чтобы ничего не просвечивало!
       const sprite = this.add.image(cx, cy, texKey)
         .setDisplaySize(this.cellSize * 1.62, this.cellSize * 1.62)
         .setVisible(false)
@@ -398,7 +408,6 @@ export class DigScene extends Phaser.Scene {
         const x = this.pitLeft + c * cs;
         const y = this.pitTop + r * cs;
 
-        // Сплошной нижний слой песка без щелей
         const sandGfx = this.add.graphics().setDepth(12);
         sandGfx.fillStyle(this.theme.sandBase, 1);
         sandGfx.fillRect(x, y, cs + 0.5, cs + 0.5);
@@ -408,7 +417,6 @@ export class DigScene extends Phaser.Scene {
         sandGfx.lineStyle(1, this.theme.sandGrain, 0.35);
         sandGfx.strokeRect(x, y, cs, cs);
 
-        // Сплошной верхний слой твёрдой породы (без дырок по углам!)
         const rockGfx = this.add.graphics().setDepth(16);
         const shade = ((r + c) % 2 === 0) ? this.theme.rockTop : this.theme.rockDark;
         rockGfx.fillStyle(shade, 1);
@@ -416,7 +424,6 @@ export class DigScene extends Phaser.Scene {
         rockGfx.lineStyle(1.2, 0x0d0805, 0.65);
         rockGfx.strokeRect(x + 0.5, y + 0.5, cs - 1, cs - 1);
 
-        // Декоративный блик на камне
         rockGfx.fillStyle(0xffffff, 0.08);
         rockGfx.fillRoundedRect(x + 4, y + 4, cs * 0.45, 4, 2);
 
@@ -559,7 +566,6 @@ export class DigScene extends Phaser.Scene {
         brokeAnyRock = true;
         cell.rockGfx.destroy();
       } else {
-        // Локальное подёргивание только самой плитки без тряски всего экрана
         this.tweens.add({
           targets: cell.rockGfx,
           x: { from: -2, to: 2 },
@@ -576,7 +582,6 @@ export class DigScene extends Phaser.Scene {
       }
     });
 
-    // Едва заметный тактильный отклик только при расколе камня
     if (brokeAnyRock) {
       this.cameras.main.shake(45, 0.0007);
     }
@@ -623,7 +628,6 @@ export class DigScene extends Phaser.Scene {
     this.targets.forEach((t) => {
       if (t.collected) return;
 
-      // Показываем спрайт находки только когда хотя бы 1 клетка над ним расчищена от породы
       if (!t.revealed) {
         const anyRockCleared = t.cells.some((key) => {
           const cell = this.cells[key];
@@ -862,6 +866,9 @@ export class DigScene extends Phaser.Scene {
     const dpr = this.dpr;
 
     if (AudioManager.playShine) AudioManager.playShine();
+    if (TutorialManager.getStep() === 5) {
+      TutorialManager.setStep(6);
+    }
 
     const digXp = 25 + this.collectedArtifacts.length * 15;
     Storage.addXP(digXp);
