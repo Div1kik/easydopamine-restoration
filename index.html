@@ -7,6 +7,9 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
   />
   <meta name="theme-color" content="#0d0805" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Артефакты Времени — Мастерская реставратора</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,7 +19,6 @@
     rel="stylesheet"
   />
 
-  <!-- Скрипты площадок грузятся неблокирующе, чтобы APK работал и в офлайне -->
   <script src="https://yandex.ru/games/sdk/v2" async></script>
   <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js" async></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -34,6 +36,8 @@
 
     html,
     body {
+      position: fixed;
+      inset: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
@@ -41,8 +45,6 @@
       touch-action: none;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
     }
 
     #game-container {
@@ -56,6 +58,9 @@
 
     canvas {
       display: block;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
       touch-action: none;
     }
   </style>
@@ -79,7 +84,7 @@
           ]);
         }
       } catch {}
-      await import('./src/main.js?v=20261121_multi');
+      await import('./src/main.js?v=20261121_fullscreen');
     };
     startApp();
   </script>
