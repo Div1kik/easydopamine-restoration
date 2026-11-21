@@ -1,48 +1,78 @@
 import { AudioManager } from './AudioManager.js';
+import { Storage } from './Storage.js';
 
-const STORAGE_KEY = 'art_tutorial_completed_stages_v1';
+const STEP_KEY = 'art_tutorial_seq_step_v2';
+const DONE_KEY = 'art_tutorial_seq_done_v2';
 
+/**
+ * Единая сквозная цепочка обучения (этапы):
+ * 0 - Меню: кнопка "На верстак" (открывает обучающего Скарабея со всеми 4 этапами + Кинцуги)
+ * 1 - Верстак: панель этапов и трей инструментов (Скребок, Кисть, Реагент, Клей, Блеск)
+ * 2 - Верстак (этап скола): Золотой лак Кинцуги (+60% к цене)
+ * 3 - Меню: кнопка "Экспедиции"
+ * 4 - Карта экспедиций: Энергия ⚡ -> Ручные раскопки -> Авто-сбор
+ * 5 - Раскопки: отдельно Георадар, Кирка и Кисть
+ * 6 - Меню: кнопка "Лавка Мастера"
+ * 7 - Лавка: вкладки (Верстак, Раскопки, Стиль/15 столов/Сундук, Музей)
+ * 8 - Меню: кнопка "Зал Славы (Музей)"
+ * 9 - Музей: витрины, осмотр скарабея и пассивный доход -> Финал обучения!
+ */
 class TutorialManagerClass {
   constructor() {
     this.activeOverlay = null;
+    this._initialized = false;
   }
 
-  getCompletedStages() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+  ensureInit() {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    // Если игрок уже опытный (ур > 1 или есть отреставрированные предметы), не навязываем авто-старт
+    if (localStorage.getItem(DONE_KEY) === null && localStorage.getItem(STEP_KEY) === null) {
+      const lvl = Storage.getLevelData ? Storage.getLevelData().level : 1;
+      const inv = Storage.getInventory ? Storage.getInventory() : [];
+      if (lvl > 1 || inv.length > 0) {
+        localStorage.setItem(DONE_KEY, 'true');
+      } else {
+        localStorage.setItem(STEP_KEY, '0');
+      }
     }
   }
 
-  isStageCompleted(stageId) {
-    return this.getCompletedStages().includes(stageId);
+  isDone() {
+    this.ensureInit();
+    return localStorage.getItem(DONE_KEY) === 'true';
   }
 
-  markStageCompleted(stageId) {
-    const list = this.getCompletedStages();
-    if (!list.includes(stageId)) {
-      list.push(stageId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    }
+  getStep() {
+    this.ensureInit();
+    if (this.isDone()) return -1;
+    return parseInt(localStorage.getItem(STEP_KEY) || '0', 10);
+  }
+
+  setStep(step) {
+    if (this.isDone()) return;
+    localStorage.setItem(STEP_KEY, String(step));
+  }
+
+  completeAll() {
+    localStorage.setItem(DONE_KEY, 'true');
+    localStorage.removeItem(STEP_KEY);
+    this.destroyCurrent();
   }
 
   resetAll() {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(DONE_KEY, 'false');
+    localStorage.setItem(STEP_KEY, '0');
+    this.destroyCurrent();
   }
 
   /**
-   * Запускает пошаговый Spotlight-тур для конкретной сцены, если он ещё не пройден
-   * @param {Phaser.Scene} scene
-   * @param {string} stageId
-   * @param {Array<{rect: {x,y,w,h}, title: string, body: string, badge?: string}>} steps
-   * @param {Function} onComplete
+   * Запускает блок шагов только если текущий сквозной этап совпадает с expectedStep
    */
-  startTour(scene, stageId, steps, onComplete = null) {
-    if (!scene || !steps || steps.length === 0) return false;
-    if (this.isStageCompleted(stageId)) return false;
+  runIfStep(scene, expectedStep, steps, onFinishStep = null) {
+    if (!scene || this.isDone()) return false;
+    if (this.getStep() !== expectedStep) return false;
 
     this.destroyCurrent();
 
@@ -51,26 +81,21 @@ class TutorialManagerClass {
     const FONT_TITLE = '"Cormorant Garamond", Georgia, serif';
     const FONT_UI = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-    let stepIndex = 0;
+    let subIdx = 0;
 
-    // Контейнер поверх всей сцены
     const root = scene.add.container(0, 0).setDepth(950);
     this.activeOverlay = root;
 
-    // 4 затемняющие шторки вокруг выделяемого прямоугольника (чтобы окно подсветки оставалось кристально чистым!)
     const shadeTop = scene.add.rectangle(0, 0, width, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
     const shadeBottom = scene.add.rectangle(0, 0, width, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
     const shadeLeft = scene.add.rectangle(0, 0, 10, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
     const shadeRight = scene.add.rectangle(0, 0, 10, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
 
-    // Прозрачный перехватчик кликов по центру, чтобы случайный тап не провалился в кнопки под туториалом
     const centerBlocker = scene.add.zone(width / 2, height / 2, width, height).setInteractive();
 
-    // Золотая пульсирующая рамка вокруг целевой зоны
     const highlightGfx = scene.add.graphics();
     const glowGfx = scene.add.graphics();
 
-    // Карточка с текстом подсказки
     const cardW = Math.min(width * 0.90, 420);
     const cardCont = scene.add.container(width / 2, height / 2);
 
@@ -82,19 +107,19 @@ class TutorialManagerClass {
       fontFamily: FONT_UI,
       color: '#e2b866',
       fontStyle: 'bold',
-      letterSpacing: 1.2,
+      letterSpacing: 1.1,
       resolution: dpr
     }).setOrigin(0, 0.5);
 
     const skipTxt = scene.add.text(0, 0, 'Пропустить ✕', {
       fontSize: '11px',
       fontFamily: FONT_UI,
-      color: '#9c8265',
+      color: '#fda4af',
       fontStyle: 'bold',
       resolution: dpr
     }).setOrigin(1, 0.5);
 
-    const skipZone = scene.add.zone(0, 0, 96, 26).setInteractive({ useHandCursor: true });
+    const skipZone = scene.add.zone(0, 0, 104, 28).setInteractive({ useHandCursor: true });
 
     const titleTxt = scene.add.text(0, 0, '', {
       fontSize: '16.5px',
@@ -159,17 +184,18 @@ class TutorialManagerClass {
       ease: 'Sine.easeInOut'
     });
 
-    const finishTour = () => {
+    const finishBlock = () => {
       if (pulseTween) pulseTween.stop();
-      this.markStageCompleted(stageId);
       this.destroyCurrent();
-      if (typeof onComplete === 'function') onComplete();
+      if (typeof onFinishStep === 'function') {
+        onFinishStep();
+      }
     };
 
-    const renderStep = () => {
-      const step = steps[stepIndex];
+    const renderSubStep = () => {
+      const step = steps[subIdx];
       if (!step) {
-        finishTour();
+        finishBlock();
         return;
       }
 
@@ -179,13 +205,11 @@ class TutorialManagerClass {
       const rw = Phaser.Math.Clamp(r.w, 24, width - rx - 4);
       const rh = Phaser.Math.Clamp(r.h, 24, height - ry - 4);
 
-      // Обновляем 4 затемняющие шторки вокруг окна подсветки
       shadeTop.setPosition(0, 0).setSize(width, ry);
       shadeBottom.setPosition(0, ry + rh).setSize(width, Math.max(0, height - (ry + rh)));
       shadeLeft.setPosition(0, ry).setSize(rx, rh);
       shadeRight.setPosition(rx + rw, ry).setSize(Math.max(0, width - (rx + rw)), rh);
 
-      // Рамка вокруг выделенного блока
       highlightGfx.clear();
       highlightGfx.lineStyle(2.2, 0xfacc15, 1);
       highlightGfx.strokeRoundedRect(rx - 3, ry - 3, rw + 6, rh + 6, 12);
@@ -194,14 +218,13 @@ class TutorialManagerClass {
       glowGfx.lineStyle(5, 0xfef08a, 0.55);
       glowGfx.strokeRoundedRect(rx - 6, ry - 6, rw + 12, rh + 12, 14);
 
-      // Заполняем тексты карточки и считаем динамическую высоту
       const pad = 16;
       const topRowY = 18;
-      badgeTxt.setText(step.badge || `ОБУЧЕНИЕ • ШАГ ${stepIndex + 1} ИЗ ${steps.length}`);
+      badgeTxt.setText(step.badge || `ОБУЧЕНИЕ • ${subIdx + 1}/${steps.length}`);
       badgeTxt.setPosition(-cardW / 2 + pad, topRowY);
 
       skipTxt.setPosition(cardW / 2 - pad, topRowY);
-      skipZone.setPosition(cardW / 2 - pad - 42, topRowY);
+      skipZone.setPosition(cardW / 2 - pad - 46, topRowY);
 
       titleTxt.setText(step.title);
       titleTxt.setPosition(-cardW / 2 + pad, topRowY + 18);
@@ -213,7 +236,6 @@ class TutorialManagerClass {
       const btnY = bodyY + bodyTxt.height + 28;
       const cardH = btnY + nextBtnH / 2 + 14;
 
-      // Рисуем плашку карточки
       cardBg.clear();
       cardBg.fillStyle(0x050302, 0.78);
       cardBg.fillRoundedRect(-cardW / 2, 4, cardW, cardH, 14);
@@ -222,7 +244,6 @@ class TutorialManagerClass {
       cardBg.lineStyle(1.8, 0xc89d54, 0.95);
       cardBg.strokeRoundedRect(-cardW / 2, 0, cardW, cardH, 14);
 
-      // Кнопка "Далее" / "Понятно!"
       const btnX = cardW / 2 - pad - nextBtnW / 2;
       nextBtnGfx.clear();
       nextBtnGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
@@ -230,11 +251,10 @@ class TutorialManagerClass {
       nextBtnGfx.lineStyle(1, 0xfef08a, 0.95);
       nextBtnGfx.strokeRoundedRect(btnX - nextBtnW / 2, btnY - nextBtnH / 2, nextBtnW, nextBtnH, 9);
 
-      nextBtnTxt.setText(stepIndex === steps.length - 1 ? 'ПОНЯТНО ✓' : 'ДАЛЕЕ ›');
+      nextBtnTxt.setText(step.btnLabel || (subIdx === steps.length - 1 ? 'ПОНЯТНО ✓' : 'ДАЛЕЕ ›'));
       nextBtnTxt.setPosition(btnX, btnY);
       nextBtnZone.setPosition(btnX, btnY);
 
-      // Позиционируем карточку так, чтобы она не перекрывала выделенный прямоугольник
       const targetCenterY = ry + rh / 2;
       const targetCenterX = Phaser.Math.Clamp(rx + rw / 2, width / 2 - cardW / 2 + 24, width / 2 + cardW / 2 - 24) - width / 2;
 
@@ -242,7 +262,6 @@ class TutorialManagerClass {
       pointerArrow.fillStyle(0xc89d54, 1);
 
       if (targetCenterY < height * 0.5) {
-        // Выделение сверху -> карточку ставим снизу от него
         const cardTop = Math.min(height - cardH - 14, ry + rh + 16);
         cardCont.setPosition(width / 2, cardTop);
 
@@ -253,7 +272,6 @@ class TutorialManagerClass {
         pointerArrow.closePath();
         pointerArrow.fill();
       } else {
-        // Выделение снизу -> карточку ставим сверху от него
         const cardTop = Math.max(14, ry - cardH - 16);
         cardCont.setPosition(width / 2, cardTop);
 
@@ -268,13 +286,14 @@ class TutorialManagerClass {
 
     nextBtnZone.on('pointerup', () => {
       if (AudioManager.playClick) AudioManager.playClick();
-      stepIndex++;
-      renderStep();
+      subIdx++;
+      renderSubStep();
     });
 
     skipZone.on('pointerup', () => {
       if (AudioManager.playClick) AudioManager.playClick();
-      finishTour();
+      if (pulseTween) pulseTween.stop();
+      this.completeAll();
     });
 
     scene.events.once('shutdown', () => {
@@ -282,7 +301,7 @@ class TutorialManagerClass {
       this.activeOverlay = null;
     });
 
-    renderStep();
+    renderSubStep();
     return true;
   }
 
