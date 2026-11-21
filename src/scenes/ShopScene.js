@@ -1,3 +1,4 @@
+import { TutorialManager } from '../utils/TutorialManager.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
@@ -65,6 +66,17 @@ export class ShopScene extends Phaser.Scene {
 
     this.setupScrollHandlers();
     this.renderShopItems();
+    this.time.delayedCall(350, () => {
+      if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
+      TutorialManager.startTour(this, 'shop_overview', [
+        {
+          badge: 'МАСТЕРСКАЯ И ЭКСПЕДИЦИИ',
+          rect: { x: width * 0.04, y: 66, w: width * 0.92, h: 40 },
+          title: '🕯 Улучшения и Кастомизация',
+          body: '• «Верстак» — ускоряет чистку и даёт запас Лака Кинцуги.\n• «Раскопки» — усиливает Кирку, Георадар, Кисть и лимит энергии (⚡), повышая добычу даже в авто-экспедициях!\n• «Стиль» — 15 уникальных верстаков, 5 наборов инструментов и Сундук Искателя.'
+        }
+      ]);
+    });
 
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
