@@ -145,41 +145,41 @@ export class EraSelectScene extends Phaser.Scene {
 
     // Сквозной шаг 4: Энергия -> Ручные раскопки -> Авто-сбор
     this.time.delayedCall(340, () => {
-      if (!this.scene || !this.scene.isActive()) return;
-      const expW = width * 0.92;
-      const halfBtnW = (expW - 36) / 2;
-      const leftBtnX = width / 2 - expW / 2 + 14;
-      const rightBtnX = width / 2 + expW / 2 - 14 - halfBtnW;
-      const btnTopY = this.listTopY + 80 + 12 - 20;
-
-      TutorialManager.runIfStep(
-        this,
-        4,
-        [
-          {
-            badge: 'ШАГ 3 ИЗ 5 • ЭНЕРГИЯ ЭКСПЕДИЦИЙ',
-            rect: { x: 10, y: 52, w: width - 20, h: 28 },
-            title: '⚡ Энергия и Полевой паёк',
-            body: 'Каждый выезд тратит 10 ⚡ энергии. Она восстанавливается сама по +1 ⚡ каждые 2 минуты (даже когда игра закрыта), а лимит расширяется прокачкой Лагеря.'
-          },
-          {
-            badge: 'ШАГ 3 ИЗ 5 • РУЧНОЙ ПОИСК',
-            rect: { x: leftBtnX, y: btnTopY, w: halfBtnW, h: 40 },
-            title: '⛏ Ручные раскопки',
-            body: 'Сначала выезжайте на раскопки лично! Там вы сами вскрываете пласт, находите новые артефакты эпохи и откапываете тайники с монетами и Лаком Кинцуги.'
-          },
-          {
-            badge: 'ШАГ 3 ИЗ 5 • АВТОМАТИЧЕСКИЙ СБОР',
-            rect: { x: rightBtnX, y: btnTopY, w: halfBtnW, h: 40 },
-            title: '⚡ Авто-сбор разведгруппы',
-            body: 'Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками! Прокачка полевого снаряжения увеличивает количество и редкость добычи.'
-          }
-        ],
-        () => {
-          TutorialManager.setStep(5);
-        }
-      );
-    });
+       if (!this.scene || !this.scene.isActive()) return;
+       const expW = width * 0.92;
+       const halfBtnW = (expW - 36) / 2;
+       const leftBtnX = width / 2 - expW / 2 + 14;
+       const rightBtnX = width / 2 + expW / 2 - 14 - halfBtnW;
+       const btnTopY = this.listTopY + 80 + 12 - 20;
+    
+       TutorialManager.runIfStep(
+         this,
+         [3, 4],
+         [
+           {
+             badge: 'ШАГ 3 ИЗ 5 • ЭНЕРГИЯ ЭКСПЕДИЦИЙ',
+             rect: { x: 10, y: 52, w: width - 20, h: 28 },
+             title: '⚡ Энергия и Полевой паёк',
+             body: 'Каждый выезд тратит 10 ⚡ энергии. Она восстанавливается сама по +1 ⚡ каждые 2 минуты (даже когда игра закрыта), а лимит расширяется прокачкой Лагеря.'
+           },
+           {
+             badge: 'ШАГ 3 ИЗ 5 • РУЧНОЙ ПОИСК',
+             rect: { x: leftBtnX, y: btnTopY, w: halfBtnW, h: 40 },
+             title: '⛏ Ручные раскопки',
+             body: 'Сначала выезжайте на раскопки лично! Там вы сами вскрываете пласт, находите новые артефакты эпохи и откапываете тайники с монетами и Лаком Кинцуги.'
+           },
+           {
+             badge: 'ШАГ 3 ИЗ 5 • АВТОМАТИЧЕСКИЙ СБОР',
+             rect: { x: rightBtnX, y: btnTopY, w: halfBtnW, h: 40 },
+             title: '⚡ Авто-сбор разведгруппы',
+             body: 'Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками! Нажмите «⛏ РАСКОПАТЬ», чтобы отправиться в шурф.'
+           }
+         ],
+         () => {
+           TutorialManager.setStep(5);
+         }
+       );
+     });
 
     this.time.addEvent({
       delay: 1000,
