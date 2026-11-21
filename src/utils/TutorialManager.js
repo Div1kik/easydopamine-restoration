@@ -4,19 +4,6 @@ import { Storage } from './Storage.js';
 const STEP_KEY = 'art_tutorial_seq_step_v2';
 const DONE_KEY = 'art_tutorial_seq_done_v2';
 
-/**
- * Единая сквозная цепочка обучения (этапы):
- * 0 - Меню: кнопка "На верстак" (открывает обучающего Скарабея со всеми 4 этапами + Кинцуги)
- * 1 - Верстак: панель этапов и трей инструментов (Скребок, Кисть, Реагент, Клей, Блеск)
- * 2 - Верстак (этап скола): Золотой лак Кинцуги (+60% к цене)
- * 3 - Меню: кнопка "Экспедиции"
- * 4 - Карта экспедиций: Энергия ⚡ -> Ручные раскопки -> Авто-сбор
- * 5 - Раскопки: отдельно Георадар, Кирка и Кисть
- * 6 - Меню: кнопка "Лавка Мастера"
- * 7 - Лавка: вкладки (Верстак, Раскопки, Стиль/15 столов/Сундук, Музей)
- * 8 - Меню: кнопка "Зал Славы (Музей)"
- * 9 - Музей: витрины, осмотр скарабея и пассивный доход -> Финал обучения!
- */
 class TutorialManagerClass {
   constructor() {
     this.activeOverlay = null;
@@ -27,7 +14,6 @@ class TutorialManagerClass {
     if (this._initialized) return;
     this._initialized = true;
 
-    // Если игрок уже опытный (ур > 1 или есть отреставрированные предметы), не навязываем авто-старт
     if (localStorage.getItem(DONE_KEY) === null && localStorage.getItem(STEP_KEY) === null) {
       const lvl = Storage.getLevelData ? Storage.getLevelData().level : 1;
       const inv = Storage.getInventory ? Storage.getInventory() : [];
@@ -68,11 +54,13 @@ class TutorialManagerClass {
   }
 
   /**
-   * Запускает блок шагов только если текущий сквозной этап совпадает с expectedStep
+   * Запускает блок шагов, если текущий шаг совпадает с expectedStep (число или массив допустимых шагов)
    */
   runIfStep(scene, expectedStep, steps, onFinishStep = null) {
     if (!scene || this.isDone()) return false;
-    if (this.getStep() !== expectedStep) return false;
+    const cur = this.getStep();
+    const allowed = Array.isArray(expectedStep) ? expectedStep.includes(cur) : (cur === expectedStep);
+    if (!allowed) return false;
 
     this.destroyCurrent();
 
@@ -91,6 +79,7 @@ class TutorialManagerClass {
     const shadeLeft = scene.add.rectangle(0, 0, 10, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
     const shadeRight = scene.add.rectangle(0, 0, 10, 10, 0x050302, 0.82).setOrigin(0, 0).setInteractive();
 
+    // Полный перехватчик кликов по всей сцене, пока открыта карточка туториала
     const centerBlocker = scene.add.zone(width / 2, height / 2, width, height).setInteractive();
 
     const highlightGfx = scene.add.graphics();
@@ -119,7 +108,7 @@ class TutorialManagerClass {
       resolution: dpr
     }).setOrigin(1, 0.5);
 
-    const skipZone = scene.add.zone(0, 0, 104, 28).setInteractive({ useHandCursor: true });
+    const skipZone = scene.add.zone(0, 0, 108, 30).setInteractive({ useHandCursor: true });
 
     const titleTxt = scene.add.text(0, 0, '', {
       fontSize: '16.5px',
@@ -140,7 +129,7 @@ class TutorialManagerClass {
     }).setOrigin(0, 0);
 
     const nextBtnW = 148;
-    const nextBtnH = 34;
+    const nextBtnH = 36;
     const nextBtnGfx = scene.add.graphics();
     const nextBtnTxt = scene.add.text(0, 0, 'ДАЛЕЕ ›', {
       fontSize: '12px',
@@ -186,10 +175,13 @@ class TutorialManagerClass {
 
     const finishBlock = () => {
       if (pulseTween) pulseTween.stop();
-      this.destroyCurrent();
-      if (typeof onFinishStep === 'function') {
-        onFinishStep();
-      }
+      // Небольшая задержка перед уничтожением блокировщика, чтобы pointerdown не провалился в кнопку снизу!
+      scene.time.delayedCall(60, () => {
+        this.destroyCurrent();
+        if (typeof onFinishStep === 'function') {
+          onFinishStep();
+        }
+      });
     };
 
     const renderSubStep = () => {
@@ -284,16 +276,25 @@ class TutorialManagerClass {
       }
     };
 
-    nextBtnZone.on('pointerup', () => {
+    // Используем pointerdown + stopPropagation, чтобы клик НИКОГДА не проваливался в кнопки под карточкой!
+    nextBtnZone.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       if (AudioManager.playClick) AudioManager.playClick();
       subIdx++;
       renderSubStep();
     });
 
-    skipZone.on('pointerup', () => {
+    skipZone.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       if (AudioManager.playClick) AudioManager.playClick();
       if (pulseTween) pulseTween.stop();
-      this.completeAll();
+      scene.time.delayedCall(60, () => {
+        this.completeAll();
+      });
+    });
+
+    centerBlocker.on('pointerdown', (p, lx, ly, ev) => {
+      if (ev && ev.stopPropagation) ev.stopPropagation();
     });
 
     scene.events.once('shutdown', () => {
