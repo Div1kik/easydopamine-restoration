@@ -210,7 +210,7 @@ export class DigScene extends Phaser.Scene {
 
       TutorialManager.runIfStep(
         this,
-        5,
+        [4, 5],
         [
           {
             badge: 'ПОЛЕВОЙ ПРИБОР 1 ИЗ 3',
