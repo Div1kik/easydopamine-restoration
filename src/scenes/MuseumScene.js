@@ -1,5 +1,6 @@
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
 
 export class MuseumScene extends Phaser.Scene {
   constructor() {
@@ -28,7 +29,6 @@ export class MuseumScene extends Phaser.Scene {
       AudioManager.playShopBell();
     }
 
-    // Верхняя шапка музея (depth 18 перекрывает прокручиваемый список depth 5)
     const headerBg = this.add.graphics().setDepth(18);
     headerBg.fillGradientStyle(0x24180f, 0x24180f, 0x140d08, 0x140d08, 0.96);
     headerBg.fillRect(0, 0, width, 82);
@@ -68,7 +68,34 @@ export class MuseumScene extends Phaser.Scene {
     this.setupScroll();
     this.renderExhibitGrid();
 
-    // Нижняя панель с кнопкой возврата (depth 30 перекрывает низ списка)
+    // Финал сквозного обучения (шаг 9): Витрина со скарабеем, пассивный доход и 360-осмотр
+    this.time.delayedCall(340, () => {
+      if (!this.scene || !this.scene.isActive()) return;
+      const tileW = (width - 32 - 12) / 2;
+      TutorialManager.runIfStep(
+        this,
+        9,
+        [
+          {
+            badge: 'ШАГ 5 ИЗ 5 • ПАССИВНЫЙ ДОХОД',
+            rect: { x: 16, y: 34, w: width - 32, h: 44 },
+            title: '💰 Доход посетителей в час',
+            body: 'Все экспонаты качества 2★ и 3★ приносят золото каждый час — даже когда игра закрыта. Чем больше витрин заполнено, тем выше доход!'
+          },
+          {
+            badge: 'ФИНАЛ ОБУЧЕНИЯ • ОСМОТР РЕЛИКВИИ',
+            rect: { x: 16, y: this.listTopY + 8, w: tileW, h: 236 },
+            title: '🏺 Ваша первая витрина!',
+            body: 'Нажмите на своего Золотого скарабея на витрине, чтобы покрутить его в 360° и прочитать историческую справку. Удачных находок, Мастер!',
+            btnLabel: 'ЗАВЕРШИТЬ ✓'
+          }
+        ],
+        () => {
+          TutorialManager.completeAll();
+        }
+      );
+    });
+
     const footerBg = this.add.graphics().setDepth(30);
     footerBg.fillGradientStyle(0x1f140c, 0x1f140c, 0x120b07, 0x120b07, 0.96);
     footerBg.fillRect(0, height - 66, width, 66);
@@ -162,7 +189,6 @@ export class MuseumScene extends Phaser.Scene {
       pointerDownActive = false;
     });
 
-    // Поддержка колёсика мыши на ПК
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
       if (pointer.y >= this.listTopY && pointer.y <= this.listBottomY) {
         const minScroll = this.minScrollY !== undefined ? this.minScrollY : this.listTopY;
@@ -222,7 +248,6 @@ export class MuseumScene extends Phaser.Scene {
         cardBg.strokeRoundedRect(-tileW / 2, -tileH / 2, tileW, tileH, 14);
         tile.add(cardBg);
 
-        // Пьедестал
         const pedGfx = this.add.graphics();
         const pedDark = custom.hasVelvet ? 0x5c1111 : 0x24160b;
         const pedMid = custom.hasVelvet ? 0x8a1c1c : 0x3d2614;
@@ -235,11 +260,9 @@ export class MuseumScene extends Phaser.Scene {
         tile.add(pedGfx);
 
         const tex = this.textures.exists(item.textureKey) ? item.textureKey : 'art_egypt_scarab';
-        // Пропорция 4:5 (72x90) вместо сплющенного квадрата 86x86
         const icon = this.add.image(0, -30, tex).setDisplaySize(72, 90);
         tile.add(icon);
 
-        // Тап по экспонату открывает детальный 360-осмотр
         const inspectZone = this.add.zone(0, -30, tileW - 12, 110).setInteractive({ useHandCursor: true });
         inspectZone.on('pointerup', () => {
           if (this.isDragging) return;
