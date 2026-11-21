@@ -1,3 +1,4 @@
+import { TutorialManager } from '../utils/TutorialManager.js';
 import { REGIONS, ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
@@ -144,6 +145,23 @@ export class EraSelectScene extends Phaser.Scene {
 
     this.setupScrollHandlers();
     this.renderArtifactsList();
+    this.time.delayedCall(350, () => {
+      if (!this.scene || !this.scene.isActive()) return;
+      TutorialManager.startTour(this, 'expedition_map', [
+        {
+          badge: 'ЭНЕРГИЯ ЭКСПЕДИЦИЙ',
+          rect: { x: 10, y: 52, w: width - 20, h: 28 },
+          title: '⚡ Запас сил и Полевой паёк',
+          body: 'Каждый выезд тратит 10 ⚡ энергии. Она восстанавливается сама по +1 ⚡ каждые 2 минуты (даже офлайн), а её лимит растёт при прокачке Полевого лагеря.'
+        },
+        {
+          badge: 'РУЧНОЙ ПОИСК И АВТО-СБОР',
+          rect: { x: width * 0.04, y: this.listTopY + 6, w: width * 0.92, h: 148 },
+          title: '⛏ Раскопки vs ⚡ Авто-сбор',
+          body: 'Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками! Прокачка полевого снаряжения увеличивает количество и редкость авто-добычи.'
+        }
+      ]);
+    });
 
     this.time.addEvent({
       delay: 1000,
