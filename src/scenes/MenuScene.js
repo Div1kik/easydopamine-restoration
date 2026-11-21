@@ -1,8 +1,10 @@
-import { TutorialManager } from '../utils/TutorialManager.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { ARTIFACT_TEMPLATES } from '../data/artifacts.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
+
+let offlineCheckedThisSession = false;
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -25,12 +27,8 @@ export class MenuScene extends Phaser.Scene {
       this.add.rectangle(width / 2, height / 2, width, height, 0x16100c);
     }
 
-    
-
-    // Верхние кнопки: Звук, Музыка и Обучение по желанию (?)
     this.createTopUtilityButtons(width, height, textRes, FONT_UI);
 
-    // Верхняя плашка заголовка
     const headerW = width * 0.88;
     const headerH = 94;
     const headerY = 94;
@@ -89,10 +87,7 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    // Виджет срочного контракта
     this.renderContractWidget(width, height * 0.358, textRes, FONT_UI);
-
-    // Плашка ранга
     this.renderRankWidget(width, height * 0.464, textRes, FONT_UI);
 
     const createBtn = (y, text, isPrimary, onClick) => {
@@ -202,7 +197,6 @@ export class MenuScene extends Phaser.Scene {
       this.scene.start('MuseumScene');
     });
 
-   // Нижний бейдж золотого лака, энергии и казны
     const lacquer = Storage.getKintsugiLacquer();
     const coins = Storage.getCoins();
     const enState = Storage.syncEnergy();
@@ -229,71 +223,88 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     if (AudioManager.playMusic) AudioManager.playMusic('menu');
-    this.checkOfflineEarnings(width, height, textRes, FONT_UI);
 
-    // Запуск интерактивного Spotlight-обучения при первом входе
-    if (!this.isModalOpen) {
-      this.time.delayedCall(350, () => {
-        if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
-        const btnW = width * 0.86;
-        const startY = height * 0.568;
-
-        TutorialManager.startTour(this, 'menu_intro', [
-          {
-            badge: 'ДОБРО ПОЖАЛОВАТЬ В МАСТЕРСКУЮ',
-            rect: { x: width / 2 - btnW / 2, y: startY - 26, w: btnW, h: 52 },
-            title: '⚒ Верстак реставратора',
-            body: 'Здесь вы очищаете древние находки от породы, пыли и окислов. На старте у вас уже есть 2 Золотых скарабея на складе!'
-          },
-          {
-            badge: 'ЭКСПЕДИЦИИ И ЭНЕРГИЯ',
-            rect: { x: width / 2 - btnW / 2, y: startY + 58 - 26, w: btnW, h: 52 },
-            title: '🧭 Раскопки и Разведгруппа',
-            body: 'В 7 эпохах спрятаны 35 уникальных артефактов. Выезжайте на ручные раскопки, чтобы открывать реликвии для автоматического сбора!'
-          },
-          {
-            badge: 'СНАРЯЖЕНИЕ И КАСТОМИЗАЦИЯ',
-            rect: { x: width / 2 - btnW / 2, y: startY + 116 - 26, w: btnW, h: 52 },
-            title: '🕯 Лавка Мастера',
-            body: 'Улучшайте приборы верстака и полевое снаряжение (Кирку, Георадар, Кисть, Лагерь), открывайте 15 верстаков и 5 стилей инструментов.'
-          },
-          {
-            badge: 'ПАССИВНЫЙ ДОХОД',
-            rect: { x: width / 2 - btnW / 2, y: startY + 174 - 26, w: btnW, h: 52 },
-            title: '🏛 Зал Славы (Музей)',
-            body: 'Отреставрированные экспонаты (2★ и 3★) встают на витрины и приносят золото каждый час — даже когда игра закрыта.'
-          },
-          {
-            badge: 'СРОЧНЫЕ КОНТРАКТЫ И РЕСУРСЫ',
-            rect: { x: width / 2 - width * 0.45, y: height * 0.935 - 19, w: width * 0.90, h: 38 },
-            title: '🪙 Монеты, ⚡ Энергия и ✨ Лак Кинцуги',
-            body: 'Энергия (⚡) тратится на экспедиции и сама восстанавливается каждые 2 минуты (даже офлайн). А Лак Кинцуги делает золотой шов на сколах (+60% к цене)!'
-          }
-        ]);
-      });
+    // Офлайн-доход показываем строго один раз за сессию входа в игру
+    if (!offlineCheckedThisSession) {
+      offlineCheckedThisSession = true;
+      this.checkOfflineEarnings(width, height, textRes, FONT_UI);
     }
-  }
 
-  lazyPreloadOwnedWorkbenches() {
-    this.time.delayedCall(600, () => {
-      if (!this.scene || !this.scene.isActive()) return;
+    // Сквозной маршрут обучения в главном меню
+    if (!this.isModalOpen && !TutorialManager.isDone()) {
+      const curStep = TutorialManager.getStep();
+      const btnW = width * 0.86;
 
-      const active = Storage.getActiveWorkbenchSkin();
-      const owned = Storage.getOwnedWorkbenchSkins();
-      const toLoad = new Set([active, ...owned]);
+      this.time.delayedCall(320, () => {
+        if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
 
-      let queued = false;
-      toLoad.forEach((key) => {
-        if (key && !this.textures.exists(key)) {
-          this.load.image(key, `assets/workbenches/${key}.webp`);
-          queued = true;
+        if (curStep === 0) {
+          TutorialManager.runIfStep(
+            this,
+            0,
+            [
+              {
+                badge: 'ШАГ 1 ИЗ 5 • ПЕРВЫЙ ЗАКАЗ',
+                rect: { x: width / 2 - btnW / 2, y: startY - 26, w: btnW, h: 52 },
+                title: '⚒ Отправляемся на верстак',
+                body: 'На складе вас уже ждёт Золотой скарабей! Нажмите «НА ВЕРСТАК», чтобы освоить все приборы реставрации и Золотой шов Кинцуги.'
+              }
+            ],
+            () => {
+              TutorialManager.setStep(1);
+            }
+          );
+        } else if (curStep === 3) {
+          TutorialManager.runIfStep(
+            this,
+            3,
+            [
+              {
+                badge: 'ШАГ 3 ИЗ 5 • ПОЛЕВЫЕ РАСКОПКИ',
+                rect: { x: width / 2 - btnW / 2, y: startY + 58 - 26, w: btnW, h: 52 },
+                title: '🧭 Пора добыть новые реликвии!',
+                body: 'Откройте «ЭКСПЕДИЦИИ» — там вы узнаете, как работает энергия (⚡), как искать клады на раскопе и как открыть авто-сбор.'
+              }
+            ],
+            () => {
+              TutorialManager.setStep(4);
+            }
+          );
+        } else if (curStep === 6) {
+          TutorialManager.runIfStep(
+            this,
+            6,
+            [
+              {
+                badge: 'ШАГ 4 ИЗ 5 • ПРОКАЧКА И СТИЛЬ',
+                rect: { x: width / 2 - btnW / 2, y: startY + 116 - 26, w: btnW, h: 52 },
+                title: '🕯 Заглянем в Лавку Мастера',
+                body: 'Нажмите «ЛАВКА МАСТЕРА», чтобы увидеть улучшения инструментов верстака, снаряжение для раскопок и 15 уникальных верстаков.'
+              }
+            ],
+            () => {
+              TutorialManager.setStep(7);
+            }
+          );
+        } else if (curStep === 8) {
+          TutorialManager.runIfStep(
+            this,
+            8,
+            [
+              {
+                badge: 'ШАГ 5 ИЗ 5 • ВАША КОЛЛЕКЦИЯ',
+                rect: { x: width / 2 - btnW / 2, y: startY + 174 - 26, w: btnW, h: 52 },
+                title: '🏛 Зал Славы (Музей)',
+                body: 'Откройте «ЗАЛ СЛАВЫ» — там стоит ваш отреставрированный Золотой скарабей, который уже приносит пассивный доход в час!'
+              }
+            ],
+            () => {
+              TutorialManager.setStep(9);
+            }
+          );
         }
       });
-
-      if (queued && !this.load.isLoading()) {
-        this.load.start();
-      }
-    });
+    }
   }
 
   drawStyledBox(x, y, w, h, opts) {
@@ -320,6 +331,19 @@ export class MenuScene extends Phaser.Scene {
   }
 
   startQuickRestore() {
+    // На первом шаге обучения всегда открываем обучающего Золотого скарабея со всеми 4 этапами + Кинцуги
+    const tutStep = TutorialManager.getStep();
+    if (!TutorialManager.isDone() && (tutStep === 0 || tutStep === 1)) {
+      TutorialManager.setStep(1);
+      Storage.setActiveSession('egypt', 'egypt_scarab');
+      this.scene.start('RestoreScene', {
+        regionId: 'egypt',
+        templateId: 'egypt_scarab',
+        isTutorialRun: true
+      });
+      return;
+    }
+
     const saved = Storage.getActiveSession();
     if (saved && saved.templateId) {
       this.scene.start('RestoreScene', {
@@ -666,7 +690,6 @@ export class MenuScene extends Phaser.Scene {
     closeHit.on('pointerup', closeModal);
   }
 
-  // Справочник реставратора (обучение по желанию по кнопке ?)
   openGuideModal(width, height, textRes, FONT_UI) {
     if (this.isModalOpen) return;
     this.isModalOpen = true;
@@ -675,7 +698,7 @@ export class MenuScene extends Phaser.Scene {
       {
         badge: '1 ИЗ 4 • ОСНОВЫ МАСТЕРСКОЙ',
         title: '⚒ Как реставрировать находки',
-        body: '• Нажмите «На верстак», чтобы взять случайный артефакт со склада, или выберите конкретный в «Экспедициях».\n\n• Внизу экрана расположены приборы: Скребок, Кисть, Реагент, Клей и Блеск. Подсказка сверху подскажет нужный инструмент.\n\n• Чем меньше ошибок при выборе инструмента, тем больше звёзд (до 3★) и выше оценка реликвии.'
+        body: '• Нажмите «На верстак», чтобы взять артефакт со склада, или выберите конкретный в «Экспедициях».\n\n• Внизу экрана расположены приборы: Скребок, Кисть, Реагент, Клей и Блеск. Подсказка сверху подскажет нужный инструмент.\n\n• Чем меньше ошибок при выборе инструмента, тем больше звёзд (до 3★) и выше оценка реликвии.'
       },
       {
         badge: '2 ИЗ 4 • СКЛЕЙКА И КИНЦУГИ',
@@ -683,14 +706,14 @@ export class MenuScene extends Phaser.Scene {
         body: '• Если на артефакте образовались сколы, выберите Клей, промажьте лунки на предмете и перетащите осколки на свои места.\n\n• Нажмите кнопку «✨ КИНЦУГИ» перед склейкой, чтобы скрепить фрагменты золотым лаком — это увеличит стоимость экспоната на +60%.'
       },
       {
-        badge: '3 ИЗ 4 • МУЗЕЙ И ПАССИВНЫЙ ДОХОД',
-        title: '🏛 Зал Славы и доход в час',
-        body: '• Отреставрированные экспонаты (2★ и 3★) попадают в ваш Музей и приносят пассивный доход в час — даже когда игра закрыта.\n\n• Доход зависит от количества витрин, рыночной ценности выставленных реликвий и улучшений в Лавке Мастера.\n\n• В музее любой экспонат можно осмотреть в объёме или продать с бонусом.'
+        badge: '3 ИЗ 4 • РАСКОПКИ И ЭНЕРГИЯ',
+        title: '🧭 Раскопки и Авто-экспедиции',
+        body: '• На выезд тратится 10 ⚡ энергии (восполняется по +1 ⚡ каждые 2 минуты).\n\n• Авто-экспедиция возит ТОЛЬКО те артефакты эпохи, которые вы уже лично откопали руками.\n\n• Прокачка Кирки, Георадара, Кисти и Лагеря в Лавке усиливает и раскоп, и авто-сбор!'
       },
       {
-        badge: '4 ИЗ 4 • ЭКСПЕДИЦИИ И ЗАКАЗЫ',
-        title: '🧭 Новые эпохи и контракты',
-        body: '• Повышая уровень мастера, вы открываете новые эпохи в «Экспедициях» (от Египта до Ренессанса) и расширяете вместимость музея.\n\n• «Срочный заказ музея» в главном меню — задание на любую редкую реликвию с наградой под ваш уровень. После работы экспонат уходит заказчику, а вы получаете крупный гонорар и опыт.'
+        badge: '4 ИЗ 4 • МУЗЕЙ И КОНТРАКТЫ',
+        title: '🏛 Зал Славы и пассивный доход',
+        body: '• Отреставрированные экспонаты (2★ и 3★) попадают в ваш Музей и приносят пассивный доход в час — даже когда игра закрыта.\n\n• «Срочный заказ музея» в главном меню — задание на любую реликвию с повышенным гонораром и опытом.'
       }
     ];
 
@@ -703,7 +726,7 @@ export class MenuScene extends Phaser.Scene {
     items.push(overlay);
 
     const modalW = width * 0.88;
-    const modalH = 420;
+    const modalH = 468;
     const card = this.add.container(width / 2, height / 2).setDepth(121);
     items.push(card);
 
@@ -732,7 +755,7 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    const bodyTxt = this.add.text(0, -10, '', {
+    const bodyTxt = this.add.text(0, -32, '', {
       fontSize: '12.5px',
       fontFamily: FONT_UI,
       color: '#f5e6c8',
@@ -741,7 +764,7 @@ export class MenuScene extends Phaser.Scene {
       resolution: textRes
     }).setOrigin(0.5);
 
-    const navY = modalH / 2 - 78;
+    const navY = modalH / 2 - 122;
     const halfBtnW = (modalW - 44) / 2;
 
     const prevGfx = this.add.graphics();
@@ -776,8 +799,25 @@ export class MenuScene extends Phaser.Scene {
     const nextZone = this.add.zone(6 + halfBtnW / 2, navY, halfBtnW, 34)
       .setInteractive({ useHandCursor: true });
 
-    const closeY = modalH / 2 - 30;
+    const replayY = modalH / 2 - 76;
     const closeW = modalW - 32;
+    const replayGfx = this.add.graphics();
+    replayGfx.fillStyle(0x1e3a8a, 0.95);
+    replayGfx.fillRoundedRect(-closeW / 2, replayY - 17, closeW, 34, 9);
+    replayGfx.lineStyle(1.2, 0x38bdf8, 0.9);
+    replayGfx.strokeRoundedRect(-closeW / 2, replayY - 17, closeW, 34, 9);
+
+    const replayTxt = this.add.text(0, replayY, '🔄 ПРОЙТИ ОБУЧЕНИЕ ЗАНОВО', {
+      fontSize: '11.5px',
+      fontFamily: FONT_UI,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      resolution: textRes
+    }).setOrigin(0.5);
+
+    const replayZone = this.add.zone(0, replayY, closeW, 34).setInteractive({ useHandCursor: true });
+
+    const closeY = modalH / 2 - 30;
     const closeGfx = this.add.graphics();
     closeGfx.fillStyle(0x261a10, 1);
     closeGfx.fillRoundedRect(-closeW / 2, closeY - 18, closeW, 36, 9);
@@ -798,6 +838,7 @@ export class MenuScene extends Phaser.Scene {
       bg, badgeTxt, titleTxt, bodyTxt,
       prevGfx, prevTxt, prevZone,
       nextGfx, nextTxt, nextZone,
+      replayGfx, replayTxt, replayZone,
       closeGfx, closeTxt, closeZone
     ]);
 
@@ -838,6 +879,14 @@ export class MenuScene extends Phaser.Scene {
       } else {
         closeGuide();
       }
+    });
+
+    replayZone.on('pointerup', () => {
+      TutorialManager.resetAll();
+      closeGuide();
+      this.time.delayedCall(180, () => {
+        this.scene.restart();
+      });
     });
 
     closeZone.on('pointerup', closeGuide);
@@ -1111,7 +1160,6 @@ export class MenuScene extends Phaser.Scene {
   }
 
   createTopUtilityButtons(width, height, textRes, FONT_UI) {
-    // Кнопка ? (Обучение / Справочник по желанию)
     const helpBtn = this.add.circle(width - 106, 28, 16, 0x2b1d12)
       .setStrokeStyle(1.5, 0xfacc15, 0.92)
       .setInteractive({ useHandCursor: true })
