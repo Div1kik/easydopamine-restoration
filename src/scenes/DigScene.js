@@ -1,3 +1,4 @@
+import { TutorialManager } from '../utils/TutorialManager.js';
 import { REGIONS, ARTIFACT_TEMPLATES } from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
@@ -204,6 +205,25 @@ export class DigScene extends Phaser.Scene {
     // 5. НИЖНИЙ ТРЕЙ ПОЛЕВЫХ ИНСТРУМЕНТОВ
     this.createFieldToolTray(width, height - trayH / 2 - 4, dpr);
     this.selectFieldTool('radar', false);
+
+    this.time.delayedCall(350, () => {
+      if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
+      const trayY = height - trayH / 2 - 4;
+      TutorialManager.startTour(this, 'dig_mechanics', [
+        {
+          badge: 'ШАГ 1 • ПОИСК В ГРУНТЕ',
+          rect: { x: width * 0.14, y: trayY - 40, w: width * 0.72, h: 80 },
+          title: '📡 Георадар, Кирка и Кисть',
+          body: '1. Нажмите Георадаром на шурф, чтобы подсветить спрятанные реликвии и тайники с золотом.\n2. Переключитесь на Кирку, чтобы расколоть породу.\n3. Сметите песок Кистью — она не тратит удары кирки!'
+        },
+        {
+          badge: 'КАТАЛОГ РАЗВЕДКИ',
+          rect: { x: this.pitLeft - 6, y: this.pitTop - 6, w: this.pitW + 12, h: this.pitH + 12 },
+          title: '🏺 Открытие новых реликвий',
+          body: 'Каждая откопанная здесь реликвия попадает на склад и навсегда открывается для автоматических экспедиций в этой эпохе!'
+        }
+      ]);
+    });
 
     this.particles = this.add.particles(0, 0, 'particle_dust', {
       lifespan: { min: 220, max: 380 },
