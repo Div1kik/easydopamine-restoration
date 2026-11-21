@@ -1,3 +1,4 @@
+import { TutorialManager } from '../utils/TutorialManager.js';
 import * as ArtifactModels from '../data/artifacts.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
@@ -372,6 +373,23 @@ export class RestoreScene extends Phaser.Scene {
     this.buildValidCellsMask(texKey);
     this.startTask(0, false);
     this.playMaterializeSequence();
+    this.time.delayedCall(450, () => {
+      if (!this.scene || !this.scene.isActive() || this.isGuideOpen) return;
+      TutorialManager.startTour(this, 'restore_basics', [
+        {
+          badge: 'ЭТАПЫ РЕСТАВРАЦИИ',
+          rect: { x: 8, y: systemTopPad + 46, w: width - 16, h: infoPanelHeight },
+          title: '📋 Задача и прогресс слоя',
+          body: 'Сверху указано, какой слой нужно снять сейчас (породу, пыль или окислы). Водите пальцем по артефакту, пока полоска не заполнится.'
+        },
+        {
+          badge: 'ПРИБОРЫ МАСТЕРА',
+          rect: { x: 8, y: trayY - 42, w: width - 16, h: 84 },
+          title: '🧰 Панель инструментов',
+          body: 'Выбирайте нужный прибор: Скребок, Кисть, Реагент, Клей или Блеск. Ошибка при выборе снижает итоговую оценку в звёздах!'
+        }
+      ]);
+    });
 
     // 7. ЕДИНЫЙ ИНТЕРАКТИВНЫЙ ВВОД
     const isValidWorkspacePoint = (pointer) => {
@@ -1527,6 +1545,17 @@ export class RestoreScene extends Phaser.Scene {
     });
 
     this.kintsugiBanner.add([bannerGfx, infoTxt, btnGfx, kintsugiTxt, kintsugiZone]);
+    this.time.delayedCall(300, () => {
+      if (!this.scene || !this.scene.isActive() || !this.kintsugiBanner) return;
+      TutorialManager.startTour(this, 'restore_kintsugi', [
+        {
+          badge: 'ИСКУССТВО ЗОЛОТОГО ШВА',
+          rect: { x: width * 0.05, y: this.centerY + 140, w: width * 0.90, h: 50 },
+          title: '✨ Золотой лак Кинцуги (+60% к цене)',
+          body: 'Сначала промажьте Клеем красные лунки, затем нажмите «✨ КИНЦУГИ» и перетащите осколки на места — золотой шов поднимет стоимость реликвии на 60%!'
+        }
+      ]);
+    });
   }
 
   startTask(taskIdx, animateLayer = true) {
