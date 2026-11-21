@@ -4,7 +4,7 @@ import { TutorialManager } from './TutorialManager.js';
 class BackButtonController {
   constructor() {
     this.initialized = false;
-    this.exitModalOpen = false;
+    this.confirmModalOpen = false;
     this.lastBackTs = 0;
   }
 
@@ -54,13 +54,13 @@ class BackButtonController {
       return;
     }
 
-    // 2. Если открыта модалка подтверждения выхода из игры — закрываем её
-    if (this.exitModalOpen) {
-      this.closeExitModal();
+    // 2. Если уже открыто модальное окно подтверждения — закрываем его
+    if (this.confirmModalOpen) {
+      this.closeConfirmModal();
       return;
     }
 
-    // 3. Если открыта внутренняя модалка в текущей сцене — перезапускаем или закрываем модалку
+    // 3. Если открыта внутренняя модалка в текущей сцене — закрываем/перезапускаем её
     if (scene.isModalOpen || scene.isGuideOpen) {
       if (AudioManager.playClick) AudioManager.playClick();
       if (sceneKey === 'DigScene') {
@@ -71,29 +71,65 @@ class BackButtonController {
       return;
     }
 
-    // 4. Умная навигация назад по стеку сцен
     if (AudioManager.playClick) AudioManager.playClick();
 
+    // 4. В игровых процессах (Верстак и Раскопки) — обязательно спрашиваем подтверждение!
+    if (sceneKey === 'RestoreScene') {
+      this.showConfirmModal(scene, {
+        title: '⚒ ПРЕРВАТЬ РЕСТАВРАЦИЮ?',
+        desc: 'Прогресс текущего этапа очистки\nбудет сброшен при выходе в меню.',
+        confirmText: 'ВЫЙТИ',
+        stayText: 'ОСТАТЬСЯ',
+        onConfirm: () => {
+          scene.scene.start('MenuScene');
+        }
+      });
+      return;
+    }
+
+    if (sceneKey === 'DigScene') {
+      this.showConfirmModal(scene, {
+        title: '⛏ ЗАВЕРШИТЬ РАСКОПКИ?',
+        desc: 'Неоткопанные артефакты останутся в грунте,\nа потраченная энергия не вернётся.',
+        confirmText: 'ВЫЙТИ',
+        stayText: 'КОПАТЬ ДАЛЬШЕ',
+        onConfirm: () => {
+          scene.scene.start('EraSelectScene', { regionId: scene.regionId });
+        }
+      });
+      return;
+    }
+
+    // 5. Навигация назад из остальных экранов
     if (sceneKey === 'ArtifactDetailScene') {
       scene.scene.start('MuseumScene');
-    } else if (sceneKey === 'DigScene') {
-      scene.scene.start('EraSelectScene', { regionId: scene.regionId });
     } else if (
       sceneKey === 'EraSelectScene' ||
       sceneKey === 'ShopScene' ||
       sceneKey === 'MuseumScene' ||
-      sceneKey === 'RestoreScene' ||
       sceneKey === 'VictoryScene'
     ) {
       scene.scene.start('MenuScene');
     } else if (sceneKey === 'MenuScene') {
-      this.showExitConfirmModal(scene);
+      this.showConfirmModal(scene, {
+        title: '🚪 ВЫЙТИ ИЗ МАСТЕРСКОЙ?',
+        desc: 'Весь ваш прогресс и сокровища\nнадёжно сохранены.',
+        confirmText: 'ВЫЙТИ',
+        stayText: 'ОСТАТЬСЯ',
+        onConfirm: () => {
+          const appPlugin = window.Capacitor?.Plugins?.App;
+          if (appPlugin && typeof appPlugin.exitApp === 'function') {
+            appPlugin.exitApp();
+          }
+        }
+      });
     }
   }
 
-  showExitConfirmModal(scene) {
-    if (this.exitModalOpen) return;
-    this.exitModalOpen = true;
+  showConfirmModal(scene, opts) {
+    if (this.confirmModalOpen) return;
+    this.confirmModalOpen = true;
+    const prevModalState = Boolean(scene.isModalOpen);
     scene.isModalOpen = true;
 
     const { width, height } = scene.scale;
@@ -107,8 +143,8 @@ class BackButtonController {
       .setInteractive();
     items.push(overlay);
 
-    const boxW = Math.min(width * 0.84, 340);
-    const boxH = 190;
+    const boxW = Math.min(width * 0.86, 350);
+    const boxH = 196;
     const card = scene.add.container(width / 2, height / 2).setDepth(981);
     items.push(card);
 
@@ -119,8 +155,8 @@ class BackButtonController {
     bg.strokeRoundedRect(-boxW / 2, -boxH / 2, boxW, boxH, 14);
 
     const title = scene.add
-      .text(0, -boxH / 2 + 30, '🚪 ВЫЙТИ ИЗ МАСТЕРСКОЙ?', {
-        fontSize: '15px',
+      .text(0, -boxH / 2 + 30, opts.title, {
+        fontSize: '14.5px',
         fontFamily: FONT_UI,
         color: '#facc15',
         fontStyle: 'bold',
@@ -129,12 +165,13 @@ class BackButtonController {
       .setOrigin(0.5);
 
     const desc = scene.add
-      .text(0, -10, 'Весь ваш прогресс и сокровища\nнадёжно сохранены.', {
+      .text(0, -8, opts.desc, {
         fontSize: '12px',
         fontFamily: FONT_UI,
         color: '#f5e6c8',
         align: 'center',
         lineSpacing: 4,
+        wordWrap: { width: boxW - 24 },
         resolution: dpr
       })
       .setOrigin(0.5);
@@ -142,7 +179,7 @@ class BackButtonController {
     const halfW = (boxW - 36) / 2;
     const btnY = boxH / 2 - 34;
 
-    // Кнопка "ВЫЙТИ"
+    // Кнопка подтверждения выхода
     const exitGfx = scene.add.graphics();
     exitGfx.fillStyle(0x991b1b, 1);
     exitGfx.fillRoundedRect(-boxW / 2 + 14, btnY - 18, halfW, 36, 9);
@@ -150,8 +187,8 @@ class BackButtonController {
     exitGfx.strokeRoundedRect(-boxW / 2 + 14, btnY - 18, halfW, 36, 9);
 
     const exitTxt = scene.add
-      .text(-boxW / 2 + 14 + halfW / 2, btnY, 'ВЫЙТИ', {
-        fontSize: '12px',
+      .text(-boxW / 2 + 14 + halfW / 2, btnY, opts.confirmText, {
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#ffffff',
         fontStyle: 'bold',
@@ -163,14 +200,14 @@ class BackButtonController {
       .zone(-boxW / 2 + 14 + halfW / 2, btnY, halfW, 36)
       .setInteractive({ useHandCursor: true });
 
-    // Кнопка "ОСТАТЬСЯ"
+    // Кнопка "Остаться"
     const stayGfx = scene.add.graphics();
     stayGfx.fillGradientStyle(0xeab308, 0xeab308, 0xb47814, 0xb47814, 1);
     stayGfx.fillRoundedRect(4, btnY - 18, halfW, 36, 9);
 
     const stayTxt = scene.add
-      .text(4 + halfW / 2, btnY, 'ОСТАТЬСЯ', {
-        fontSize: '12px',
+      .text(4 + halfW / 2, btnY, opts.stayText, {
+        fontSize: '11.5px',
         fontFamily: FONT_UI,
         color: '#1a1004',
         fontStyle: 'bold',
@@ -184,32 +221,31 @@ class BackButtonController {
 
     card.add([bg, title, desc, exitGfx, exitTxt, exitZone, stayGfx, stayTxt, stayZone]);
 
-    this._closeExitFn = () => {
+    this._closeConfirmFn = () => {
       items.forEach((o) => o && o.destroy && o.destroy());
-      this.exitModalOpen = false;
-      scene.isModalOpen = false;
+      this.confirmModalOpen = false;
+      scene.isModalOpen = prevModalState;
     };
 
     stayZone.on('pointerdown', () => {
       if (AudioManager.playClick) AudioManager.playClick();
-      this._closeExitFn();
+      this._closeConfirmFn();
     });
 
     exitZone.on('pointerdown', () => {
-      const appPlugin = window.Capacitor?.Plugins?.App;
-      if (appPlugin && typeof appPlugin.exitApp === 'function') {
-        appPlugin.exitApp();
-      } else {
-        this._closeExitFn();
+      if (AudioManager.playClick) AudioManager.playClick();
+      this._closeConfirmFn();
+      if (typeof opts.onConfirm === 'function') {
+        opts.onConfirm();
       }
     });
   }
 
-  closeExitModal() {
-    if (typeof this._closeExitFn === 'function') {
-      this._closeExitFn();
+  closeConfirmModal() {
+    if (typeof this._closeConfirmFn === 'function') {
+      this._closeConfirmFn();
     } else {
-      this.exitModalOpen = false;
+      this.confirmModalOpen = false;
     }
   }
 }
