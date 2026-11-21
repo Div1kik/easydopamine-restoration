@@ -16,7 +16,9 @@
     rel="stylesheet"
   />
 
-  <script src="https://yandex.ru/games/sdk/v2"></script>
+  <!-- Скрипты площадок грузятся неблокирующе, чтобы APK работал и в офлайне -->
+  <script src="https://yandex.ru/games/sdk/v2" async></script>
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js" async></script>
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 
   <style>
@@ -39,6 +41,8 @@
       touch-action: none;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
     }
 
     #game-container {
@@ -71,11 +75,11 @@
         if (document.fonts && document.fonts.ready) {
           await Promise.race([
             document.fonts.ready,
-            new Promise((resolve) => setTimeout(resolve, 1000))
+            new Promise((resolve) => setTimeout(resolve, 900))
           ]);
         }
       } catch {}
-      await import('./src/main.js?v=20261115_final');
+      await import('./src/main.js?v=20261121_multi');
     };
     startApp();
   </script>
