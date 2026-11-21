@@ -1,8 +1,8 @@
-import { TutorialManager } from '../utils/TutorialManager.js';
 import { Storage } from '../utils/Storage.js';
 import { AudioManager } from '../utils/AudioManager.js';
 import { YandexSDK } from '../utils/YandexSDK.js';
 import { drawDetailedToolCanvas } from '../utils/ToolArt.js';
+import { TutorialManager } from '../utils/TutorialManager.js';
 
 export class ShopScene extends Phaser.Scene {
   constructor() {
@@ -66,16 +66,25 @@ export class ShopScene extends Phaser.Scene {
 
     this.setupScrollHandlers();
     this.renderShopItems();
-    this.time.delayedCall(350, () => {
+
+    // Сквозной шаг 7: Обзор вкладок Лавки Мастера
+    this.time.delayedCall(340, () => {
       if (!this.scene || !this.scene.isActive() || this.isModalOpen) return;
-      TutorialManager.startTour(this, 'shop_overview', [
-        {
-          badge: 'МАСТЕРСКАЯ И ЭКСПЕДИЦИИ',
-          rect: { x: width * 0.04, y: 66, w: width * 0.92, h: 40 },
-          title: '🕯 Улучшения и Кастомизация',
-          body: '• «Верстак» — ускоряет чистку и даёт запас Лака Кинцуги.\n• «Раскопки» — усиливает Кирку, Георадар, Кисть и лимит энергии (⚡), повышая добычу даже в авто-экспедициях!\n• «Стиль» — 15 уникальных верстаков, 5 наборов инструментов и Сундук Искателя.'
+      TutorialManager.runIfStep(
+        this,
+        7,
+        [
+          {
+            badge: 'ШАГ 4 ИЗ 5 • УЛУЧШЕНИЯ И КАСТОМ',
+            rect: { x: width * 0.04, y: 66, w: width * 0.92, h: 40 },
+            title: '🕯 4 раздела Лавки Мастера',
+            body: '• «Верстак» — ускоряет чистку и даёт Лак Кинцуги;\n• «Раскопки» — усиливает Кирку, Радар, Кисть и лимит энергии (⚡), повышая авто-сбор;\n• «Стиль» — 15 уникальных верстаков, 5 наборов инструментов и Сундук Искателя;\n• «Музей» — множители пассивного дохода.'
+          }
+        ],
+        () => {
+          TutorialManager.setStep(8);
         }
-      ]);
+      );
     });
 
     const footerBg = this.add.graphics().setDepth(30);
@@ -134,19 +143,18 @@ export class ShopScene extends Phaser.Scene {
 
     this.tabItems = [];
 
-    tabs.forEach((t, i) => {
-      const tx = startX + i * (tabW + spacing);
+    tabs.forEach((t) => {
+      const tx = startX + this.tabItems.length * (tabW + spacing);
       const isSelected = (t.id === this.activeTab);
 
       const gfx = this.add.graphics().setDepth(20);
       const drawTab = (selected) => {
         gfx.clear();
         gfx.fillStyle(selected ? 0xd99b26 : 0x24180f, selected ? 0.96 : 0.85);
-        gfx.fillRoundedRect(tx - tabW / 2, y - tabH / 2, tabWidthSafe(tabW), tabH, 8);
+        gfx.fillRoundedRect(tx - tabW / 2, y - tabH / 2, Math.max(40, tabW), tabH, 8);
         gfx.lineStyle(selected ? 1.5 : 1, selected ? 0xfef08a : 0x8c6239, 0.9);
-        gfx.strokeRoundedRect(tx - tabW / 2, y - tabH / 2, tabWidthSafe(tabW), tabH, 8);
+        gfx.strokeRoundedRect(tx - tabW / 2, y - tabH / 2, Math.max(40, tabW), tabH, 8);
       };
-      function tabWidthSafe(w) { return Math.max(40, w); }
       drawTab(isSelected);
 
       const txt = this.add.text(tx, y, t.label, {
@@ -276,7 +284,7 @@ export class ShopScene extends Phaser.Scene {
       this.renderCardList(upgrades, width, textRes, FONT_UI, activeToolSkin);
     } else if (this.activeTab === 'expedition') {
       const digUpgrades = [
-        { key: 'dig_upg_pickaxe_2', toolType: 'pickaxe', tier: 2, title: 'Кирка II: Стальная', desc: '+3 заряда в раскопе, задевает 2 клетки и +1 находка в авто-сборе', price: 210 },
+        { key: 'dig_upg_pickaxe_2', toolType: 'pickaxe', tier: 2, title: 'Кирка II: Стальная', desc: '+3 удара в раскопе, задевает 2 клетки и +1 находка в авто-сборе', price: 210 },
         { key: 'dig_upg_pickaxe_3', reqKey: 'dig_upg_pickaxe_2', reqLabel: 'НУЖНА КИРКА II', toolType: 'pickaxe', tier: 3, title: 'Кирка III: Шахтёрская', desc: 'Двойной удар по твёрдой породе и 4 находки за авто-рейс', price: 690 },
         { key: 'dig_upg_pickaxe_4', reqKey: 'dig_upg_pickaxe_3', reqLabel: 'НУЖНА КИРКА III', toolType: 'pickaxe', tier: 4, title: 'Кирка IV: Первопроходца', desc: 'Вскрывает 3 клетки за удар и 5 находок за авто-рейс!', price: 2450 },
 
@@ -889,7 +897,7 @@ export class ShopScene extends Phaser.Scene {
       tapHint.setVisible(false);
 
       if (AudioManager.playShine) AudioManager.playShine();
-      this.cameras.main.shake(160, 0.008);
+      this.cameras.main.shake(110, 0.0025);
 
       const burst = this.add.circle(width / 2, height * 0.43, 30, 0xfffbeb, 0.9)
         .setBlendMode(Phaser.BlendModes.ADD)
