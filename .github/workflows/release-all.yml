@@ -45,10 +45,38 @@ jobs:
           npx cap init "Артефакты Времени" "com.easydopamine.artefactsoftime" --web-dir=www
           npx cap add android
 
-      - name: Configure Android Manifest, Orientation & Theme
+      - name: Configure Android Manifest, Fullscreen & Cutout
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i 's/android:exported="true"/android:exported="true" android:screenOrientation="portrait"/g' "$MANIFEST"
+
+          STYLES="android/app/src/main/res/values/styles.xml"
+          cat << 'EOF' > "$STYLES"
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+                  <item name="colorPrimary">@color/colorPrimary</item>
+                  <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+                  <item name="colorAccent">@color/colorAccent</item>
+                  <item name="android:windowBackground">#0d0805</item>
+              </style>
+
+              <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+                  <item name="windowActionBar">false</item>
+                  <item name="windowNoTitle">true</item>
+                  <item name="android:background">#0d0805</item>
+                  <item name="android:windowBackground">#0d0805</item>
+                  <item name="android:windowFullscreen">true</item>
+                  <item name="android:windowTranslucentStatus">true</item>
+                  <item name="android:windowTranslucentNavigation">true</item>
+                  <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+              </style>
+
+              <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+                  <item name="android:background">#0d0805</item>
+              </style>
+          </resources>
+          EOF
 
           cat << 'EOF' > capacitor.config.json
           {
