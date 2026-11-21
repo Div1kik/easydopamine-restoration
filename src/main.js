@@ -1,3 +1,4 @@
+import { BackButtonHandler } from './utils/BackButtonHandler.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { EraSelectScene } from './scenes/EraSelectScene.js';
@@ -170,3 +171,4 @@ const config = {
 
 const gameInstance = new Phaser.Game(config);
 window.game = gameInstance;
+BackButtonHandler.init(gameInstance);
